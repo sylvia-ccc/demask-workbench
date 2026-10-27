@@ -82,7 +82,7 @@
 
 <header>
   <div class="wrap">
-    <div class="kicker">能力评分 · v1.7</div>
+    <div class="kicker">能力评分 · v1.9</div>
     <h1>脱敏工作台 · 能力评分与对标</h1>
     <div class="meta">
       <div>评分方式　<b>可复现脚本 + 带标注测试集</b></div>
@@ -95,9 +95,9 @@
 <div class="wrap">
 
   <div class="score-hero">
-    <div class="score-num">92.2<small> / 100</small></div>
+    <div class="score-num">98.3<small> / 100</small></div>
     <div class="score-txt">
-      <div class="t">达标（目标 90）</div>
+      <div class="t">达标（目标 90，实际 98.3）</div>
       <div class="d">但请先看第六节——测试集全部参与过调优，100% 的识别率不可直接采信。
         真实水平请参考真实年报的抽样核对结果。</div>
     </div>
@@ -144,13 +144,13 @@
       </div>
       <div class="bar-row">
         <span class="nm">C 工作流闭环</span>
-        <span class="track"><span class="fill" style="width:78%"></span></span>
-        <span class="val"><b>15.6</b>/20</span>
+        <span class="track"><span class="fill" style="width:100%"></span></span>
+        <span class="val"><b>20.0</b>/20</span>
       </div>
       <div class="bar-row">
         <span class="nm">D 安全</span>
-        <span class="track"><span class="fill" style="width:83%"></span></span>
-        <span class="val"><b>8.3</b>/10</span>
+        <span class="track"><span class="fill" style="width:100%"></span></span>
+        <span class="val"><b>10.0</b>/10</span>
       </div>
       <div class="bar-row">
         <span class="nm">E 可用性</span>
@@ -196,15 +196,16 @@
       <tr><td class="nw">还原</td><td class="ok">✓</td><td>兼容 9 种 AI 改写：去括号、加空格、markdown、换半角括号</td></tr>
       <tr><td class="nw">导出 Word / Excel / PPT</td><td class="ok">✓</td><td>保留原格式，表格按列语义处理</td></tr>
       <tr><td class="nw">批量处理</td><td class="ok">✓</td><td>一次最多 20 个文件，打包下载</td></tr>
+      <tr><td class="nw">自定义规则</td><td class="ok">✓</td><td>正则匹配内部编号，支持捕获组</td></tr>
       <tr><td class="nw">项目隔离</td><td class="ok">✓</td><td>一客户一套映射，代号从 A 重新开始</td></tr>
       <tr><td class="nw">跨项目误用防错</td><td class="ok">✓</td><td>还原时提示"这段属于项目 XX"，一键切回</td></tr>
-      <tr><td class="nw">多轮对话累积还原</td><td class="no">✗</td><td>目前每次要整段粘贴</td></tr>
-      <tr><td class="nw">还原结果差异高亮</td><td class="no">✗</td><td>全量替换，看不出哪里变了</td></tr>
+      <tr><td class="nw">多轮对话累积还原</td><td class="ok">✓</td><td>每轮追加进记录，最后一次性复制</td></tr>
+      <tr><td class="nw">还原结果差异高亮</td><td class="ok">✓</td><td>换回去的部分标黄</td></tr>
     </tbody>
   </table>
 
   <h3>D 安全（10 分）</h3>
-  <p>纯本地计算、映射表 AES-GCM 加密、零外链可断网自证、法律定性说明、映射表泄露风险提示——五项齐备。缺操作审计日志，对单机工具价值不高，如实扣分。</p>
+  <p>纯本地计算、映射表 AES-GCM 加密、零外链可断网自证、法律定性说明、映射表泄露风险提示、复制前残留拦截（fail-closed）、操作审计（仅元数据）——七项齐备。</p>
 
   <h3>E 可用性（5 分）</h3>
   <p>单文件双击即用、无需联网、10 万字 43ms、首次打开有三句话引导。</p>
@@ -411,7 +412,7 @@
   <p>但最有说服力的验证不是跑我的测试集，而是<strong>拿一份你已经交付过的真实报告，跑一遍，数一下漏了几个</strong>。漏的通常集中在客户自己的内部叫法和行业黑话——把它们加进词库，以后所有文档都生效。</p>
 
   <div class="footnote">
-    评分对象：脱敏工作台 v1.7（193 KB 单文件）　·　评测脚本：eval.js / score.js　·　测试集：257 条用例、257 个正例<br>
+    评分对象：脱敏工作台 v1.9（213 KB 单文件）　·　评测脚本：eval.js / score.js　·　测试集：257 条用例、257 个正例<br>
     所有测试数据与脚本位于 <code>demask/src/</code>，可独立运行，不依赖本工具
   </div>
 
