@@ -16,6 +16,7 @@ SRC_UI = os.path.join(HERE, "ui.html")
 SRC_ENGINE = os.path.join(HERE, "engine.js")
 SRC_LEXICON = os.path.join(HERE, "lexicon.js")
 OUT = os.path.join(ROOT, "脱敏工作台.html")
+OUT_INDEX = os.path.join(ROOT, "index.html")
 
 
 def main():
@@ -39,6 +40,9 @@ def main():
         raise SystemExit("engine.js 中含有 </script 字样，需转义后再内联")
 
     with open(OUT, "w", encoding="utf-8") as f:
+        f.write(out)
+    # GitHub Pages 的默认入口，内容与成品一致
+    with open(OUT_INDEX, "w", encoding="utf-8") as f:
         f.write(out)
 
     kb = len(out.encode("utf-8")) / 1024

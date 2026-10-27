@@ -1,14 +1,49 @@
-# 脱敏工作台
+# 脱敏工作台 · Demask Workbench
 
-> 给咨询、投融资、财务场景做的本地脱敏工具。
-> **一个 HTML 文件，双击即用。不联网、不上传、不装环境。**
+> **咨询 / 投融资 / 财务场景的数据脱敏工具。**
+> 把客户访谈纪要、财务模型、尽调材料、交易文件安全地粘给 ChatGPT / Claude / 豆包 / Kimi——
+> **不泄露客户名、项目代号和真实金额**，AI 拿到的答案贴回来还能一键还原。
 
 <p>
-<img alt="size" src="https://img.shields.io/badge/size-213%20KB-1b3a5c">
+<img alt="size" src="https://img.shields.io/badge/size-214%20KB-1b3a5c">
 <img alt="deps" src="https://img.shields.io/badge/dependencies-0-0f766e">
 <img alt="license" src="https://img.shields.io/badge/license-MIT-2f5d8a">
 <img alt="offline" src="https://img.shields.io/badge/network-none-b45309">
+<a href="https://sylvia-ccc.github.io/demask-workbench/"><img alt="demo" src="https://img.shields.io/badge/%E5%9C%A8%E7%BA%BF%E8%AF%95%E7%94%A8-%E7%82%B9%E8%BF%99%E9%87%8C-2f5d8a"></a>
 </p>
+
+**[→ 在线试用](https://sylvia-ccc.github.io/demask-workbench/)**（建议只用于试，正式用请下载本地文件）· [English](README.en.md)
+
+
+---
+
+## 什么时候用得上
+
+如果你在做这些事，这个工具就是为你做的：
+
+| 场景 | 你会怎么做 |
+|---|---|
+| **客户访谈纪要** | 录音转文字后想让 AI 提炼要点，但里面有客户高管姓名和门店数据 |
+| **财务模型 / 三表** | 想让 AI 帮忙检查勾稽关系、做敏感性分析，但营收和利润是真实数字 |
+| **尽调报告 / 投资备忘录（IM）** | 想让 AI 帮你搭框架、润色，但标的公司名字不能出现 |
+| **交易结构设计** | 想把股权结构、对价、条款发给 AI 问风险，但买方卖方都是真实客户 |
+| **行业研究报告** | 想让 AI 补充行业数据、对比竞品，但手上的份额和价格是付费调研的 |
+| **培训课件 / 案例** | 想用真实案例讲课，但不能暴露客户 |
+| **投委会材料** | 想让 AI 帮忙预演可能的质疑点，但材料是保密的 |
+
+**共同点**：材料里有真实主体和真实数字，但你需要 AI 的理解能力，而不是它的记忆。
+
+---
+
+## 三步上手
+
+```
+1. 打开 → 粘贴材料      （支持 Word / Excel / PPT 直接拖入）
+2. 扫一眼实体清单        （误伤的按「放行」，漏掉的加进词库）
+3. 复制右侧脱敏稿 → 粘给 AI
+```
+
+AI 回答贴回「还原」页，客户名和原始金额自动换回来。
 
 ![主界面](assets/main.png)
 

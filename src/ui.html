@@ -1709,6 +1709,19 @@ const SAMPLE = `华润万佳商业集团 2026 年全渠道增长战略（讨论�
 - 内网系统 http://bi.crv.internal:8080/dashboard，负责人 王芳 13800138000。
 - 尽调材料中身份证 440301199003078512、银行卡 6222020200112345678 需按规范留存，不得外发。`;
 
+/* ---------------- 在线版提示 ---------------- */
+(function onlineHint(){
+  if (!/^https?:$/.test(location.protocol)) return;   // 本地文件不提示
+  const bar = $('#capbar');
+  bar.classList.add('on');
+  bar.innerHTML = '<b>你正在浏览器里打开网页版。</b>' +
+    '所有计算仍在这台电脑上完成，数据不会上传。' +
+    '但正式使用建议把文件<b>下载到本地</b>——网页有可能被篡改，本地文件不会；' +
+    '本地打开时映射表也更稳定。<br>' +
+    '<a href="https://github.com/sylvia-ccc/demask-workbench/raw/main/%E8%84%B1%E6%95%8F%E5%B7%A5%E4%BD%9C%E5%8F%B0.html" ' +
+    'style="color:#2f5d8a;font-weight:600" download>下载到本地 →</a>';
+})();
+
 /* ---------------- 能力检测 ---------------- */
 (function checkCaps(){
   const hard = [];   // 功能受损
