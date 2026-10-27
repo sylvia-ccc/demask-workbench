@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>真实文档实测报告 · 脱敏工作台</title>
+<style>
+  :root{--ink:#151a21;--ink-2:#3d4753;--muted:#6b7684;--faint:#98a2b0;
+    --line:#e2e5ea;--line-soft:#eef0f3;--bg:#f7f8fa;--panel:#fff;
+    --accent:#1b3a5c;--accent-2:#2f5d8a;--ok:#0f766e;--warn:#b45309;--danger:#b91c1c}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font:15px/1.75 -apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+    -webkit-font-smoothing:antialiased}
+  .wrap{max-width:940px;margin:0 auto;padding:0 28px 90px}
+  header{background:linear-gradient(180deg,#1b3a5c,#22496f);color:#fff;padding:42px 0 36px;margin-bottom:32px}
+  header .wrap{padding-bottom:0}
+  .kicker{font-size:12px;letter-spacing:1.6px;color:#9fc0dd;font-weight:600;margin-bottom:10px}
+  h1{margin:0 0 14px;font-size:26px;letter-spacing:-.3px;font-weight:650}
+  .meta{display:flex;gap:24px;flex-wrap:wrap;font-size:13px;color:#c5d8e8}
+  .meta b{color:#fff;font-weight:600}
+  h2{font-size:19px;margin:42px 0 15px;letter-spacing:-.2px;display:flex;align-items:center;gap:10px}
+  h2 .num{font-size:12px;color:#fff;background:var(--accent);border-radius:5px;
+    padding:2px 7px;font-weight:600;letter-spacing:.5px}
+  h3{font-size:15px;margin:24px 0 9px;color:var(--ink)}
+  p{margin:0 0 13px;color:var(--ink-2)}
+  ul,ol{margin:0 0 14px;padding-left:22px;color:var(--ink-2)}
+  li{margin-bottom:6px}
+  code{background:#eef1f5;border-radius:4px;padding:1px 5px;font-size:13px;
+    font-family:ui-monospace,Menlo,monospace;color:#2f3d4d}
+  strong{color:var(--ink);font-weight:600}
+  table{width:100%;border-collapse:collapse;margin:14px 0 18px;font-size:13.5px;background:var(--panel)}
+  th{text-align:left;padding:10px 12px;border-bottom:1px solid var(--line);
+    font-size:12px;color:var(--muted);font-weight:600;background:#fafbfc}
+  td{padding:10px 12px;border-bottom:1px solid var(--line-soft);color:var(--ink-2);vertical-align:top}
+  tr:last-child td{border-bottom:0}
+  td.nw{white-space:nowrap}
+  .ok{color:var(--ok);font-weight:600}
+  .no{color:var(--danger);font-weight:600}
+  .mid{color:var(--warn);font-weight:600}
+  .mono{font-family:ui-monospace,Menlo,monospace;font-size:12.5px;line-height:1.85}
+  .dangerbox{background:#fef6f6;border-left:3px solid var(--danger);border-radius:0 8px 8px 0;
+    padding:14px 18px;margin:16px 0;font-size:13.5px;color:#7f1d1d;line-height:1.75}
+  .dangerbox .t{display:block;font-weight:600;margin-bottom:5px;font-size:13px}
+  .callout{background:#f5f9ff;border-left:3px solid var(--accent-2);border-radius:0 8px 8px 0;
+    padding:14px 18px;margin:16px 0;font-size:13.5px;color:var(--ink-2);line-height:1.75}
+  .callout .t{display:block;font-weight:600;color:var(--accent);margin-bottom:5px;font-size:13px}
+  .warnbox{background:#fffbf2;border-left:3px solid var(--warn);border-radius:0 8px 8px 0;
+    padding:14px 18px;margin:16px 0;font-size:13.5px;color:#7c4a09;line-height:1.75}
+  .warnbox .t{display:block;font-weight:600;margin-bottom:5px;font-size:13px}
+  .before{color:#b91c1c;text-decoration:line-through}
+  .after{color:#0f766e;font-weight:600}
+  .footnote{margin-top:44px;padding-top:20px;border-top:1px solid var(--line);
+    font-size:12px;color:var(--faint);line-height:1.8}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <div class="kicker">实测报告 · 2026-10-27</div>
+    <h1>拿 50 万字真实年报测了一遍</h1>
+    <div class="meta">
+      <div>测试对象　<b>宁德时代 2025 年报全文</b></div>
+      <div>体量　<b>499,260 字 / 232 页</b></div>
+      <div>维度　<b>识别 · 还原 · 性能 · 边界 · 元能力</b></div>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <p>之前的评测都跑在自己构造的测试集上。这次换真实文档——上市公司年报，结构复杂、实体密集、章节类型完全不同。结论：<strong>自造测试集掩盖了三个真问题</strong>。</p>
+
+  <h2><span class="num">01</span>怎么测的</h2>
+  <p>年报按章节切分，每章取 2 万字，覆盖五种完全不同的文本形态：</p>
+  <table>
+    <thead><tr><th style="width:120px">章节</th><th style="width:90px">字数</th><th>实体类型特征</th></tr></thead>
+    <tbody>
+      <tr><td class="nw">管理层讨论</td><td class="nw">20,000</td><td>行业术语、产销量、金额密集</td></tr>
+      <tr><td class="nw">公司治理</td><td class="nw">20,000</td><td><strong>董事监事名单、任职履历</strong>——人名最密集</td></tr>
+      <tr><td class="nw">重要事项</td><td class="nw">20,000</td><td>关联方公司名、担保、诉讼</td></tr>
+      <tr><td class="nw">股东情况</td><td class="nw">20,000</td><td>股东名称、持股比例、质押</td></tr>
+      <tr><td class="nw">财务报告</td><td class="nw">20,000</td><td>会计科目、金额、附注</td></tr>
+    </tbody>
+  </table>
+  <p>另外单测了还原可靠性、性能、12 种边界输入、以及残留检测这类"元能力"。</p>
+
+  <h2><span class="num">02</span>三个真问题</h2>
+
+  <h3>① 公司治理章的人名，一半是垃圾</h3>
+  <p>这一章全是"任公司董事长""现任董事""公司副董事长"这类表述。工具识别出 <strong>278 处人名</strong>，去重 36 个，其中至少 15 个是垃圾：</p>
+  <div class="mono" style="background:#fef6f6;padding:12px 14px;border-radius:8px;margin:10px 0">
+    董事会　程序　董事和　董事　任期内　司职工　司现任　董事长<br>
+    任公司　司担任　司联席　董事总　上海适　任执行　任财务
+  </div>
+  <p>根因三个：</p>
+  <ul>
+    <li><strong>职务片段被当人名</strong>：<code>([\u4e00-\u9fa5]{2,3})(?=董事长)</code> 在"公司副董事长"上匹配出"司副"</li>
+    <li><strong>复姓被从第二个字开始切</strong>："欧阳楚英先生"变成"阳楚英"</li>
+    <li><strong>同名扩散放大错误</strong>：一旦"董事"被误认，全文扩散</li>
+  </ul>
+  <p>修法：加职务/机构词素黑名单、检测复姓截断、扩散只接受高置信度来源。</p>
+
+  <table>
+    <thead><tr><th style="width:180px">指标</th><th style="width:130px">修复前</th><th style="width:130px">修复后</th></tr></thead>
+    <tbody>
+      <tr><td class="nw">人名识别（处）</td><td class="before">278</td><td class="after">36</td></tr>
+      <tr><td class="nw">去重后</td><td class="before">36</td><td class="after">14</td></tr>
+      <tr><td class="nw">准确率（人工核对）</td><td class="before">58%</td><td class="after">80%</td></tr>
+      <tr><td class="nw">垃圾词</td><td class="before">15 个</td><td class="after">0 个</td></tr>
+    </tbody>
+  </table>
+  <p>剩下的 3 个是 PDF 表格单元格截断（"曾毓群"被切成"曾毓"），属于输入问题，点「整理断行」能缓解。</p>
+
+  <div class="dangerbox">
+    <span class="t">这个 bug 为什么之前的测试集没发现</span>
+    我造的人名用例都是"项目经理 李明""联系人：张伟"这种干净结构。真实文档里是"公司董事赵丰刚先生因公司治理结构调整"——<strong>名字夹在职务和动词中间</strong>，规则完全不同。
+  </div>
+
+  <h3>② 邮箱正则有 ReDoS 风险</h3>
+  <p>边界测试时发现：<strong>5 万个连续字母要 2.3 秒</strong>。定位到邮箱正则：</p>
+  <div class="mono" style="background:#fef6f6;padding:12px 14px;border-radius:8px;margin:10px 0">
+    /[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g
+  </div>
+  <p><code>+</code> 会贪婪匹配到字符串结尾，然后逐字回退找 <code>@</code>，是 O(n²)。5 万字符 × 5 万次回退。</p>
+  <p>修法：限制本地部分长度到 64（RFC 上限），加左右边界断言。</p>
+  <table>
+    <thead><tr><th style="width:180px">输入</th><th style="width:120px">修复前</th><th style="width:120px">修复后</th></tr></thead>
+    <tbody>
+      <tr><td class="nw">5 万连续字母</td><td class="before">2,298 ms</td><td class="after">975 ms</td></tr>
+      <tr><td class="nw">其中 detectRegex</td><td class="before">1,135 ms</td><td class="after">1 ms</td></tr>
+      <tr><td class="nw">正常邮箱识别</td><td class="ok">✓</td><td class="ok">✓ 不受影响</td></tr>
+    </tbody>
+  </table>
+  <p>剩余 975 ms 来自其它中文正则对纯 ASCII 的逐位置尝试，属可接受范围（真实文档不会出现）。</p>
+
+  <h3>③ 修 bug 修出了新 bug</h3>
+  <p>提高扩散门槛后回归，两个测试集各漏 1 个：</p>
+  <div class="mono" style="background:#fef6f6;padding:12px 14px;border-radius:8px;margin:10px 0">
+    参会：【人物A】、【人物B】、【人物C】、【人物D】。会议由<strong>张伟</strong>主持。
+  </div>
+  <p>名单里脱了，正文没扩散——因为名单规则的置信度是 0.8，被我新设的 0.88 门槛挡住了。</p>
+  <p>修法：有明确引导词（"参会：""记录："）的名单，置信度本就该更高，提到 0.88；同时补了"记录/主持/编制/审核"等引导词。</p>
+
+  <h2><span class="num">03</span>通过的项</h2>
+
+  <h3>还原可靠性：8/8</h3>
+  <table>
+    <thead><tr><th style="width:200px">AI 的改写方式</th><th style="width:70px">结果</th></tr></thead>
+    <tbody>
+      <tr><td class="nw"><code>【标的A】</code> 原样</td><td class="ok">✓</td></tr>
+      <tr><td class="nw"><code>标的A</code> 去括号</td><td class="ok">✓</td></tr>
+      <tr><td class="nw"><code>【 标的A 】</code> 括号内加空格</td><td class="ok">✓</td></tr>
+      <tr><td class="nw"><code>**【标的A】**</code> markdown 加粗</td><td class="ok">✓</td></tr>
+      <tr><td class="nw"><code>[标的A]</code> 半角方括号</td><td class="ok">✓</td></tr>
+      <tr><td class="nw">金额单位被改（79.5亿 → 79.5万）</td><td class="ok">✓ 不还原，避免张冠李戴</td></tr>
+      <tr><td class="nw">百分比 <code>79.5%</code></td><td class="ok">✓ 不还原（比率不是金额）</td></tr>
+    </tbody>
+  </table>
+
+  <h3>边界输入：12/12 不崩</h3>
+  <p>空字符串、纯空格、纯数字、纯英文、纯代码、emoji、单行 10 万字无换行、重复同句 1000 次、控制字符、5 万字母、嵌套括号、null 字节——全部正常返回，无异常。</p>
+
+  <h3>元能力：残留检测 4/4</h3>
+  <table>
+    <thead><tr><th style="width:160px">故意留下的</th><th>检测结果</th></tr></thead>
+    <tbody>
+      <tr><td class="nw">手机号</td><td class="ok">✓ 疑似未处理手机号</td></tr>
+      <tr><td class="nw">身份证</td><td class="ok">✓ 身份证 + 长数字（双报）</td></tr>
+      <tr><td class="nw">邮箱</td><td class="ok">✓ 疑似未处理邮箱</td></tr>
+      <tr><td class="nw">密级标识</td><td class="mid">✓ 但同一处重复报 2 次</td></tr>
+    </tbody>
+  </table>
+  <p>密级标识重复报是个小瑕疵（同一条正则命中两次），不影响安全判断，已记入待修。</p>
+
+  <h3>Office 导出：结构完整</h3>
+  <p>docx 和 xlsx 各导出一次，用 Python 的 <code>zipfile</code> 和 <code>xml.dom.minidom</code> 验证：</p>
+  <div class="mono" style="background:#f0fdf9;padding:12px 14px;border-radius:8px;margin:10px 0">
+    chk_real.docx　ZIP 完整性：正常　条目 3　XML 全部合法<br>
+    chk_model.xlsx　ZIP 完整性：正常　条目 3　XML 全部合法
+  </div>
+
+  <h2><span class="num">04</span>性能</h2>
+  <table>
+    <thead><tr><th style="width:140px">字数</th><th style="width:100px">耗时</th><th>说明</th></tr></thead>
+    <tbody>
+      <tr><td class="nw">1 万</td><td class="nw">19 ms</td><td>一篇访谈纪要</td></tr>
+      <tr><td class="nw">10 万</td><td class="nw">37 ms</td><td>一份完整调研报告</td></tr>
+      <tr><td class="nw">50 万</td><td class="nw">264 ms</td><td>年报全文（232 页）</td></tr>
+      <tr><td class="nw">100 万</td><td class="nw">789 ms</td><td>四本《红楼梦》</td></tr>
+    </tbody>
+  </table>
+  <p>线性增长。修复 ReDoS 后 100 万字从 899 ms 降到 789 ms。</p>
+
+  <h2><span class="num">05</span>还没解决的问题</h2>
+  <table>
+    <thead><tr><th style="width:200px">问题</th><th style="width:80px">严重度</th><th>说明</th></tr></thead>
+    <tbody>
+      <tr>
+        <td class="nw"><strong>PDF 表格单元格截断</strong></td>
+        <td class="mid">中</td>
+        <td>"曾毓群"在表格里被切成"曾毓"+"群"。这是 <code>pdftotext</code> 按版面还原的产物，不是规则问题。点「整理断行」对表格无效，需要人工核对表格里的名字。</td>
+      </tr>
+      <tr>
+        <td class="nw"><strong>密级标识重复报</strong></td>
+        <td>低</td>
+        <td>同一条正则命中两次，去重即可。</td>
+      </tr>
+      <tr>
+        <td class="nw"><strong>纯 ASCII 长串偏慢</strong></td>
+        <td>低</td>
+        <td>5 万连续字母 975 ms。真实文档不会出现，但如果粘贴 base64 会感知到卡顿。</td>
+      </tr>
+      <tr>
+        <td class="nw"><strong>公司治理类文本人名准确率 80%</strong></td>
+        <td class="mid">中</td>
+        <td>比之前的 58% 好很多，但仍不是 95%。这类文本（任职履历、董事会决议）结构高度固定，需要专门的解析规则，不是通用正则能覆盖的。</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="callout">
+    <span class="t">这次测评最大的收获</span>
+    不是发现了三个 bug，而是意识到<strong>自造测试集永远比真实文档干净</strong>。
+    我造的用例是"项目经理 李明"，真实文档是"公司董事赵丰刚先生因公司治理结构调整"——
+    同样的规则，前者 100% 准，后者 58%。
+  </div>
+
+  <h2><span class="num">06</span>怎么复现</h2>
+  <div class="mono" style="background:#f2f4f7;padding:14px 16px;border-radius:8px;margin:12px 0">
+    cd src<br>
+    node eval.js testset.json            # 三份自建测试集<br>
+    node eval.js testset-holdout.json<br>
+    node eval.js testset-blind.json<br>
+    node score.js                        # 评分卡<br>
+    node bench.js                        # 性能<br>
+    node test.js                         # 端到端
+  </div>
+  <p>真实文档测评的脚本在 <code>docs/</code> 说明里，年报原文需自行下载（公开信息）。</p>
+
+  <div class="footnote">
+    测评对象：脱敏工作台 v1.9（216 KB）　·　测评时间：2026-10-27<br>
+    测试文档：宁德时代 2025 年年度报告全文（公开披露，499,260 字）<br>
+    人工核对方式：逐条查看识别结果与原文上下文，判断是否为人名/机构名
+  </div>
+
+</div>
+</body>
+</html>

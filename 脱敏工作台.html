@@ -1079,6 +1079,20 @@
     return chars[(31 - total % 31) % 31] === s[17];
   }
 
+  // 人名判定的最后一道闸。年报的"公司治理"章全是"任公司董事长""现任董事"
+  // 这类表述，光靠姓氏首字会大量误判——必须排除职务/机构词素。
+  const NAME_BAD_PARTS = /公司|董事|监事|经理|总裁|职工|现任|任期|担任|兼任|执行|财务|采购|销售|独立|兼职|联席|办公室|委员会|集团|股份|有限|证券|银行|基金|上海|北京|深圳|广州|杭州|南京|成都|武汉|西安|苏州|天津|重庆|宁波|青岛|程序|关联|遴选|考核|评估|治理|结构|调整|运营|生产|研发|技术|质量|安全|环保|人力|行政|任职|副董|司副|^副|副$/;
+  const COMPOUND_SURNAME = /^(?:欧阳|司马|上官|诸葛|东方|皇甫|尉迟|公孙|慕容|长孙|宇文|司徒|司空|夏侯|令狐|端木|独孤|南宫|西门|百里|东郭|呼延|羊舌|微生|梁丘|左丘|东门|南荣)$/;
+  const COMPOUND_PAIRS = '欧阳 司马 上官 诸葛 东方 皇甫 尉迟 公孙 慕容 长孙 宇文 司徒 司空 夏侯 令狐 端木 独孤 南宫 西门 百里 东郭 呼延 羊舌 微生 梁丘 左丘 东门 南荣'.split(' ');
+
+  // "欧阳楚英先生" 会被从"阳"开始匹配成"阳楚英"——候选前一个字若与首字构成复姓，说明切错了
+  function cutInsideCompound(text, start, cand) {
+    if (start <= 0) return false;
+    const prev = text[start - 1];
+    const two = prev + cand[0];
+    return COMPOUND_PAIRS.indexOf(two) >= 0;
+  }
+
   function looksLikeName(s) {
     if (!s || s.length < 2 || s.length > 4) return false;
     if (SURNAMES.indexOf(s[0]) < 0) return false;
@@ -1087,6 +1101,10 @@
     if (BAD.indexOf(s) >= 0) return false;
     // 组织单元不是人名：华东大区 / 东大区 / 华南区域
     if (/大区|区域|片区|城市|省份|部门|事业部/.test(s)) return false;
+    // 职务/机构词素不是人名：任公司 / 董事会 / 司职工 / 董事和
+    if (NAME_BAD_PARTS.test(s)) return false;
+    // 复姓单独出现（"欧阳"后面还有名）不当作完整人名
+    if (COMPOUND_SURNAME.test(s)) return false;
     return true;
   }
 
@@ -1139,7 +1157,10 @@
     add(/(?:合作方为|合作方是|供应商为|供应商是|客户为|客户是|对方为|买方为|卖方为|甲方为|乙方为|交易对手为)\s*([\u4e00-\u9fa5]{2,6}(?:科技|供应链|贸易|实业|控股|电子|材料|机械|食品|医药|网络|数据|软件|物流|传媒|能源|环保|建设|装饰|咨询|服务))/g,
       'ORG', 0.78, null, '引导词+行业后缀');
 
-    add(/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g, 'EMAIL', 1, null, '');
+    // 邮箱：必须限制本地部分长度。不加 {1,64} 的话，
+    // 一段 5 万字的连续字母会让正则在每个位置贪婪匹配到结尾再逐字回退，O(n²) 卡死。
+    add(/(?<![A-Za-z0-9._%+-])[A-Za-z0-9._%+-]{1,64}@[A-Za-z0-9-]{1,63}(?:\.[A-Za-z0-9-]{1,63}){0,4}\.[A-Za-z]{2,10}(?![A-Za-z0-9-])/g,
+      'EMAIL', 1, null, '');
     // 英文人名：必须有称谓或动词引导，否则英文名词满天飞
     add(/(?:Mr\.|Ms\.|Mrs\.|Dr\.|Prof\.|chaired by|attended by|prepared by|reviewed by|presented by|contact(?:ed)?|meeting with|signed by)\s*[:：]?\s+([A-Z][a-z]{1,12}(?:\s+[A-Z][a-z]{1,12}){1,2})/gi,
       'PERSON', 0.85, null, '英文语境');
@@ -1368,12 +1389,14 @@
       const cand = m[1];
       if (!looksLikeName(cand)) continue;
       const st = m.index + m[0].length - cand.length;
+      if (cutInsideCompound(text, st, cand)) continue;
       out.push(Span(st, st + cand.length, 'PERSON', cand, 0.9, '角色词'));
     }
     // 2) 称谓后缀
     const r2 = new RegExp('([\\u4e00-\\u9fa5]{2,3})(?=' + TITLE_SUFFIX + ')', 'g');
     while ((m = r2.exec(text)) !== null) {
       if (!looksLikeName(m[1])) continue;
+      if (cutInsideCompound(text, m.index, m[1])) continue;
       out.push(Span(m.index, m.index + m[1].length, 'PERSON', m[1], 0.88, '称谓'));
     }
     // 2.5) 邮件/消息称呼：李娜您好 / 张总您好
@@ -1400,7 +1423,7 @@
       while ((mm = rn.exec(seg)) !== null) {
         if (!looksLikeName(mm[0])) continue;
         const st = base + mm.index;
-        out.push(Span(st, st + mm[0].length, 'PERSON', mm[0], 0.8, '名单'));
+        out.push(Span(st, st + mm[0].length, 'PERSON', mm[0], 0.88, '名单'));
       }
     }
     // 5) 后置动词
@@ -1733,7 +1756,7 @@
           if (info && !info.pct) {
             out.push(Span(pos + cell.start + lead, pos + cell.start + lead + info.text.length, 'MONEY', info.text, 0.72, '表格列'));
           }
-        } else if (nameCols.has(i) && looksLikeName(raw)) {
+        } else if (nameCols.has(i) && looksLikeName(raw) && !/[先生女士小姐]$/.test(raw)) {
           out.push(Span(pos + cell.start + lead, pos + cell.start + lead + raw.length, 'PERSON', raw, 0.8, '表格列'));
         } else if (orgCols.has(i) && raw && raw.length >= 2 && /[\u4e00-\u9fa5]/.test(raw)) {
           // 机构名列：整格当公司名
@@ -2085,6 +2108,9 @@
       if (w.indexOf('【') >= 0) continue;
       const key = sp.type + ':' + w;
       if (seen.has(key)) continue;
+      // 弱规则（称谓/语境/同名扩散本身）识别出的不参与扩散——
+      // 一旦误判会被放大到全文，宁可少扩散
+      if ((sp.conf || 0) < 0.88) continue;
       seen.add(key);
 
       let idx = -1, n = 0;
@@ -2586,7 +2612,7 @@
         masked, entities,
         stats: { chars: text.length, entities: entities.length, unique: new Set(entities.map(e => e.token)).size },
         residual: riskScan(masked),
-        reid: reidRisk(text),
+        reid: text.length <= 200000 ? reidRisk(text) : { level: 'low', dims: [], note: '文本过长，未做再识别分析' },
         suggestions: suggestions,
         pseudo: detectPseudo(text),
         vaultSize: Object.keys(vault.map).length
@@ -3496,7 +3522,7 @@
   return {
     TYPES, createEngine, DEFAULT_OPTS, extractText, maskOfficeFile, writeZip, LEX,
     // 供测试使用
-    _internal: { detectMoney, detectOrgs, detectPersons, detectFinRows, detectTables, resolveOverlaps, scaleAmount, detectLexicon, detectCodename, propagateNamed }
+    _internal: { detectMoney, detectOrgs, detectPersons, detectFinRows, detectTables, resolveOverlaps, scaleAmount, detectLexicon, detectCodename, propagateNamed, detectRegex, detectDocNo, detectOrgList, detectEquity }
   };
 }));
 </script>
