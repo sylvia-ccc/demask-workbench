@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>脱敏工作台 · 能力评估（金融 / 咨询场景）</title>
+<style>
+  :root{
+    --ink:#161b22; --ink2:#39424e; --muted:#6b7583; --faint:#98a1ae;
+    --line:#e4e7ec; --line2:#eef0f3; --accent:#1b3a5c; --accent2:#2f5d8a; --soft:#f2f5f8;
+    --ok:#0f766e; --warn:#b45309; --danger:#b91c1c;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:#eef0f3;color:var(--ink);
+    font:15px/1.78 -apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+    -webkit-font-smoothing:antialiased}
+  .page{max-width:880px;margin:0 auto;background:#fff;padding:60px 72px 84px;box-shadow:0 1px 3px rgba(0,0,0,.06)}
+  @media(max-width:760px){.page{padding:32px 20px 56px}}
+
+  .kicker{font-size:11.5px;letter-spacing:1.6px;color:var(--accent2);font-weight:600;margin-bottom:14px}
+  h1{font-size:29px;line-height:1.36;margin:0 0 12px;letter-spacing:-.4px;font-weight:700}
+  .sub{font-size:15.5px;color:var(--muted);line-height:1.7;margin:0 0 24px}
+  .meta{display:flex;flex-wrap:wrap;gap:22px;font-size:12.5px;color:var(--faint);
+    padding:14px 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+  .meta b{color:var(--ink2);font-weight:600}
+
+  h2{font-size:19px;margin:44px 0 14px;letter-spacing:-.2px;font-weight:650}
+  h2 .num{color:var(--accent2);margin-right:10px;font-weight:600}
+  h3{font-size:15px;margin:26px 0 9px;font-weight:650}
+  p{margin:0 0 13px}
+  ul,ol{margin:0 0 15px;padding-left:22px}
+  li{margin-bottom:6px}
+  strong{font-weight:650}
+  em{font-style:normal;background:linear-gradient(transparent 62%, #dfeaf5 62%)}
+
+  table{width:100%;border-collapse:collapse;margin:18px 0 24px;font-size:13px;line-height:1.6}
+  th{text-align:left;font-weight:600;color:var(--ink2);background:#f7f8fa;padding:9px 10px;
+    border-bottom:1px solid var(--line);font-size:12.5px}
+  td{padding:9px 10px;border-bottom:1px solid var(--line2);vertical-align:top}
+  tr:last-child td{border-bottom:1px solid var(--line)}
+  td.nw{white-space:nowrap}
+
+  .dot-ok{color:#0f766e;font-weight:700}
+  .dot-half{color:#b45309;font-weight:700}
+  .dot-no{color:#b91c1c;font-weight:700}
+
+  .callout{background:var(--soft);border-left:3px solid var(--accent2);padding:15px 19px;margin:20px 0;
+    font-size:14px;line-height:1.75;border-radius:0 6px 6px 0}
+  .callout .t{font-weight:650;color:var(--accent);display:block;margin-bottom:5px;font-size:13.5px}
+  .warn{background:#fffbeb;border-left:3px solid #d97706;padding:14px 19px;margin:20px 0;
+    font-size:14px;border-radius:0 6px 6px 0}
+  .good{background:#f0fdfa;border-left:3px solid var(--ok);padding:14px 19px;margin:20px 0;
+    font-size:14px;border-radius:0 6px 6px 0}
+
+  .kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:22px 0}
+  @media(max-width:760px){.kpis{grid-template-columns:repeat(2,1fr)}}
+  .kpi{border:1px solid var(--line);border-radius:8px;padding:14px 15px}
+  .kpi .v{font-size:21px;font-weight:650;letter-spacing:-.5px;font-variant-numeric:tabular-nums}
+  .kpi .l{font-size:11.5px;color:var(--muted);margin-top:3px;line-height:1.5}
+
+  .footnote{font-size:12px;color:var(--faint);line-height:1.7;border-top:1px solid var(--line);
+    margin-top:40px;padding-top:16px}
+  code{background:#f2f5f8;padding:1px 5px;border-radius:4px;font-size:12.5px}
+  @media print{body{background:#fff}.page{box-shadow:none;padding:0;max-width:none}}
+</style>
+</head>
+<body>
+<div class="page">
+
+  <div class="kicker">能力评估 · v1.6</div>
+  <h1>这套工具，够不够做金融和咨询的活</h1>
+  <p class="sub">按"产出物"而不是"功能点"来评估——因为你要的不是一堆规则，而是能把手上这份东西安全地发给 AI。</p>
+  <div class="meta">
+    <div>评估对象　<b>脱敏工作台 v1.6</b></div>
+    <div>场景　<b>咨询 / 投行 / 研究</b></div>
+    <div>日期　<b>2026 年 10 月</b></div>
+  </div>
+
+  <div class="kpis">
+    <div class="kpi"><div class="v">171<span style="font-size:13px;font-weight:500">ms</span></div><div class="l">100 万字全文脱敏耗时</div></div>
+    <div class="kpi"><div class="v">8 / 12</div><div class="l">典型产出物可直接覆盖</div></div>
+    <div class="kpi"><div class="v">678</div><div class="l">内置企业简称（9 个行业）</div></div>
+    <div class="kpi"><div class="v">0</div><div class="l">外部依赖与网络请求</div></div>
+  </div>
+
+  <h2><span class="num">01</span>上下文限制：引擎不是瓶颈，界面和存储才是</h2>
+  <p>先说结论：<strong>引擎本身没有上下文长度限制</strong>，它是纯字符串处理，耗时随字数线性增长。</p>
+
+  <table>
+    <thead><tr><th style="width:130px">输入字数</th><th style="width:110px">脱敏耗时</th><th style="width:110px">识别实体</th><th>相当于</th></tr></thead>
+    <tbody>
+      <tr><td class="nw">1 万字</td><td class="nw">8 ms</td><td class="nw">641</td><td>一份访谈纪要</td></tr>
+      <tr><td class="nw">5 万字</td><td class="nw">14 ms</td><td class="nw">3,202</td><td>一份完整调研报告</td></tr>
+      <tr><td class="nw">10 万字</td><td class="nw">21 ms</td><td class="nw">6,403</td><td>报告 + 附录 + 财务模型</td></tr>
+      <tr><td class="nw">30 万字</td><td class="nw">54 ms</td><td class="nw">19,208</td><td>一本小册子</td></tr>
+      <tr><td class="nw">100 万字</td><td class="nw">171 ms</td><td class="nw">64,026</td><td>四本《红楼梦》</td></tr>
+    </tbody>
+  </table>
+
+  <p>但"能算完"不等于"能顺畅用"。三个真实约束按顺序出现：</p>
+
+  <table>
+    <thead><tr><th style="width:150px">约束</th><th style="width:150px">阈值</th><th>表现与处理</th></tr></thead>
+    <tbody>
+      <tr>
+        <td class="nw"><strong>界面渲染</strong></td>
+        <td class="nw">实体 &gt; 3,000 个</td>
+        <td>逐条高亮会产生几万个 DOM 节点，页面会卡。超过阈值自动降级为<strong>纯文本显示</strong>（仍然是脱敏后的文本，只是没有彩色标记）。</td>
+      </tr>
+      <tr>
+        <td class="nw"><strong>浏览器存储</strong></td>
+        <td class="nw">实体 &gt; 约 3 万个</td>
+        <td>映射表存在 localStorage（约 5 MB）。写满后映射只留在当前页面，标题旁会显示"<strong>（未保存）</strong>"。此时应导出映射并开新会话。</td>
+      </tr>
+      <tr>
+        <td class="nw"><strong>AI 的上下文</strong></td>
+        <td class="nw">约 3–5 万字</td>
+        <td>脱敏<strong>不会减少 token 数</strong>——它换的是内容，不是长度。超长文档仍需分段。工具里加了「分段」按钮，按段落切成每段 ≤ 6,000 字，逐段复制。</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="callout">
+    <span class="t">实用建议</span>
+    单次处理控制在 <strong>5 万字以内</strong>（约 30–40 页 Word，或一个完整的三表模型）。这个量级下：计算 14ms、界面不卡、映射一定存得下。<br>
+    超过 10 万字，先想一下——你是真的要整本发给 AI，还是只需要某一章？
+  </div>
+
+  <h2><span class="num">02</span>按产出物评估：哪些能直接过，哪些要人盯</h2>
+  <p>咨询和金融的活，最终落成十几种文档。逐项看：</p>
+
+  <table>
+    <thead>
+      <tr><th style="width:170px">产出物</th><th>典型敏感点</th><th style="width:66px">覆盖</th><th style="width:190px">备注</th></tr>
+    </thead>
+    <tbody>
+      <tr><td class="nw">调研报告 / 战略方案</td><td>客户名、项目代号、金额、访谈对象</td><td class="nw"><span class="dot-ok">●</span> 完整</td><td>主力场景</td></tr>
+      <tr><td class="nw">财务模型（三表）</td><td>科目金额、增长率、比率</td><td class="nw"><span class="dot-ok">●</span> 完整</td><td>科目行整行识别，比率保留</td></tr>
+      <tr><td class="nw">估值模型（DCF / 可比）</td><td>投前投后估值、倍数、WACC</td><td class="nw"><span class="dot-ok">●</span> 完整</td><td>金额缩放后倍数关系不变</td></tr>
+      <tr><td class="nw">尽调报告 / 投资备忘录</td><td>标的公司、交易对价、股权结构</td><td class="nw"><span class="dot-ok">●</span> 完整</td><td>含"（有限合伙）"类主体</td></tr>
+      <tr><td class="nw">银行流水 / 对账单</td><td>户名、账号、金额、余额</td><td class="nw"><span class="dot-ok">●</span> 完整</td><td>按表头判列，支持分组账号</td></tr>
+      <tr><td class="nw">合同 / 条款清单</td><td>合同编号、大写金额、账号、证件</td><td class="nw"><span class="dot-ok">●</span> 完整</td><td>本轮补了中文大写金额</td></tr>
+      <tr><td class="nw">基金募集 / LP 报告</td><td>基金主体、AUM、IRR / DPI</td><td class="nw"><span class="dot-ok">●</span> 完整</td><td>比率默认保留</td></tr>
+      <tr><td class="nw">培训课件（PPT）</td><td>案例公司、经营数据</td><td class="nw"><span class="dot-ok">●</span> 完整</td><td>pptx 逐页抽取</td></tr>
+      <tr><td class="nw">访谈纪要</td><td>人名、职务、公司、原话</td><td class="nw"><span class="dot-half">◐</span> 较好</td><td>裸人名列表需词库补</td></tr>
+      <tr><td class="nw">研报 / 招股书（PDF）</td><td>几乎全部</td><td class="nw"><span class="dot-no">✗</span> 不支持</td><td>先复制文字，或转 docx</td></tr>
+      <tr><td class="nw">扫描件 / 合同照片</td><td>全部</td><td class="nw"><span class="dot-no">✗</span> 不支持</td><td>需先 OCR</td></tr>
+      <tr><td class="nw">图表 / 截图里的数字</td><td>营收、份额、增速</td><td class="nw"><span class="dot-no">✗</span> 不支持</td><td>截图无法识别</td></tr>
+    </tbody>
+  </table>
+
+  <div class="warn">
+    <strong>最后三行是硬边界，不是没做好。</strong>浏览器里做不了 PDF 版面分析和 OCR——真要做，得引入几 MB 的解析库，单文件方案就没了，而且中文 PDF 的字体编码经常解析出乱码，比不支持更糟。这三类请走人工：复制文字、或用系统自带的"导出为文本"。
+  </div>
+
+  <h2><span class="num">03</span>本轮补齐的六个缺口</h2>
+  <p>评估中发现的实际漏洞，已经修掉：</p>
+
+  <table>
+    <thead><tr><th style="width:180px">缺口</th><th>为什么重要</th><th style="width:210px">现在怎么做</th></tr></thead>
+    <tbody>
+      <tr>
+        <td class="nw"><strong>带分隔的银行账号</strong></td>
+        <td>流水、回单里普遍写成 <code>6222 0202 0011 2345 678</code>，原来只认连续数字，直接漏掉。</td>
+        <td>识别 4 位分组（空格或短横），按数字总长 15–19 位校验。</td>
+      </tr>
+      <tr>
+        <td class="nw"><strong>中文大写金额</strong></td>
+        <td>合同、判决书、票据里写的是"人民币壹仟贰佰万元整"，数字规则完全抓不到。</td>
+        <td>识别大写数字 + 元/圆/整，转成代号（大写金额没法等比缩放，直接替换）。</td>
+      </tr>
+      <tr>
+        <td class="nw"><strong>护照 / 港澳台通行证</strong></td>
+        <td>尽调材料里的董事、实控人证件，原来只覆盖身份证。</td>
+        <td>护照号、港澳通行证、台胞证，带语境词触发，避免误伤编号。</td>
+      </tr>
+      <tr>
+        <td class="nw"><strong>公司简称</strong></td>
+        <td><strong>这是最大的实际漏洞。</strong>报告里写全称一次，后面全用简称——"宁德时代新能源科技股份有限公司"脱敏了，正文里的"宁德时代"还是原样。</td>
+        <td>自动检测"疑似简称"并提示（如 <code>宁德时代 ×2</code>），点一下即加入词库一并脱敏。不自动改，避免把"深圳"这类地名误伤。</td>
+      </tr>
+      <tr>
+        <td class="nw"><strong>客户简称与行业词</strong></td>
+        <td>报告里全称只写一次，后面全用简称。规则只认"有限公司"这类后缀，简称一律漏掉。</td>
+        <td>内置 8 个行业、<strong>583 个企业简称</strong>，开箱即用，无需手工补词库。</td>
+      </tr>
+      <tr>
+        <td class="nw"><strong>长文档分段</strong></td>
+        <td>脱敏不减少 token，长报告仍要分次喂给 AI。</td>
+        <td>「分段」按钮按段落切成每段 ≤ 6,000 字，逐段复制。</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="good">
+    <strong>简称这一条值得单独说。</strong>它说明了一个规律：<em>泄露往往不在你脱敏的那个词上，而在它的替身上</em>。全称、简称、英文名、股票代码、项目代号——同一个主体有五六个马甲，漏一个就等于没脱敏。工具现在会主动把这些"替身"找出来给你确认。
+  </div>
+
+
+  <h2><span class="num">04</span>词库怎么做到"认得全"又不"误伤"</h2>
+  <p>加词库最容易犯的错，是加得太狠——把"美的"当公司，结果"美的生活"也被脱敏；把"小米"当公司，"小米粥"就没了。所以这一版做了三层防护。</p>
+
+  <h3>第一层：只收"规则抓不到"的名字</h3>
+  <p>带"有限公司、集团、银行、证券"后缀的，本来就能识别。词库重点收的是<strong>没有后缀的品牌简称</strong>——这类才是漏网主力：</p>
+  <table>
+    <thead><tr><th style="width:120px">行业</th><th style="width:70px">数量</th><th>典型条目</th></tr></thead>
+    <tbody>
+      <tr><td class="nw">金融</td><td class="nw">84</td><td>招商银行、中信证券、东方财富、同花顺、易方达、红杉资本、高瓴资本</td></tr>
+      <tr><td class="nw">消费零售</td><td class="nw">116</td><td>伊利股份、蒙牛乳业、农夫山泉、海天味业、海底捞、蜜雪冰城、美的集团、格力电器</td></tr>
+      <tr><td class="nw">科技互联网</td><td class="nw">98</td><td>宁德时代、腾讯、阿里巴巴、中芯国际、北方华创、海康威视、立讯精密</td></tr>
+      <tr><td class="nw">医药医疗</td><td class="nw">67</td><td>恒瑞医药、药明康德、迈瑞医疗、爱尔眼科、片仔癀、爱美客</td></tr>
+      <tr><td class="nw">能源材料</td><td class="nw">82</td><td>通威股份、隆基绿能、阳光电源、赣锋锂业、紫金矿业、万华化学</td></tr>
+      <tr><td class="nw">地产建筑</td><td class="nw">36</td><td>万科、保利发展、龙湖集团、中国建筑、三一重工、海螺水泥</td></tr>
+      <tr><td class="nw">汽车物流</td><td class="nw">54</td><td>比亚迪、蔚来、小鹏汽车、理想汽车、福耀玻璃、顺丰控股、中远海控</td></tr>
+      <tr><td class="nw">传媒农业军工</td><td class="nw">46</td><td>分众传媒、芒果超媒、牧原股份、温氏股份、中航沈飞</td></tr>
+    </tbody>
+  </table>
+
+  <h3>第二层：两字简称要"看上下文"</h3>
+  <p>207 个两字简称（美的、小米、大众、万科…）单独出现时歧义太大，必须前后有明确边界才脱敏：</p>
+  <table>
+    <thead><tr><th style="width:230px">原文</th><th style="width:110px">结果</th><th>原因</th></tr></thead>
+    <tbody>
+      <tr><td class="nw">对比<strong>美的</strong>和<strong>格力</strong>的估值</td><td class="nw"><span class="dot-ok">脱敏</span></td><td>前后是"比""和"，是并列列举</td></tr>
+      <tr><td class="nw">追求更<strong>美的</strong>生活</td><td class="nw"><span class="dot-no">不脱敏</span></td><td>后面是"生"，是普通形容词</td></tr>
+      <tr><td class="nw"><strong>小米</strong>粥很好喝</td><td class="nw"><span class="dot-no">不脱敏</span></td><td>后面是"粥"，是食物</td></tr>
+      <tr><td class="nw"><strong>小米</strong>汽车刚发布</td><td class="nw"><span class="dot-ok">脱敏</span></td><td>"汽车"是机构后缀，整体识别</td></tr>
+    </tbody>
+  </table>
+
+  <h3>第三层：通用术语明确"不脱敏"</h3>
+  <p>85 个词被列入白名单，避免把行业通用说法当成机构名：</p>
+  <div class="callout">
+    <span class="t">这些不是公司，不该脱敏</span>
+    并购基金、产业基金、母基金、引导基金、信托计划、资管计划、标的公司、项目公司、壳公司、<br>
+    头部企业、龙头企业、城商行、农商行、保荐机构、财务顾问、主承销商、优先级、劣后级、明股实债……
+  </div>
+  <p>没有这一层，"并购基金退出"会被脱成"【企业X】退出"，AI 就看不懂你在说什么了。</p>
+
+  <h3>附加：行业代称的"反推提示"</h3>
+  <p>还有一类东西<strong>不能脱敏、但必须提醒</strong>——"某头部乳企""华东大客户""A 类客户""Tier1 供应商"。它们不是名字，但结合地域、规模、时间，往往唯一指向某家公司。</p>
+  <p>工具不会改它们，只在结果下方亮一条黄色提示：</p>
+  <div class="callout" style="border-left-color:#d97706;background:#fff8ed">
+    <span class="t" style="color:#92400e">检测到 3 处行业代称，没有脱敏，但值得再看一眼</span>
+    某头部乳企 ｜ 华东大客户 ｜ Tier1 供应商<br>
+    <span style="font-size:12.5px;color:#a16207">结合地域、规模、时间仍可能反推，建议同时模糊地域或量级。</span>
+  </div>
+  <p>这比"假装看不见"有用：它把判断权交回给你，而不是替你做决定。</p>
+
+
+  <h2><span class="num">05</span>投融资场景的四个硬伤（v1.4 已修）</h2>
+  <p>拿一份真实的交易结构段落跑一遍，暴露了四个问题——前两个不是"漏词"，是<strong>逻辑错</strong>。</p>
+
+  <h3>① 同一家公司的全称和简称，拿到两个代号</h3>
+  <div class="warn" style="font-family:ui-monospace,Menlo,monospace;font-size:12.5px;line-height:1.9">
+    原文：<b>华润万佳商业集团有限公司</b>（以下简称"<b>华润万佳</b>"）……<b>华润万佳</b>2025年营收128.6亿元<br>
+    修复前：<span style="color:#b91c1c">【企业A】（以下简称"华润万佳"）……华润万佳2025年营收79.5亿元</span>　← 简称原样泄露<br>
+    修复后：<span style="color:#0f766e">【标的A】（以下简称"【标的A】"）……【标的A】2025年营收79.5亿元</span>
+  </div>
+  <p>除了泄露，还有个更隐蔽的后果：如果简称被单独识别，AI 会收到【企业A】和【企业F】两个代号，<strong>把一家公司当成两家</strong>，分析结论直接错。</p>
+  <p>现在做了两层：自动推断字号（"华润万佳商业集团"→"华润万佳"），以及识别<code>（以下简称"X"）</code>这种显式声明。两者都绑定到同一个代号。</p>
+
+  <h3>② 代号没有语义，AI 分不清谁是标的、谁是买方</h3>
+  <p>投融资文档里最要命的情况：</p>
+  <div class="warn" style="font-family:ui-monospace,Menlo,monospace;font-size:12.5px;line-height:1.9">
+    修复前：买方为【企业A】，卖方为【企业B】，由【企业C】担任财务顾问<br>
+    修复后：买方为<span style="color:#0f766e">【买方A】</span>，卖方为<span style="color:#0f766e">【卖方A】</span>，由<span style="color:#0f766e">【顾问A】</span>担任财务顾问
+  </div>
+  <p>AI 拿到第一版，只能靠"买方为"这三个字猜；一旦段落变长、句式变复杂，就彻底乱。现在代号自带角色：</p>
+  <table>
+    <thead><tr><th style="width:130px">代号</th><th>对应角色</th><th style="width:130px">代号</th><th>对应角色</th></tr></thead>
+    <tbody>
+      <tr><td class="nw"><code>【标的A】</code></td><td>标的公司 / 被投企业</td><td class="nw"><code>【顾问A】</code></td><td>财务顾问 / 保荐机构</td></tr>
+      <tr><td class="nw"><code>【买方A】</code></td><td>收购方 / 投资方</td><td class="nw"><code>【律所A】</code></td><td>法律顾问</td></tr>
+      <tr><td class="nw"><code>【卖方A】</code></td><td>转让方 / 出售方</td><td class="nw"><code>【审计A】</code></td><td>审计 / 评估机构</td></tr>
+      <tr><td class="nw"><code>【供应商A】</code></td><td>供应商</td><td class="nw"><code>【股东A】</code></td><td>股东 / 实控人</td></tr>
+      <tr><td class="nw"><code>【客户A】</code></td><td>客户 / 甲方</td><td class="nw"><code>【股权A】</code></td><td>持股比例</td></tr>
+    </tbody>
+  </table>
+  <p>角色靠句子内的角色词 + 距离就近判定，同句多实体也能分开；实体名里自带角色的（"金杜律师事务所"）优先归它。</p>
+
+  <h3>③ 股权比例没脱敏</h3>
+  <p>"持股58.3%、员工平台12.1%、财务投资人29.6%"——三个数字拼起来就是股权结构指纹，比公司名还容易反查。现在单独识别，代号<code>【股权A】</code>，默认开启，可在策略里关掉。</p>
+
+  <h3>④ 固定缩放因子等于把钥匙挂在门上</h3>
+  <p>原来所有金额统一 ×0.618。如果对方知道这个工具，理论上把数字除以 0.618 就能还原量级。现在<strong>每个会话随机生成 0.55–0.75 之间的因子</strong>，随映射表一起保存，还原不受影响，外部无从推测。</p>
+
+  <div class="good">
+    <strong>顺带补了国际机构词库。</strong>高盛、摩根士丹利、KKR、黑石、凯雷、淡马锡、麦肯锡、BCG、金杜、中伦、普华永道、穆迪……共 95 个中文名 + 26 个英文名（Goldman Sachs、Morgan Stanley、Blackstone 等）。英文名带词边界检查，不会把 "Bain" 命中成 "Bainbridge"。
+  </div>
+
+
+  <h2><span class="num">06</span>拿真实年报实测：第一次跑出来是场灾难</h2>
+  <p>前面的测试都是我构造的句子。真正拿一份公开文件跑，结果很难看——但这才是有用的反馈。</p>
+
+  <p><strong>测试对象</strong>：宁德时代 2024 年年度报告摘要（公开 PDF，11,219 字），用 <code>pdftotext</code> 提取文本后直接灌进去。</p>
+
+  <h3>第一版：147 个实体，一半是垃圾</h3>
+  <div class="warn" style="font-family:ui-monospace,Menlo,monospace;font-size:12.5px;line-height:2">
+    【企业J】= 核心技术　　【企业T】= 报告期末　　【企业Q】= 上述<br>
+    【企业E】= 全球　　　　【股东A】= 次利润分配预案尚需提交公司<br>
+    【人物A】= 金分红　　　【项目A】= 以及工程
+  </div>
+  <p>如果就这么发出去，AI 拿到的是一份被啃烂的文本，完全没法读。<strong>在真实文档上，误报比漏报更致命</strong>——漏一个名字只是少脱一个，错脱十个词是整段作废。</p>
+
+  <h3>四个根因，逐个修</h3>
+  <table>
+    <thead><tr><th style="width:150px">根因</th><th>为什么错</th><th style="width:190px">改法</th></tr></thead>
+    <tbody>
+      <tr><td class="nw"><strong>后缀太泛</strong></td><td>把"能源、技术、资本、工程、实业"当机构后缀，正文里这些词遍地都是，一匹配就向左狂吞</td><td>只保留"有限公司、集团、银行、事务所"这类几乎只出现在机构名里的后缀</td></tr>
+      <tr><td class="nw"><strong>裸"公司"当后缀</strong></td><td>"尚需提交公司"整段被吃成机构名</td><td>移除，只认完整后缀</td></tr>
+      <tr><td class="nw"><strong>项目后缀</strong></td><td>"工程""行动""计划"是高频普通词——"一致行动人""工程机械"全中招</td><td>只保留"项目/专项"</td></tr>
+      <tr><td class="nw"><strong>人名无左边界</strong></td><td>"现金分红总额"被切成"金分红 + 总"（总 是称谓后缀）</td><td>给单字"总"加负向断言，"总额/总计/总部"不算称谓</td></tr>
+    </tbody>
+  </table>
+
+  <h3>修复后：78 个实体，误报清零</h3>
+  <p>剩下的基本都对：宁德时代（全称与证券简称各一）、厦门瑞庭投资、香港中央结算、中国工商银行、易方达、厦门润泰宏裕、时代瑞鼎、实际控制人曾毓群、办公地址、联系电话、邮箱、财务数据。</p>
+
+  <div class="callout">
+    <span class="t">一个真实文档独有的坑：PDF 断行</span>
+    <code>pdftotext</code> 按版面还原文本，公司名会被硬生生断开：<br>
+    <code>宁波联合创新新能源投资管</code> ⏎ <code>理合伙企业（有限合伙）</code><br>
+    识别出来就是两个碎片。这不是规则的错，是输入的问题——所以加了「整理断行」按钮，把断在句子中间的行合并起来再处理。
+  </div>
+
+  <h2><span class="num">07</span>加密：映射表不能是明文</h2>
+  <p>映射表就是一张"代号 ↔ 真名"的对照表。之前它以明文存在浏览器里——<strong>拿到这台电脑的人，可以直接读出你所有客户的名字</strong>。这比不脱敏更糟，因为它是一份完整索引。</p>
+  <p>现在可以给映射表设口令：</p>
+  <table>
+    <thead><tr><th style="width:150px">环节</th><th>做法</th></tr></thead>
+    <tbody>
+      <tr><td class="nw">派生密钥</td><td>PBKDF2-SHA256，12 万次迭代，16 字节随机盐</td></tr>
+      <tr><td class="nw">加密</td><td>AES-256-GCM，每次保存重新生成 IV</td></tr>
+      <tr><td class="nw">存储</td><td>浏览器里只有 salt / iv / 密文，没有明文</td></tr>
+      <tr><td class="nw">还原</td><td>输一次口令解锁，映射表进内存，脱敏与还原完全不变</td></tr>
+      <tr><td class="nw">未解锁时</td><td>拒绝写入，避免用明文覆盖密文</td></tr>
+    </tbody>
+  </table>
+  <p>用的是浏览器原生 Web Crypto，不引入任何第三方库，单文件照样成立。<strong>口令不上传、不可找回</strong>——忘了就只能重来，这一点在界面上明确写了。</p>
+
+  <h2><span class="num">08</span>还原逻辑：AI 会把代号写成什么样</h2>
+  <p>这是整条链路最脆弱的一环。实测了九种 AI 改写方式：</p>
+  <table>
+    <thead><tr><th style="width:230px">AI 可能写成</th><th style="width:110px">结果</th><th>说明</th></tr></thead>
+    <tbody>
+      <tr><td class="nw"><code>【标的A】</code></td><td class="nw"><span class="dot-ok">✓</span></td><td>原样</td></tr>
+      <tr><td class="nw"><code>标的A</code></td><td class="nw"><span class="dot-ok">✓</span></td><td>括号被吃掉</td></tr>
+      <tr><td class="nw"><code>【标的 A】</code></td><td class="nw"><span class="dot-ok">✓</span></td><td>括号内加了空格</td></tr>
+      <tr><td class="nw"><code>**【标的A】**</code></td><td class="nw"><span class="dot-ok">✓</span></td><td>markdown 加粗</td></tr>
+      <tr><td class="nw"><code>[标的A]</code></td><td class="nw"><span class="dot-ok">✓</span></td><td>换成了半角方括号</td></tr>
+      <tr><td class="nw"><code>营收179.5亿元</code></td><td class="nw"><span class="dot-ok">✓</span></td><td>数字嵌在别的数里，不动</td></tr>
+      <tr><td class="nw"><code>毛利率79.5%</code></td><td class="nw"><span class="dot-ok">✓</span></td><td>带百分号，判定为比率，不动</td></tr>
+      <tr><td class="nw"><code>增长79.5%，达79.5亿元</code></td><td class="nw"><span class="dot-ok">✓</span></td><td>比率不动，金额还原</td></tr>
+      <tr><td class="nw"><code>营收79.5万元</code></td><td class="nw"><span class="dot-ok">✓</span></td><td>单位变了，不还原（避免张冠李戴）</td></tr>
+    </tbody>
+  </table>
+  <p>关键的一条：<strong>数字还原必须校验单位</strong>。原来只做边界判断，"79.5%" 会被还原成 "128.6%"——AI 明明在说毛利率，你却把营收塞进去了。现在记录每个金额的单位，单位对不上就不动。</p>
+
+
+  <h2><span class="num">09</span>真实使用才暴露的四个问题（v1.6 已修）</h2>
+  <p>前八节测的都是"识别得准不准"。这一节是另一个维度：<strong>一个顾问连着用一周，会在哪里栽跟头</strong>。</p>
+
+  <h3>① 括号负数全部漏脱</h3>
+  <p>利润表和现金流量表的标准写法是 <code>(1,234)</code> 表示 -1,234。早期版本把正数都脱了，负数原样保留——</p>
+  <div class="warn" style="font-family:ui-monospace,Menlo,monospace;font-size:12.5px;line-height:1.9">
+    营业收入　128,600　→　79,475　<span style="color:#0f766e">✓</span><br>
+    营业成本　(79,200)　→　<span style="color:#b91c1c">(79,200)　✗ 没脱</span><br>
+    净利润　　(1,234)　→　<span style="color:#b91c1c">(1,234)　✗ 没脱</span>
+  </div>
+  <p>这个漏法特别危险：<strong>用户看到一片代号，会以为整张表都脱干净了</strong>。现在括号负数单独识别，缩放后仍保持括号形式。</p>
+
+  <h3>② 同一个数，两种写法，缩放成两个值</h3>
+  <p>报告正文写 <code>128.6亿元</code>，表格里写 <code>128.60亿元</code>。早期版本各算各的：</p>
+  <div class="warn" style="font-family:ui-monospace,Menlo,monospace;font-size:12.5px;line-height:1.9">
+    营收128.6亿元，报表列示128.60亿元<br>
+    → 早期：79.5 亿元 / 79.47 亿元　<span style="color:#b91c1c">AI 会当成两个数，算增长率直接错</span><br>
+    → 现在：79.5 亿元 / 79.5 亿元
+  </div>
+  <p>改法是数值规范化后再查表：<code>128.6</code> 和 <code>128.60</code> 是同一个 key，但 <code>128.6万</code> 和 <code>128.6亿</code> 必须分开——单位参与 key。</p>
+
+  <h3>③ 所有项目共用一个映射库</h3>
+  <p>这是架构级的坑，不是 bug：</p>
+  <table>
+    <thead><tr><th style="width:180px">后果</th><th>说明</th></tr></thead>
+    <tbody>
+      <tr><td class="nw"><strong>代号越编越靠后</strong></td><td>做到第十个项目，第一个实体已经是【企业J】，客户看不懂，AI 也容易混</td></tr>
+      <tr><td class="nw"><strong>导出映射带出历史客户</strong></td><td>把映射发给同事协作，等于把过去所有客户名单一起发出去</td></tr>
+      <tr><td class="nw"><strong>跨项目还原串号</strong></td><td>A 项目的脱敏稿在 B 项目里还原，可能变成另一个客户的名字，而你看不出来</td></tr>
+    </tbody>
+  </table>
+  <p>现在按项目隔离：新建项目代号从 A 重新开始，映射互不影响，导出只含当前项目。放行记录、词库开关也跟着项目走。</p>
+  <p>还加了一道防错：还原时如果发现当前项目还原不了的代号，会提示"这段内容属于项目「XX」，能还原 3 个"，点一下切过去重还原。<strong>因为隔离之后，忘切项目是必然会发生的事。</strong></p>
+
+  <h3>④ 只能导出 txt，交付不了</h3>
+  <p>脱敏稿喂给 AI 是够的，但要发给客户或外部顾问时，需要的是 Word 和 Excel。只给 txt 等于没做完。</p>
+  <p>现在上传 docx / xlsx / pptx 后可以直接导出保留原格式的脱敏版：</p>
+  <table>
+    <thead><tr><th style="width:90px">类型</th><th>处理方式</th><th style="width:150px">代价</th></tr></thead>
+    <tbody>
+      <tr><td class="nw">Word</td><td>按段落脱敏，保留标题样式、表格、页眉页脚；表格按表头或科目行判断金额列</td><td>段内局部格式（某词加粗）会丢</td></tr>
+      <tr><td class="nw">Excel</td><td>共享字符串脱敏；数字按列语义判断，营收/成本缩放，门店数/年份不动</td><td>公式单元格跳过（见下）</td></tr>
+      <tr><td class="nw">PPT</td><td>按文本框段落脱敏，保留版式</td><td>同上</td></tr>
+    </tbody>
+  </table>
+
+  <div class="warnbox">
+    <strong>公式单元格必须跳过，而且要告诉你</strong><br>
+    Excel 里 <code>=B2*1.1</code> 这种单元格，改了缓存值也没用——文件一打开就重算回真实数字。所以工具跳过公式，并在导出时提示"有 N 个公式单元格未处理"。<br>
+    正确做法：先在 Excel 里把公式区域复制 → 选择性粘贴为数值，再上传脱敏。
+  </div>
+
+  <h3>为什么是"段落级"而不是"逐字符"替换</h3>
+  <p>Word 会把一个词拆成多个 run。比如"深圳优鲜科技有限公司"在 XML 里可能是：</p>
+  <div class="warn" style="font-family:ui-monospace,Menlo,monospace;font-size:12px;line-height:1.8">
+    &lt;w:r&gt;&lt;w:t&gt;深圳优鲜&lt;/w:t&gt;&lt;/w:r&gt;<br>
+    &lt;w:r&gt;&lt;w:t&gt;科技有限公司&lt;/w:t&gt;&lt;/w:r&gt;
+  </div>
+  <p>逐字符或逐节点替换，这两个片段各自都不构成公司名，全都漏。所以只能把整段文字拼起来脱敏，再写回第一个节点——代价是段内格式丢失，换来的是不漏。</p>
+  <p><strong>在不漏和好看之间，永远选不漏。</strong></p>
+
+  <h2><span class="num">10</span>仍然不支持的（不打算做）</h2>
+  <table>
+    <thead><tr><th style="width:190px">能力</th><th>原因</th><th style="width:190px">替代做法</th></tr></thead>
+    <tbody>
+      <tr><td class="nw">PDF / 扫描件解析</td><td>中文 PDF 字体编码复杂，纯前端解析极易出乱码</td><td>复制文字，或用预览导出为 txt</td></tr>
+      <tr><td class="nw">图片 OCR</td><td>需要模型文件，破坏"单文件、离线"的前提</td><td>系统截图取字、或手工录入</td></tr>
+      <tr><td class="nw">无上下文的裸人名</td><td>"张三 李四 王五"没有语境线索，规则不敢猜</td><td>加进词库，一次录入长期有效</td></tr>
+      <tr><td class="nw">跨文档实体消歧</td><td>两家不同的"华润"系公司，工具无法判断指代</td><td>按项目开新会话，避免串号</td></tr>
+      <tr><td class="nw">手写体 / 图表内文字</td><td>同上，属于图像识别范畴</td><td>手工处理</td></tr>
+      <tr><td class="nw">日期粗化</td><td>把"2027年3月15日"改成"2027年Q1"会破坏大量业务语义</td><td>手动改，或只保留年份</td></tr>
+      <tr><td class="nw">英文人名</td><td>John Smith 这类无上下文英文名误伤率极高</td><td>加入自定义词库</td></tr>
+      <tr><td class="nw">Excel 公式</td><td>改了缓存值，打开就重算回真实数</td><td>先转成数值再上传</td></tr>
+      <tr><td class="nw">Word 段内格式</td><td>段落级替换的必然代价</td><td>导出后手工调格式</td></tr>
+      <tr><td class="nw">扫描件 / 图片 PDF</td><td>浏览器里做不了 OCR</td><td>先 OCR 再处理</td></tr>
+    </tbody>
+  </table>
+
+  <h2><span class="num">11</span>建议的使用边界</h2>
+  <p>把工具放在正确的位置上，比指望它全能更重要。</p>
+
+  <table>
+    <thead><tr><th style="width:130px">可以放心</th><th>需要人盯</th></tr></thead>
+    <tbody>
+      <tr>
+        <td class="nw">结构化财务数据<br>合同要素<br>客户名单<br>联系方式与证件<br>项目代号</td>
+        <td>访谈纪要里的人名（尤其裸名单）<br>PDF 研报与扫描件<br>超过 10 万字的文档<br>含大量简称的报告<br>同一集团下多家同名主体</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="callout">
+    <span class="t">一句话定位</span>
+    它是<strong>第一道闸门</strong>，不是最后一道。作用是让"随手把内容贴进 AI"这个动作变得安全，而不是替代你判断"这份东西到底该不该发出去"。
+  </div>
+
+  <h2><span class="num">12</span>五分钟自测：它对你够不够</h2>
+  <p>别看我写的评估，拿你自己的一份真实报告试一遍，比什么都准：</p>
+  <ol>
+    <li>选一份<strong>已经交付过</strong>的报告（数据可以改几个数），整篇粘进去。</li>
+    <li>看「实体清单」，数一下<strong>漏了几个</strong>。内置词库已经覆盖 583 个常见简称，如果还漏，多半是客户自己的内部叫法。</li>
+    <li>把这些词一次性加进自定义词库——<strong>加一次，以后所有文档都生效</strong>。</li>
+    <li>看「安全检查」那一栏有没有黄字。有黄字就说明还有残留，别急着复制。</li>
+    <li>把脱敏稿贴给 AI 问一个具体问题，再把答案贴回「还原」页，看还原得干不干净。</li>
+  </ol>
+  <p>走完这五步，你会得到一个很具体的判断：<strong>这个工具能替你省掉多少手工活，以及哪些地方你仍然要亲自看一眼。</strong></p>
+
+  <div class="footnote">
+    数据来自 v1.3 引擎在本机（Apple Silicon / Chrome）的实测，不同设备会有差异，但量级一致。<br>
+    覆盖度评级基于规则与实测样本，不代表对任意文本的召回率承诺；实际使用请以「实体清单 + 安全检查」的结果为准。
+  </div>
+
+</div>
+</body>
+</html>

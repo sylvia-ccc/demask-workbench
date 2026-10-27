@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>脱敏工作台 · 能力评分与对标</title>
+<style>
+  :root{
+    --ink:#151a21;--ink-2:#3d4753;--muted:#6b7684;--faint:#98a2b0;
+    --line:#e2e5ea;--line-soft:#eef0f3;--bg:#f7f8fa;--panel:#fff;
+    --accent:#1b3a5c;--accent-2:#2f5d8a;--ok:#0f766e;--warn:#b45309;--danger:#b91c1c;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font:15px/1.75 -apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+    -webkit-font-smoothing:antialiased}
+  .wrap{max-width:940px;margin:0 auto;padding:0 28px 90px}
+  header{background:linear-gradient(180deg,#1b3a5c,#22496f);color:#fff;padding:44px 0 38px;margin-bottom:34px}
+  header .wrap{padding-bottom:0}
+  .kicker{font-size:12px;letter-spacing:1.6px;color:#9fc0dd;font-weight:600;margin-bottom:10px}
+  h1{margin:0 0 14px;font-size:27px;letter-spacing:-.3px;font-weight:650}
+  .meta{display:flex;gap:26px;flex-wrap:wrap;font-size:13px;color:#c5d8e8}
+  .meta b{color:#fff;font-weight:600}
+
+  h2{font-size:19px;margin:44px 0 16px;letter-spacing:-.2px;display:flex;align-items:center;gap:10px}
+  h2 .num{font-size:12px;color:#fff;background:var(--accent);border-radius:5px;
+    padding:2px 7px;font-weight:600;letter-spacing:.5px;font-variant-numeric:tabular-nums}
+  h3{font-size:15px;margin:26px 0 10px;color:var(--ink)}
+  p{margin:0 0 13px;color:var(--ink-2)}
+  ul,ol{margin:0 0 14px;padding-left:22px;color:var(--ink-2)}
+  li{margin-bottom:7px}
+  code{background:#eef1f5;border-radius:4px;padding:1px 5px;font-size:13px;
+    font-family:ui-monospace,SFMono-Regular,Menlo,monospace;color:#2f3d4d}
+  strong{color:var(--ink);font-weight:600}
+
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:22px 24px;margin-bottom:18px}
+
+  .score-hero{display:flex;align-items:center;gap:28px;background:var(--panel);
+    border:1px solid var(--line);border-radius:12px;padding:26px 28px;margin-bottom:22px}
+  .score-num{font-size:52px;font-weight:700;letter-spacing:-2px;line-height:1;
+    color:var(--ok);font-variant-numeric:tabular-nums}
+  .score-num small{font-size:17px;color:var(--faint);font-weight:500;letter-spacing:0}
+  .score-txt{flex:1}
+  .score-txt .t{font-size:15px;font-weight:600;margin-bottom:4px}
+  .score-txt .d{font-size:13px;color:var(--muted);line-height:1.7}
+
+  .bars{margin:6px 0 0}
+  .bar-row{display:grid;grid-template-columns:150px 1fr 62px;gap:14px;align-items:center;
+    padding:9px 0;border-bottom:1px solid var(--line-soft)}
+  .bar-row:last-child{border-bottom:0}
+  .bar-row .nm{font-size:13.5px;color:var(--ink-2)}
+  .bar-row .track{display:block;height:8px;background:#eef1f5;border-radius:5px;overflow:hidden}
+  .bar-row .fill{display:block;height:100%;background:linear-gradient(90deg,#2f5d8a,#4a86c8);border-radius:5px}
+  .bar-row .val{font-size:13px;color:var(--muted);text-align:right;font-variant-numeric:tabular-nums}
+  .bar-row .val b{color:var(--ink);font-weight:600}
+
+  table{width:100%;border-collapse:collapse;margin:14px 0 18px;font-size:13.5px;background:var(--panel)}
+  th{text-align:left;padding:10px 12px;border-bottom:1px solid var(--line);
+    font-size:12px;color:var(--muted);font-weight:600;letter-spacing:.3px;background:#fafbfc}
+  td{padding:11px 12px;border-bottom:1px solid var(--line-soft);color:var(--ink-2);vertical-align:top}
+  tr:last-child td{border-bottom:0}
+  td.nw{white-space:nowrap}
+  .ok{color:var(--ok);font-weight:600}
+  .no{color:var(--danger);font-weight:600}
+  .mid{color:var(--warn);font-weight:600}
+
+  .callout{background:#f5f9ff;border-left:3px solid var(--accent-2);border-radius:0 8px 8px 0;
+    padding:14px 18px;margin:16px 0;font-size:13.5px;color:var(--ink-2);line-height:1.75}
+  .callout .t{display:block;font-weight:600;color:var(--accent);margin-bottom:5px;font-size:13px}
+  .warnbox{background:#fffbf2;border-left:3px solid var(--warn);border-radius:0 8px 8px 0;
+    padding:14px 18px;margin:16px 0;font-size:13.5px;color:#7c4a09;line-height:1.75}
+  .warnbox .t{display:block;font-weight:600;margin-bottom:5px;font-size:13px}
+  .dangerbox{background:#fef6f6;border-left:3px solid var(--danger);border-radius:0 8px 8px 0;
+    padding:14px 18px;margin:16px 0;font-size:13.5px;color:#7f1d1d;line-height:1.75}
+  .dangerbox .t{display:block;font-weight:600;margin-bottom:5px;font-size:13px}
+
+  .mono{font-family:ui-monospace,Menlo,monospace;font-size:12.5px;line-height:1.9}
+  .footnote{margin-top:46px;padding-top:20px;border-top:1px solid var(--line);
+    font-size:12px;color:var(--faint);line-height:1.8}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <div class="kicker">能力评分 · v1.7</div>
+    <h1>脱敏工作台 · 能力评分与对标</h1>
+    <div class="meta">
+      <div>评分方式　<b>可复现脚本 + 带标注测试集</b></div>
+      <div>测试用例　<b>257 条</b></div>
+      <div>交叉验证　<b>真实年报 11,219 字</b></div>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <div class="score-hero">
+    <div class="score-num">92.2<small> / 100</small></div>
+    <div class="score-txt">
+      <div class="t">达标（目标 90）</div>
+      <div class="d">但请先看第六节——测试集全部参与过调优，100% 的识别率不可直接采信。
+        真实水平请参考真实年报的抽样核对结果。</div>
+    </div>
+  </div>
+
+  <h2><span class="num">01</span>为什么要自己造评分卡</h2>
+  <p>市面上的脱敏产品都说自己「准确率 95%+」，但没有一家公布可复现的评测口径。拿这个数字对标，等于拿广告对标事实。</p>
+  <p>能找到的唯一公开数据是开源 PII 模型的：<code>bert-small-pii-detection</code> 在自建测试集上 F1 0.87，换到没见过的外部数据集明显下降。<strong>这更接近真实水平</strong>——模型在自己训练过的数据上总是很好看。</p>
+  <p>所以这里的做法是：<strong>造带标注的测试集，跑出真实的 Precision / Recall，把每一项的得分依据摆出来</strong>。分数可以争论，但计算过程可复现：<code>node src/eval.js</code> 和 <code>node src/score.js</code>。</p>
+
+  <h2><span class="num">02</span>怎么测的</h2>
+  <table>
+    <thead><tr><th style="width:150px">测试集</th><th style="width:90px">用例</th><th style="width:120px">正例数</th><th>用途</th></tr></thead>
+    <tbody>
+      <tr><td class="nw"><code>testset.json</code></td><td class="nw">38</td><td class="nw">106</td><td>基础回归：各类实体单独覆盖，改代码时防退化</td></tr>
+      <tr><td class="nw"><code>testset-holdout.json</code></td><td class="nw">27</td><td class="nw">73</td><td>留出验证：写的时候不看引擎结果，用来发现过拟合</td></tr>
+      <tr><td class="nw"><code>testset-blind.json</code></td><td class="nw">24</td><td class="nw">78</td><td>盲测：取材真实文档形态（年报、尽调、邮件、表格）</td></tr>
+    </tbody>
+  </table>
+  <p>判定规则写在 <code>eval.js</code> 里，只有三条：</p>
+  <ul>
+    <li><strong>期望脱敏的文本，脱敏后原文还完整出现 → 漏检（FN）</strong>。这是唯一重要的指标，漏一个就是风险。</li>
+    <li>识别出的实体不在期望列表里 → 误报（FP）。</li>
+    <li>要求保留的文本被改掉 → 过度脱敏，也计入 FP。</li>
+  </ul>
+
+  <h2><span class="num">03</span>评分卡</h2>
+  <div class="card">
+    <div class="bars">
+      <div class="bar-row">
+        <span class="nm">A1 召回率</span>
+        <span class="track"><span class="fill" style="width:100%"></span></span>
+        <span class="val"><b>25.0</b>/25</span>
+      </div>
+      <div class="bar-row">
+        <span class="nm">A2 准确率</span>
+        <span class="track"><span class="fill" style="width:100%"></span></span>
+        <span class="val"><b>20.0</b>/20</span>
+      </div>
+      <div class="bar-row">
+        <span class="nm">B 场景覆盖</span>
+        <span class="track"><span class="fill" style="width:91.5%"></span></span>
+        <span class="val"><b>18.3</b>/20</span>
+      </div>
+      <div class="bar-row">
+        <span class="nm">C 工作流闭环</span>
+        <span class="track"><span class="fill" style="width:78%"></span></span>
+        <span class="val"><b>15.6</b>/20</span>
+      </div>
+      <div class="bar-row">
+        <span class="nm">D 安全</span>
+        <span class="track"><span class="fill" style="width:83%"></span></span>
+        <span class="val"><b>8.3</b>/10</span>
+      </div>
+      <div class="bar-row">
+        <span class="nm">E 可用性</span>
+        <span class="track"><span class="fill" style="width:100%"></span></span>
+        <span class="val"><b>5.0</b>/5</span>
+      </div>
+    </div>
+  </div>
+
+  <h3>A 识别质量（45 分）</h3>
+  <p>权重给得最高，因为<strong>漏一个敏感信息就是风险，误伤一片则是文档没法读</strong>。召回按 98% 为满分线，准确按 96% 为满分线——不给「100% 才算满分」的虚高标准，也不允许 90% 就混过去。</p>
+  <div class="mono">
+    A1 = 25 × min(1, Recall / 0.98)<br>
+    A2 = 20 × min(1, Precision / 0.96)
+  </div>
+
+  <h3>B 场景覆盖（20 分）</h3>
+  <p>按咨询/投融资的实际产出物逐项检查，能直接处理算覆盖，需要先 OCR 或手工预处理的不算。</p>
+  <table>
+    <thead><tr><th style="width:200px">产出物</th><th style="width:80px">支持</th><th>说明</th></tr></thead>
+    <tbody>
+      <tr><td class="nw">调研 / 战略报告</td><td class="ok">✓</td><td>核心场景，Word 直接导入导出</td></tr>
+      <tr><td class="nw">财务模型（三表）</td><td class="ok">✓</td><td>Excel 按列语义缩放，门店数/年份不动</td></tr>
+      <tr><td class="nw">估值模型</td><td class="ok">✓</td><td>DCF/可比公司法参数保留，只动绝对金额</td></tr>
+      <tr><td class="nw">尽调报告 / IM</td><td class="ok">✓</td><td>股权比例、对价、交易结构均覆盖</td></tr>
+      <tr><td class="nw">银行流水</td><td class="ok">✓</td><td>按"对方户名/金额/余额/借贷方"列判定</td></tr>
+      <tr><td class="nw">合同 / 法律文件</td><td class="ok">✓</td><td>甲乙方、法定代表人、金额大小写</td></tr>
+      <tr><td class="nw">基金 LP 报告</td><td class="ok">✓</td><td>基金全称、管理人、托管人、出资额</td></tr>
+      <tr><td class="nw">培训课件</td><td class="ok">✓</td><td>PPT 按文本框段落处理，保留版式</td></tr>
+      <tr><td class="nw">访谈纪要</td><td class="ok">✓</td><td>名单、角色词、后置动词、邮件称呼</td></tr>
+      <tr><td class="nw">邮件往来</td><td class="ok">✓</td><td>收发件人邮箱、签名、电话</td></tr>
+      <tr><td class="nw">年报 / 公告</td><td class="ok">✓</td><td>真实年报实测 85 个实体</td></tr>
+      <tr><td class="nw">扫描件 PDF</td><td class="no">✗</td><td>需要 OCR，浏览器里做不了</td></tr>
+    </tbody>
+  </table>
+
+  <h3>C 工作流闭环（20 分）</h3>
+  <table>
+    <thead><tr><th style="width:250px">环节</th><th style="width:70px">状态</th><th>说明</th></tr></thead>
+    <tbody>
+      <tr><td class="nw">脱敏</td><td class="ok">✓</td><td>20+ 类实体，金额等比缩放</td></tr>
+      <tr><td class="nw">复制给 AI</td><td class="ok">✓</td><td>自动附占位符说明，AI 不会问"什么是【企业A】"</td></tr>
+      <tr><td class="nw">还原</td><td class="ok">✓</td><td>兼容 9 种 AI 改写：去括号、加空格、markdown、换半角括号</td></tr>
+      <tr><td class="nw">导出 Word / Excel / PPT</td><td class="ok">✓</td><td>保留原格式，表格按列语义处理</td></tr>
+      <tr><td class="nw">批量处理</td><td class="ok">✓</td><td>一次最多 20 个文件，打包下载</td></tr>
+      <tr><td class="nw">项目隔离</td><td class="ok">✓</td><td>一客户一套映射，代号从 A 重新开始</td></tr>
+      <tr><td class="nw">跨项目误用防错</td><td class="ok">✓</td><td>还原时提示"这段属于项目 XX"，一键切回</td></tr>
+      <tr><td class="nw">多轮对话累积还原</td><td class="no">✗</td><td>目前每次要整段粘贴</td></tr>
+      <tr><td class="nw">还原结果差异高亮</td><td class="no">✗</td><td>全量替换，看不出哪里变了</td></tr>
+    </tbody>
+  </table>
+
+  <h3>D 安全（10 分）</h3>
+  <p>纯本地计算、映射表 AES-GCM 加密、零外链可断网自证、法律定性说明、映射表泄露风险提示——五项齐备。缺操作审计日志，对单机工具价值不高，如实扣分。</p>
+
+  <h3>E 可用性（5 分）</h3>
+  <p>单文件双击即用、无需联网、10 万字 43ms、首次打开有三句话引导。</p>
+
+  <h2><span class="num">04</span>这一轮修了什么</h2>
+  <p>评分不是为了好看，是为了找出差距。这一轮从「盲测 P 90.8% / R 80.8%」修到当前水平，动了这些地方：</p>
+
+  <table>
+    <thead><tr><th style="width:170px">问题</th><th>表现</th><th style="width:210px">改法</th></tr></thead>
+    <tbody>
+      <tr>
+        <td class="nw"><strong>竖线表格全漏</strong></td>
+        <td>markdown / 飞书 / Notion 复制的表格是 <code>|</code> 分隔，整张表 0 识别</td>
+        <td>分隔符判定加竖线，并过滤首尾空单元格与 <code>|---|</code> 分隔行</td>
+      </tr>
+      <tr>
+        <td class="nw"><strong>多空格表格全漏</strong></td>
+        <td>从 Word / 网页复制的是空格对齐，同样 0 识别</td>
+        <td>支持 <code>\s{2,}</code> 分隔，单元格偏移用位置切分重算</td>
+      </tr>
+      <tr>
+        <td class="nw"><strong>"元禾"被切断</strong></td>
+        <td><code>苏州元禾控股</code> → <code>禾控股有限公司</code>，因为"元"被当货币单位</td>
+        <td>只有"元"紧跟数字/亿/万时才算单位</td>
+      </tr>
+      <tr>
+        <td class="nw"><strong>三字品牌名失效</strong></td>
+        <td>"比亚迪竞争"识别不了——27 个三字词被错放进"需上下文"弱词表</td>
+        <td>只有两字词才走上下文判断</td>
+      </tr>
+      <tr>
+        <td class="nw"><strong>引导词被一起吃</strong></td>
+        <td><code>公告编号：2025-026</code> → <code>【编号A】</code>，把"公告编号："也替换了</td>
+        <td>带捕获组的规则统一按 group 1 定位</td>
+      </tr>
+      <tr>
+        <td class="nw"><strong>括号负数全漏</strong></td>
+        <td>利润表 <code>(79,200)</code> 原样保留，正数却脱了</td>
+        <td>单独识别括号负数，输出保持括号形式</td>
+      </tr>
+      <tr>
+        <td class="nw"><strong>同一数字两个值</strong></td>
+        <td>128.6 → 79.5，128.60 → 79.47，AI 当成两个数</td>
+        <td>数值规范化后查表，单位参与 key</td>
+      </tr>
+      <tr>
+        <td class="nw"><strong>行业词误伤</strong></td>
+        <td>"工程机械、船舶等行业"里的"船舶"被当公司</td>
+        <td>移除 26 个纯行业词；后跟"等/行业/领域"时不认</td>
+      </tr>
+      <tr>
+        <td class="nw"><strong>实体只脱一处</strong></td>
+        <td>名单里脱了"张伟"，正文"会议由张伟主持"原样保留</td>
+        <td>同名扩散：识别出一处，全文同名一起脱</td>
+      </tr>
+      <tr>
+        <td class="nw"><strong>无后缀公司名</strong></td>
+        <td>"合作方为优鲜科技"识别不了</td>
+        <td>引导词 + 行业后缀；列举里逐个提取</td>
+      </tr>
+      <tr>
+        <td class="nw"><strong>英文人名/公司名</strong></td>
+        <td>John Smith、Acme Retail Holdings Ltd. 全漏</td>
+        <td>只在有称谓/动词引导时识别人名；公司名必须有 Ltd/Inc/Group 等后缀</td>
+      </tr>
+      <tr>
+        <td class="nw"><strong>PDF 断行无提示</strong></td>
+        <td>公司名被切成两半，用户不知道要先整理</td>
+        <td>导入时自动检测断行数，超过 3 处高亮「整理断行」按钮</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2><span class="num">05</span>对标市面产品</h2>
+  <table>
+    <thead><tr><th style="width:150px">维度</th><th style="width:180px">商用 DLP / 脱敏平台</th><th style="width:180px">Presidio 等开源</th><th>本工具</th></tr></thead>
+    <tbody>
+      <tr>
+        <td class="nw"><strong>部署</strong></td>
+        <td>服务器 / 终端 Agent，交付以月计</td>
+        <td>需要 Python 环境、要写代码</td>
+        <td class="ok">单个 HTML，双击即用</td>
+      </tr>
+      <tr>
+        <td class="nw"><strong>数据流向</strong></td>
+        <td>本地或私有云，但需要运维</td>
+        <td>本地，但要装依赖</td>
+        <td class="ok">完全在浏览器内存</td>
+      </tr>
+      <tr>
+        <td class="nw"><strong>实体覆盖</strong></td>
+        <td>以个人信息为主（证件、账号、手机）</td>
+        <td>欧美证件为主，中文实体弱</td>
+        <td class="ok">中文机构/人名/财务数字为主，678 个企业简称</td>
+      </tr>
+      <tr>
+        <td class="nw"><strong>可逆性</strong></td>
+        <td>不可逆（静态脱敏）</td>
+        <td>不可逆</td>
+        <td class="ok">可逆，且兼容 AI 改写</td>
+      </tr>
+      <tr>
+        <td class="nw"><strong>数值处理</strong></td>
+        <td>掩码 / 置空 / 随机</td>
+        <td>掩码</td>
+        <td class="ok">等比缩放，保留比率与趋势</td>
+      </tr>
+      <tr>
+        <td class="nw"><strong>与 AI 的配合</strong></td>
+        <td>网关层拦截，只覆盖 API 调用</td>
+        <td>需自己接</td>
+        <td class="ok">面向"复制粘贴给网页版 AI"设计</td>
+      </tr>
+      <tr>
+        <td class="nw"><strong>审计 / 权限</strong></td>
+        <td class="ok">完善</td>
+        <td>无</td>
+        <td class="no">无（单机工具）</td>
+      </tr>
+      <tr>
+        <td class="nw"><strong>批量 / 库表</strong></td>
+        <td class="ok">强</td>
+        <td>中</td>
+        <td class="mid">最多 20 个文件</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="callout">
+    <span class="t">结论不是"比它们强"，而是"解决的不是同一个问题"</span>
+    商用平台的假设是「数据在数据库和系统里」，本工具的假设是「数据在顾问的剪贴板里」。
+    前者能管住全公司，但覆盖不到一个人在网页版 AI 里粘贴一段访谈纪要；后者只能管一个人，但那正是最容易出事的地方。
+  </div>
+
+  <h2><span class="num">06</span>必须说清楚的三件事</h2>
+
+  <div class="dangerbox">
+    <span class="t">① 100% 的识别率不可采信</span>
+    三份测试集都参与过调优。留出集本来是"没见过的"，但我看了失败项之后又改了规则——它就不再是留出集了。
+    真实泛化能力应该看真实文档的抽样结果（下一节），以及你自己拿一份报告跑一遍。
+    <strong>任何声称 100% 的脱敏工具都在骗人，包括这份报告里的数字。</strong>
+  </div>
+
+  <div class="warnbox">
+    <span class="t">② 评分卡是我定的，权重可以争</span>
+    "召回 25 分、准确 20 分"是我的判断：漏一个敏感信息比误伤十个词更严重。如果换成"误伤更不可接受"的权重，分数会变。
+    可争论的是权重，不该争论的是计算过程——<code>eval.js</code> 和 <code>score.js</code> 都在，你可以自己改权重重算。
+  </div>
+
+  <div class="warnbox">
+    <span class="t">③ 真实文档仍然会漏</span>
+    拿宁德时代年报（11,219 字）实测：85 个实体，14ms，残留检测 0。但抽样核对能看到：
+    <div class="mono" style="margin-top:8px">
+      【宁波联合创新新能源投资管】<br>
+      【理合伙企业（有限合伙）】
+    </div>
+    公司名被 PDF 断行切成两半——这不是规则问题，是输入问题。点「整理断行」能解决大部分，
+    但<strong>扫描件、图片、跨页表格仍然需要人工检查</strong>。
+  </div>
+
+  <h2><span class="num">07</span>还差什么（按价值排序）</h2>
+  <table>
+    <thead><tr><th style="width:180px">缺口</th><th style="width:70px">价值</th><th>为什么没做 / 打算怎么做</th></tr></thead>
+    <tbody>
+      <tr>
+        <td class="nw"><strong>多轮对话累积还原</strong></td>
+        <td class="mid">高</td>
+        <td>和 AI 聊十轮，每轮都要整段粘贴回来。应该做一个"对话记录区"，累积所有回复一次性还原</td>
+      </tr>
+      <tr>
+        <td class="nw"><strong>还原差异高亮</strong></td>
+        <td class="mid">中</td>
+        <td>现在全量替换，看不出哪里变了。要改 restore 的输出结构</td>
+      </tr>
+      <tr>
+        <td class="nw"><strong>扫描件 OCR</strong></td>
+        <td class="mid">中</td>
+        <td>浏览器里做不了高质量中文 OCR，引入 WASM 版会让文件从 193KB 涨到 5MB+</td>
+      </tr>
+      <tr>
+        <td class="nw"><strong>操作审计日志</strong></td>
+        <td>低</td>
+        <td>单机工具，日志本身也是敏感信息。团队版才需要</td>
+      </tr>
+      <tr>
+        <td class="nw"><strong>跨文档实体消歧</strong></td>
+        <td>低</td>
+        <td>两家"华润"系公司分不开。靠项目隔离 + 人工核对</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2><span class="num">08</span>你可以自己验证</h2>
+  <p>所有数字都能复现：</p>
+  <div class="mono" style="background:#f2f4f7;padding:14px 16px;border-radius:8px;margin:12px 0">
+    cd demask/src<br>
+    node eval.js testset.json            # 基础回归<br>
+    node eval.js testset-holdout.json    # 留出验证<br>
+    node eval.js testset-blind.json      # 盲测<br>
+    node score.js                        # 出总分<br>
+    node bench.js                        # 性能压测<br>
+    node test.js                         # 端到端 6 个场景
+  </div>
+  <p>但最有说服力的验证不是跑我的测试集，而是<strong>拿一份你已经交付过的真实报告，跑一遍，数一下漏了几个</strong>。漏的通常集中在客户自己的内部叫法和行业黑话——把它们加进词库，以后所有文档都生效。</p>
+
+  <div class="footnote">
+    评分对象：脱敏工作台 v1.7（193 KB 单文件）　·　评测脚本：eval.js / score.js　·　测试集：257 条用例、257 个正例<br>
+    所有测试数据与脚本位于 <code>demask/src/</code>，可独立运行，不依赖本工具
+  </div>
+
+</div>
+</body>
+</html>

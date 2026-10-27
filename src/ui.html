@@ -1,0 +1,1787 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>脱敏工作台 · 财务与商业数据</title>
+<style>
+  :root{
+    --bg:#f5f6f8; --panel:#fff; --line:#e2e5ea; --line-soft:#eef0f3;
+    --ink:#151a21; --ink-2:#3d4753; --muted:#7b8593; --faint:#a2abb7;
+    --accent:#1b3a5c; --accent-2:#2f5d8a; --accent-soft:#eaf0f6;
+    --ok:#0f766e; --warn:#b45309; --danger:#b91c1c;
+    --org:#4f46e5; --org-bg:#eef2ff;
+    --per:#be123c; --per-bg:#fff1f2;
+    --prj:#b45309; --prj-bg:#fffbeb;
+    --amt:#0f766e; --amt-bg:#ecfdf5;
+    --sec:#334155; --sec-bg:#f1f5f9;
+    --url:#0369a1; --url-bg:#f0f9ff;
+    --radius:10px;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    margin:0;background:var(--bg);color:var(--ink);
+    font:14px/1.65 -apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  button,input,select,textarea{font-family:inherit;font-size:inherit;color:inherit}
+  button{cursor:pointer}
+  ::selection{background:#cfe0f3}
+
+  header{
+    height:58px;display:flex;align-items:center;gap:12px;padding:0 20px;
+    background:var(--panel);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:20;
+  }
+  .logo{display:flex;align-items:center;gap:9px;font-weight:650;letter-spacing:.2px;font-size:15px}
+  .logo svg{display:block}
+  .tag{font-size:11.5px;color:var(--ok);background:#effaf8;border:1px solid #cdeee8;
+    padding:2px 8px;border-radius:20px;font-weight:500;white-space:nowrap}
+  .spacer{flex:1}
+  .vault-info{font-size:12.5px;color:var(--muted);display:flex;align-items:center;gap:6px}
+  .vault-info b{color:var(--ink-2);font-weight:600;font-variant-numeric:tabular-nums}
+  input::placeholder,textarea::placeholder{color:#aab3bf}
+  .btn{border:1px solid var(--line);background:#fff;border-radius:7px;padding:6px 12px;
+    font-size:13px;color:var(--ink-2);transition:.15s;display:inline-flex;align-items:center;gap:6px}
+  .btn:hover{border-color:#c9cfd8;background:#fafbfc}
+  .btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+  .btn.primary:hover{background:var(--accent-2);border-color:var(--accent-2)}
+  .btn.ghost{border-color:transparent;background:transparent;color:var(--muted)}
+  .btn.ghost:hover{background:#f1f3f6;color:var(--ink-2)}
+  .btn:disabled{opacity:.45;cursor:not-allowed}
+
+  main{padding:16px 20px 40px;max-width:1600px;margin:0 auto}
+  .workspace{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  @media(max-width:1080px){.workspace{grid-template-columns:1fr}}
+
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);
+    display:flex;flex-direction:column;min-height:0;overflow:hidden}
+  .card-head{display:flex;align-items:center;gap:8px;padding:10px 13px;border-bottom:1px solid var(--line-soft);
+    font-size:12.5px;color:var(--muted);font-weight:500}
+  .card-head .title{color:var(--ink);font-weight:600;font-size:13px;letter-spacing:.2px}
+  .card-head .dot{width:6px;height:6px;border-radius:50%;background:var(--faint)}
+  .card-body{flex:1;min-height:0;position:relative}
+
+  textarea{width:100%;height:100%;min-height:330px;border:0;resize:none;padding:14px 16px;
+    background:transparent;line-height:1.8;outline:none;font-size:14px}
+  textarea::placeholder{color:var(--faint)}
+  .out{padding:14px 16px;height:100%;min-height:330px;overflow:auto;line-height:1.9;
+    white-space:pre-wrap;word-break:break-word;font-size:14px}
+  .out.empty{color:var(--faint)}
+  mark{border-radius:4px;padding:1px 3px;font-weight:500;border:1px solid transparent;cursor:pointer;transition:.12s}
+  mark:hover{filter:brightness(.96)}
+  .t-org{color:var(--org);background:var(--org-bg);border-color:#dfe4ff}
+  .t-per{color:var(--per);background:var(--per-bg);border-color:#ffe0e5}
+  .t-prj{color:var(--prj);background:var(--prj-bg);border-color:#fbe9c4}
+  .t-amt{color:var(--amt);background:var(--amt-bg);border-color:#c9efe6}
+  .t-sec{color:var(--sec);background:var(--sec-bg);border-color:#e2e8f0}
+  .t-url{color:var(--url);background:var(--url-bg);border-color:#d8ecfb}
+
+  .bar{display:flex;align-items:center;gap:10px;padding:8px 13px;border-top:1px solid var(--line-soft);
+    font-size:12.5px;color:var(--muted);flex-wrap:wrap}
+  .stat{display:flex;align-items:center;gap:5px}
+  .stat b{color:var(--ink);font-weight:600;font-variant-numeric:tabular-nums}
+  .sep{width:1px;height:12px;background:var(--line)}
+  .grow{flex:1}
+
+  .settings{border:1px solid var(--line);background:var(--panel);border-radius:var(--radius);margin-top:14px;overflow:hidden}
+  .settings-head{display:flex;align-items:center;gap:8px;padding:11px 14px;cursor:pointer;user-select:none}
+  .settings-head .title{font-size:13px;font-weight:600}
+  .settings-head .hint{font-size:12px;color:var(--muted)}
+  .settings-head .caret{margin-left:auto;color:var(--faint);transition:.2s}
+  .settings.open .caret{transform:rotate(180deg)}
+  .settings-body{display:none;padding:0 14px 16px;border-top:1px solid var(--line-soft)}
+  .settings.open .settings-body{display:block}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:18px;padding-top:14px}
+  .field label{display:block;font-size:12px;color:var(--muted);margin-bottom:7px;font-weight:500}
+  .chips{display:flex;flex-wrap:wrap;gap:7px}
+  .chip{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:7px;
+    padding:5px 10px;font-size:12.5px;background:#fff;cursor:pointer;transition:.15s;user-select:none;color:var(--ink-2)}
+  .chip .box{width:13px;height:13px;border:1.5px solid #c3cad4;border-radius:4px;display:flex;
+    align-items:center;justify-content:center;transition:.15s}
+  .chip.on{border-color:var(--accent);background:var(--accent-soft);color:var(--accent)}
+  .chip.on .box{background:var(--accent);border-color:var(--accent)}
+  .chip.on .box::after{content:"";width:6px;height:3px;border-left:1.6px solid #fff;
+    border-bottom:1.6px solid #fff;transform:rotate(-45deg) translateY(-1px)}
+  select,input[type=text]{width:100%;border:1px solid var(--line);border-radius:7px;padding:7px 10px;
+    background:#fff;outline:none}
+  select:focus,input[type=text]:focus{border-color:var(--accent-2);box-shadow:0 0 0 3px rgba(47,93,138,.08)}
+  input[type=range]{width:100%;accent-color:var(--accent)}
+  .range-row{display:flex;align-items:center;gap:10px}
+  .range-val{font-variant-numeric:tabular-nums;font-weight:600;color:var(--ink);font-size:13px;min-width:46px;text-align:right}
+
+  .tabs{display:flex;gap:2px;border-bottom:1px solid var(--line);margin-top:16px}
+  .tab{padding:9px 15px;font-size:13px;color:var(--muted);border:0;background:none;
+    border-bottom:2px solid transparent;margin-bottom:-1px;font-weight:500;transition:.15s}
+  .tab:hover{color:var(--ink-2)}
+  .tab.active{color:var(--accent);border-bottom-color:var(--accent)}
+  .tab .cnt{font-size:11px;background:#eef1f5;color:var(--muted);border-radius:20px;padding:1px 6px;margin-left:5px}
+  .tab.active .cnt{background:var(--accent-soft);color:var(--accent)}
+  .pane{display:none;padding-top:14px}
+  .pane.active{display:block}
+
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th{text-align:left;font-weight:500;color:var(--muted);font-size:11.5px;letter-spacing:.3px;
+    padding:0 10px 8px;border-bottom:1px solid var(--line-soft);white-space:nowrap}
+  td{padding:8px 10px;border-bottom:1px solid var(--line-soft);vertical-align:middle}
+  tr:hover td{background:#fafbfc}
+  .mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12.5px}
+  .badge{font-size:11px;padding:1px 7px;border-radius:5px;font-weight:500;white-space:nowrap}
+  .b-org{color:var(--org);background:var(--org-bg)}
+  .b-per{color:var(--per);background:var(--per-bg)}
+  .b-prj{color:var(--prj);background:var(--prj-bg)}
+  .b-amt{color:var(--amt);background:var(--amt-bg)}
+  .b-other{color:var(--sec);background:var(--sec-bg)}
+  .conf{font-variant-numeric:tabular-nums;color:var(--faint);font-size:12px}
+  .mini{font-size:12px;padding:3px 8px;border-radius:6px;border:1px solid var(--line);background:#fff;color:var(--muted)}
+  .mini:hover{background:#fafbfc;color:var(--ink-2)}
+
+  .warnbox{display:flex;gap:9px;align-items:flex-start;background:#fffbeb;border:1px solid #fde68a;color:#92400e;
+    border-radius:8px;padding:10px 12px;font-size:12.5px;margin-top:12px;line-height:1.6}
+  .empty-row{text-align:center;color:var(--faint);padding:28px 0;font-size:13px}
+
+  .restore-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  @media(max-width:900px){.restore-grid{grid-template-columns:1fr}}
+  .restore-grid textarea{min-height:190px;font-size:13.5px}
+
+  .toast{position:fixed;left:50%;bottom:28px;transform:translate(-50%,14px);background:#151a21;color:#fff;
+    padding:9px 18px;border-radius:8px;font-size:13px;opacity:0;pointer-events:none;transition:.22s;z-index:99;
+    box-shadow:0 8px 26px rgba(0,0,0,.18)}
+  .toast.show{opacity:1;transform:translate(-50%,0)}
+  .drop{position:absolute;inset:0;background:rgba(234,240,246,.94);border:2px dashed var(--accent-2);
+    display:none;align-items:center;justify-content:center;color:var(--accent);font-weight:500;border-radius:8px;z-index:5}
+  .drop.on{display:flex}
+  .dict-list{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;min-height:24px}
+  .dict-item{display:inline-flex;align-items:center;gap:6px;background:#f5f7f9;border:1px solid var(--line);
+    border-radius:6px;padding:2px 4px 2px 8px;font-size:12px}
+  .dict-item button{border:0;background:none;color:var(--faint);padding:0 3px;font-size:14px;line-height:1}
+  .dict-item button:hover{color:var(--danger)}
+
+  .help{display:none;background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);
+    margin-top:14px;padding:20px 24px;font-size:13.5px;line-height:1.85}
+  .help.on{display:block}
+  .help h3{margin:0 0 10px;font-size:15px}
+  .help h4{margin:18px 0 6px;font-size:13.5px;color:var(--accent)}
+  .help p{margin:0 0 8px;color:var(--ink-2)}
+  .help ul{margin:0 0 8px;padding-left:20px;color:var(--ink-2)}
+  .help li{margin-bottom:4px}
+  .help code{background:#f2f5f8;padding:1px 5px;border-radius:4px;font-size:12.5px}
+  .help .close{float:right;margin-top:-4px}
+
+  .btn.attn{border-color:#f0b429;background:#fffbeb;color:#92400e;box-shadow:0 0 0 3px rgba(240,180,41,.15)}
+  .rulelist{margin-bottom:8px}
+  .rulelist .r{display:flex;align-items:center;gap:8px;padding:6px 9px;border:1px solid var(--line-soft);
+    border-radius:6px;font-size:12.5px;margin-bottom:5px;background:#fafbfc}
+  .rulelist .r b{font-weight:600;color:var(--ink-2);flex:none}
+  .rulelist .r code{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11.5px}
+  .rulelist .r .tagx{font-size:11px;color:var(--muted);background:#eef1f5;border-radius:4px;padding:1px 5px;flex:none}
+  .rulelist .r .del{color:var(--faint);cursor:pointer;font-size:15px;line-height:1;padding:0 3px;flex:none}
+  .rulelist .r .del:hover{color:var(--danger)}
+  .rulelist .empty{font-size:12px;color:var(--faint);padding:4px 0 8px}
+  .ruleform{display:flex;gap:6px;align-items:center}
+  .ruleform input,.ruleform select{border:1px solid var(--line);border-radius:6px;padding:6px 8px;
+    font-size:12.5px;background:#fff;color:var(--ink);min-width:0}
+  .ruleform input:focus{outline:none;border-color:#9dbfe0}
+
+  .batchbar{display:none;align-items:center;gap:12px;background:#f2f7fd;border:1px solid #d6e4f5;
+    border-radius:8px;padding:10px 14px;font-size:12.5px;color:#2f5d8a;margin-bottom:14px}
+  .batchbar.on{display:flex}
+  .batchbar .txt{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:52%}
+  .batchbar .track{flex:1;height:5px;background:#dce8f5;border-radius:3px;overflow:hidden}
+  .batchbar .fill{height:100%;width:0;background:#4a86c8;transition:width .2s}
+
+  .reid{display:none;border-radius:8px;padding:11px 13px;font-size:12.5px;line-height:1.7;margin-top:10px}
+  .reid.on{display:block}
+  .reid.high{background:#fff4ed;border:1px solid #fcd0b0;color:#9a3412}
+  .reid.mid{background:#fffbf0;border:1px solid #f5e0b0;color:#854d0e}
+  .reid b{font-weight:600}
+  .reid .dims{margin-top:6px;display:flex;flex-wrap:wrap;gap:5px}
+  .reid .d{background:rgba(255,255,255,.75);border:1px solid rgba(0,0,0,.06);border-radius:5px;
+    padding:2px 7px;font-size:11.5px}
+  .reid .d i{font-style:normal;opacity:.6;margin-right:3px}
+  .reid .x{float:right;cursor:pointer;opacity:.45;font-size:14px;line-height:1;padding:0 2px}
+  .reid .x:hover{opacity:.9}
+
+  .rlog{border-bottom:1px solid var(--line-soft);padding:9px 0}
+  .rlog:last-child{border-bottom:0}
+  .rlog-head{display:flex;align-items:center;gap:8px;font-size:11.5px;color:var(--faint);margin-bottom:5px}
+  .rlog-head b{color:var(--muted);font-weight:600}
+  .rlog-head .btn{margin-left:auto;padding:2px 8px;font-size:11.5px}
+  .rlog-body{font-size:13px;line-height:1.75;color:var(--ink-2);white-space:pre-wrap;word-break:break-word}
+  .rlog-body mark.rs{background:#fff3c4;color:#7c4a09;border-radius:3px;padding:0 1px}
+
+  .restore-hint{display:none;background:#fffbeb;border:1px solid #fde68a;color:#92400e;
+    border-radius:8px;padding:10px 12px;font-size:12.5px;line-height:1.7;margin-bottom:10px}
+  .restore-hint.on{display:block}
+  .restore-hint b{font-weight:600}
+  .restore-hint .lk{color:#b45309;text-decoration:underline;cursor:pointer;font-weight:600}
+  .proj{position:relative}
+  .proj-btn{display:flex;align-items:center;gap:7px;border:1px solid var(--line);background:#fff;
+    border-radius:7px;padding:5px 10px;font-size:12.5px;color:var(--ink-2);cursor:pointer;
+    max-width:260px;transition:.15s}
+  .proj-btn:hover{border-color:#b9cbe0;background:#f8fbfe}
+  .proj-btn .dot{width:6px;height:6px;border-radius:50%;background:var(--ok);flex:none}
+  .proj-btn b{font-weight:600;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .proj-btn .cnt{color:var(--faint);font-size:11.5px;font-variant-numeric:tabular-nums}
+  .proj-item{display:flex;align-items:center;gap:9px;padding:10px 11px;border-radius:8px;
+    cursor:pointer;font-size:13.5px;border:1px solid transparent}
+  .proj-item + .proj-item{margin-top:5px}
+  .proj-item{display:flex;align-items:center;gap:8px;padding:8px 9px;border-radius:7px;
+    cursor:pointer;font-size:13px}
+  .proj-item:hover{background:#f5f8fc}
+  .proj-item.on{background:#eef5fd;border-color:#cfe0f3}
+  .proj-item .nm{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .proj-item .meta{font-size:11px;color:var(--faint);font-variant-numeric:tabular-nums}
+  .proj-item .tick{color:var(--accent);font-size:12px}
+  .proj-item .del{color:var(--faint);font-size:15px;padding:0 3px;border-radius:4px;line-height:1}
+  .proj-item .del:hover{color:var(--danger);background:#fdecec}
+  .proj-item .ren{color:var(--faint);font-size:11.5px;padding:2px 5px;border-radius:4px}
+  .proj-item .ren:hover{color:var(--accent);background:#e8f1fb}
+
+  .ver{font-size:11px;color:var(--faint);border:1px solid var(--line);border-radius:4px;padding:1px 5px;font-variant-numeric:tabular-nums}
+  .capbar{display:none;background:#fffbeb;border:1px solid #fde68a;color:#92400e;border-radius:8px;
+    padding:10px 13px;font-size:12.5px;margin-bottom:14px;line-height:1.65}
+  .capbar.on{display:block}
+  .welcome{position:fixed;inset:0;background:rgba(21,26,33,.42);display:none;align-items:center;
+    justify-content:center;z-index:200;padding:24px;backdrop-filter:blur(2px)}
+  .welcome.on{display:flex}
+  .welcome-card{background:#fff;border-radius:14px;max-width:520px;width:100%;padding:30px 34px 26px;
+    box-shadow:0 24px 70px rgba(15,25,40,.28)}
+  .welcome-card h2{margin:0 0 16px;font-size:19px;letter-spacing:-.2px}
+  .welcome-card ul{margin:0;padding-left:0;list-style:none}
+  .welcome-card li{position:relative;padding-left:26px;margin-bottom:12px;font-size:13.5px;line-height:1.75;color:var(--ink-2)}
+  .welcome-card li::before{content:"";position:absolute;left:0;top:7px;width:14px;height:14px;border-radius:50%;
+    background:var(--accent-soft);border:1px solid #cfe0f3}
+  .welcome-card li::after{content:"";position:absolute;left:4.5px;top:10.5px;width:5px;height:2.5px;
+    border-left:1.4px solid var(--accent);border-bottom:1.4px solid var(--accent);transform:rotate(-45deg)}
+  .welcome-card li b{color:var(--ink)}
+  .welcome-actions{display:flex;gap:9px;margin-top:22px}
+  .welcome-actions .btn{padding:8px 16px}
+
+  .sug{display:none;flex-wrap:wrap;gap:8px;align-items:center;background:#f5f9ff;border:1px solid #d6e4f5;
+    border-radius:8px;padding:10px 12px;margin-bottom:12px;font-size:12.5px;color:#2f5d8a;line-height:1.6}
+  .sug.on{display:flex}
+  .sug .chip{background:#fff;border-color:#c9dcf2;color:#2f5d8a;padding:3px 9px;font-size:12px}
+  .sug .chip:hover{background:#eaf2fb}
+
+  .pseudo{display:none;background:#fff8ed;border:1px solid #fcd9a8;border-radius:8px;
+    padding:10px 12px;margin-bottom:12px;font-size:12.5px;color:#92400e;line-height:1.65}
+  .pseudo.on{display:block}
+  .pseudo b{font-weight:600}
+  .pseudo .hit{display:inline-block;background:#fff;border:1px solid #f0cfa0;border-radius:5px;
+    padding:1px 6px;margin:3px 4px 0 0;font-size:12px;color:#92400e}
+  .pseudo .tip{color:#a16207;font-size:11.5px;margin-top:6px}
+
+  .modal{position:fixed;inset:0;background:rgba(21,26,33,.45);display:none;align-items:center;
+    justify-content:center;z-index:210;padding:24px}
+  .modal.on{display:flex}
+  .modal-card{background:#fff;border-radius:12px;width:100%;max-width:780px;max-height:82vh;
+    display:flex;flex-direction:column;box-shadow:0 24px 70px rgba(15,25,40,.3)}
+  .modal-head{display:flex;align-items:center;gap:10px;padding:14px 18px;border-bottom:1px solid var(--line-soft);font-size:14px}
+  .modal-head .hint{font-size:12px;color:var(--muted);font-weight:400}
+  .modal-head .btn{margin-left:auto}
+  .modal-body{overflow:auto;padding:12px 18px 18px}
+  .chunk{border:1px solid var(--line);border-radius:8px;padding:10px 12px;margin-bottom:10px}
+  .chunk-head{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted);margin-bottom:6px}
+  .chunk-head b{color:var(--ink-2);font-weight:600}
+  .chunk-head .btn{margin-left:auto;padding:3px 9px;font-size:12px}
+  .chunk-text{font-size:12px;color:var(--ink-2);line-height:1.6;max-height:60px;overflow:hidden;
+    font-family:ui-monospace,Menlo,monospace;white-space:pre-wrap}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
+      <rect x="1" y="1" width="20" height="20" rx="5.5" fill="#1b3a5c"/>
+      <path d="M6.4 11.2l3 3 6-6.4" stroke="#fff" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+    脱敏工作台
+  </div>
+  <span class="tag">离线单文件 · 不联网</span>
+  <span class="ver" id="ver">__VERSION__</span>
+  <div class="spacer"></div>
+  <div class="proj">
+    <div class="proj-btn" id="projBtn" title="切换项目：每个项目一套独立的映射">
+      <span class="dot"></span>
+      <b id="projName">默认项目</b>
+      <span class="cnt" id="vaultCount">0</span>
+      <svg width="9" height="9" viewBox="0 0 10 10" fill="none"><path d="M2 3.6L5 6.4l3-2.8" stroke="#8b96a5" stroke-width="1.4" stroke-linecap="round"/></svg>
+    </div>
+  </div>
+  <button class="btn ghost" id="btnHelp">使用说明</button>
+</header>
+
+<main>
+  <div class="capbar" id="capbar"></div>
+  <div class="batchbar" id="batchBar">
+    <span class="txt">准备中…</span>
+    <div class="track"><div class="fill"></div></div>
+  </div>
+  <div class="help" id="help">
+    <button class="btn ghost close" id="btnHelpClose">收起</button>
+    <h3>这是什么</h3>
+    <p>一个<b>单文件网页工具</b>：把要发给 AI 的内容先脱敏，拿回答案后一键还原。全部计算在你的浏览器里完成，<b>不联网、不上传、不安装任何东西</b>。把这个 HTML 文件发给同事，双击就能用。</p>
+
+    <h4>四步用法</h4>
+    <ul>
+      <li><b>粘贴或拖入</b>：支持 .docx / .xlsx / .pptx / .txt / .md / .csv，也可以直接复制 Excel 的表格区域（保留制表符）。</li>
+      <li><b>扫一眼清单</b>：误伤的按「放行」，漏掉的加进自定义词库。</li>
+      <li><b>复制</b>：把右侧脱敏稿粘给 ChatGPT / Claude / 豆包 / Kimi，网页版或 App 都行。</li>
+      <li><b>还原</b>：把 AI 的回复贴到「还原 AI 回复」页，一键换回真实名称与原始金额。</li>
+    </ul>
+
+    <h4>代号会带角色</h4>
+    <p>投融资文档里，标的、买方、卖方、顾问全叫"企业A/B/C"是灾难——AI 分不清谁是谁。所以工具会读上下文，给代号加角色：</p>
+    <p><code>【标的A】</code> 标的公司　<code>【买方A】</code> 收购方/投资方　<code>【卖方A】</code> 转让方　<code>【供应商B】</code>　<code>【顾问A】</code> 财务顾问　<code>【律所A】</code>　<code>【股权A】</code> 持股比例</p>
+    <p>同一家公司的全称和简称（含"以下简称"定义的）会共用一个代号，不会被拆成两家。</p>
+
+    <h4>财务数据是怎么处理的</h4>
+    <p>默认<b>等比缩放 ×0.618</b>：所有金额同比例变化，<b>毛利率、占比、增速、结构比例全部不变</b>，AI 照样能做测算和敏感性分析，但绝对值不再是真实数字。财务比率（%、倍数、周转天数）默认<b>不脱敏</b>，因为它们本身不敏感且是分析骨架。</p>
+    <p>识别覆盖：三大表科目行（营业收入、营业成本、EBITDA、经营性现金流…）、多期数据列、银行流水（对方户名、金额、余额）、合同/发票编号、股票代码、投前投后估值、对价、注册资本。</p>
+
+    <h4>关于数据安全</h4>
+    <ul>
+      <li>映射表存在<b>本机浏览器</b>（localStorage），关掉页面不丢，换电脑/换浏览器不通用。</li>
+      <li>顶栏可以切换<b>项目</b>——一个客户一套映射。换客户请新建项目，别混在一起：代号会串，导出的映射也会把历史客户全带走。</li>
+      <li>可逆脱敏在法律上属于<b>去标识化</b>，不是匿名化——处理后仍属个人信息，只是风险大幅降低。</li>
+    </ul>
+
+    <h4>发给同事时</h4>
+    <p>直接发这个 <code>.html</code> 文件即可，微信/邮件/共享盘都行。建议同时说明两点：① 这是纯本地文件，可断网使用；② 打开后先点「看示例」看一眼效果再上手。</p>
+  </div>
+
+  <div class="workspace">
+    <section class="card">
+      <div class="card-head">
+        <span class="dot"></span><span class="title">原始内容</span>
+        <div class="grow"></div>
+        <button class="btn ghost" id="btnTidy" title="合并 PDF 复制过来的断行">整理断行</button>
+        <button class="btn ghost" id="btnSample">看示例</button>
+        <button class="btn ghost" id="btnUpload">上传文件</button>
+        <button class="btn ghost" id="btnClear">清空</button>
+      </div>
+      <div class="card-body">
+        <textarea id="input" placeholder="粘贴需要处理的内容：调研笔记、访谈记录、财务模型、交易文件……&#10;&#10;也可以把 .docx / .xlsx / .pptx 直接拖进来，或从 Excel 复制表格区域粘贴。"></textarea>
+        <div class="drop" id="drop">松开即导入</div>
+      </div>
+      <div class="bar">
+        <div class="stat"><b id="cChars">0</b> 字</div>
+        <div class="sep"></div>
+        <div class="stat">识别 <b id="cEnt">0</b> 处</div>
+        <div class="grow"></div>
+        <span style="color:var(--faint);font-size:11.5px">⌘ + Enter 立即处理</span>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="card-head">
+        <span class="dot" style="background:#8fbfae"></span><span class="title">脱敏结果</span>
+        <div class="grow"></div>
+        <button class="btn" id="btnCopy">复制</button>
+        <button class="btn" id="btnChunk" title="按段落切成多块，方便逐段喂给 AI">分段</button>
+        <button class="btn" id="btnExportFile" style="display:none" title="保留原格式导出">导出脱敏版</button>
+        <button class="btn" id="btnDownload">导出 .txt</button>
+      </div>
+      <div class="card-body">
+        <div class="out empty" id="output">处理后的内容会出现在这里，可直接复制给任何 AI 工具。</div>
+      </div>
+      <div class="bar">
+        <div class="stat">代号 <b id="cUniq">0</b> 个</div>
+        <div class="sep"></div>
+        <div class="stat" id="riskStat" style="color:var(--ok)">安全检查通过</div>
+        <div class="grow"></div>
+        <span id="utilStat" style="color:var(--faint);font-size:11.5px;margin-right:10px"></span>
+        <span style="color:var(--faint);font-size:11.5px">数值：<span id="modeLabel">等比缩放</span></span>
+      </div>
+      <div class="reid" id="reidBox"></div>
+    </section>
+  </div>
+
+  <div class="settings" id="settings">
+    <div class="settings-head" id="settingsHead">
+      <span class="title">脱敏策略</span>
+      <span class="hint" id="settingsHint"></span>
+      <svg class="caret" width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M3.5 5.5L7 9l3.5-3.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </div>
+    <div class="settings-body">
+      <div class="grid">
+        <div class="field">
+          <label>识别范围</label>
+          <div class="chips" id="scopeChips">
+            <div class="chip on" data-k="mask_org"><span class="box"></span>企业/机构</div>
+            <div class="chip on" data-k="mask_person"><span class="box"></span>人名</div>
+            <div class="chip on" data-k="mask_project"><span class="box"></span>项目代号</div>
+            <div class="chip on" data-k="mask_money"><span class="box"></span>金额/财务数据</div>
+            <div class="chip on" data-k="mask_contact"><span class="box"></span>联系方式/证件/编号</div>
+            <div class="chip on" data-k="mask_equity"><span class="box"></span>股权比例</div>
+            <div class="chip on" data-k="ai_note"><span class="box"></span>复制时附说明</div>
+            <div class="chip" data-k="mask_pct"><span class="box"></span>其他比率</div>
+          </div>
+        </div>
+
+        <div class="field">
+          <label>数值处理</label>
+          <select id="numMode">
+            <option value="scale">等比缩放（保留比例关系，推荐）</option>
+            <option value="bucket">区间化（12.8 亿 → 10-15 亿）</option>
+            <option value="hash">等长乱数（保留位数）</option>
+            <option value="keep">原样保留（需精确计算时）</option>
+          </select>
+          <div style="margin-top:12px" id="factorWrap">
+            <div class="range-row">
+              <input type="range" id="numFactor" min="0.2" max="1.5" step="0.002" value="0.618">
+              <span class="range-val" id="factorVal">×0.62</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="field">
+          <label>占位符样式</label>
+          <select id="tokenStyle">
+            <option value="bracket">【企业A】中文方括号</option>
+            <option value="underscore">__ORG_A__ 下划线</option>
+            <option value="plain">企业A 纯文本</option>
+            <option value="mask">华润*** 掩码（不可还原）</option>
+          </select>
+          <div style="margin-top:12px;font-size:11.5px;color:var(--faint);line-height:1.6">
+            大模型对【】内的内容改写最少，还原成功率最高。<br>
+            掩码适合<b>直接发给外部看</b>的版本——保留"这是个中文公司名/这是手机尾号"的形状，但无法还原。
+          </div>
+        </div>
+
+        <div class="field" style="grid-column:1/-1">
+          <label>内置行业词库 <span id="lexCount" style="color:var(--faint);font-weight:400"></span></label>
+          <div class="chips" id="lexChips"></div>
+          <div style="margin-top:8px;font-size:11.5px;color:var(--faint);line-height:1.6">
+            收录没有"有限公司"后缀的品牌简称（宁德时代、通威股份、格力电器…）。<br>
+            两字简称（美的、小米、大众）只在上下文明确时脱敏，避免误伤普通词汇。
+          </div>
+        </div>
+
+        <div class="field" style="grid-column:1/-1">
+          <label>自定义规则 <span style="color:var(--faint);font-weight:400">· 按格式识别，比词库更适合编号</span></label>
+          <div class="rulelist" id="ruleList"></div>
+          <div class="ruleform">
+            <input id="ruleName" placeholder="名称，如 内部项目号" style="width:140px;flex:none">
+            <input id="rulePat" placeholder="正则，如 PRJ-\d{4}-\d{3}">
+            <select id="ruleType" style="width:92px;flex:none">
+              <option value="PROJECT">项目</option>
+              <option value="ORG">企业</option>
+              <option value="PERSON">人名</option>
+              <option value="CONTRACT">编号</option>
+              <option value="MONEY">金额</option>
+            </select>
+            <button class="btn" id="btnAddRule" style="flex:none">添加</button>
+          </div>
+          <div style="margin-top:7px;font-size:11.5px;color:var(--faint);line-height:1.6">
+            想只脱一部分就用括号：<code>(?:工号)\s*([A-Z]\d{6})</code> 只替换括号里的内容。<br>
+            规则跟着项目走，换客户自动切换。最多 30 条。
+          </div>
+        </div>
+
+        <div class="field">
+          <label>自定义词库（客户简称、内部代号）</label>
+          <div style="display:flex;gap:6px">
+            <select id="dictType" style="width:88px;flex:none">
+              <option value="ORG">企业</option>
+              <option value="PERSON">人名</option>
+              <option value="PROJECT">项目</option>
+            </select>
+            <input type="text" id="dictInput" placeholder="输入后回车添加">
+          </div>
+          <div class="dict-list" id="dictList"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="tabs">
+    <button class="tab active" data-pane="paneEnt">实体清单<span class="cnt" id="tabEntCnt">0</span></button>
+    <button class="tab" data-pane="paneRestore">还原 AI 回复</button>
+    <button class="tab" data-pane="paneVault">映射库</button>
+  </div>
+
+  <div class="pane active" id="paneEnt">
+    <div class="sug" id="sugBox"></div>
+    <div class="pseudo" id="pseudoBox"></div>
+    <table>
+      <thead>
+        <tr>
+          <th style="width:96px">类型</th>
+          <th>原文</th>
+          <th style="width:170px">代号 / 变换</th>
+          <th style="width:88px">依据</th>
+          <th style="width:70px">置信度</th>
+          <th style="width:92px"></th>
+        </tr>
+      </thead>
+      <tbody id="entBody">
+        <tr><td colspan="6" class="empty-row">还没有内容。左侧粘贴文本后自动识别。</td></tr>
+      </tbody>
+    </table>
+    <div id="riskBox"></div>
+  </div>
+
+  <div class="pane" id="paneRestore">
+    <div class="restore-grid">
+      <section class="card">
+        <div class="card-head"><span class="dot"></span><span class="title">AI 的回复</span>
+          <div class="grow"></div><span style="font-size:11.5px;color:var(--faint)">原样粘贴，含代号</span>
+        </div>
+        <div class="card-body">
+          <textarea id="aiInput" placeholder="把大模型的回答粘贴到这里，点「还原真实名称」。&#10;&#10;即使模型把【企业A】改写成了 企业A 或加了空格，也能识别。"></textarea>
+        </div>
+      </section>
+      <section class="card">
+        <div class="card-head"><span class="dot" style="background:#8fbfae"></span><span class="title">还原记录</span>
+          <span class="cnt" id="restoreCount" style="display:none"></span>
+          <div class="grow"></div>
+          <button class="btn" id="btnCopyRestore">复制全部</button>
+        </div>
+        <div class="card-body">
+          <div class="restore-hint" id="restoreHint"></div>
+          <div class="out" id="restoreLog"><div class="empty" style="color:var(--faint)">还原后的文本会累积在这里。<br>和 AI 聊几轮就点几次，最后一次性复制。</div></div>
+        </div>
+      </section>
+    </div>
+    <div style="margin-top:12px;display:flex;gap:8px;align-items:center">
+      <button class="btn primary" id="btnRestore">还原并加入记录</button>
+      <button class="btn" id="btnClearRestore">清空记录</button>
+      <span style="font-size:11.5px;color:var(--faint)">和 AI 聊多轮时，每轮粘一次、点一次，最后统一复制</span>
+    </div>
+  </div>
+
+  <div class="pane" id="paneVault">
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:14px;padding:11px 13px;
+         background:#f7f9fc;border:1px solid var(--line);border-radius:8px">
+      <b style="font-size:13px">当前项目</b>
+      <span id="vaultProjName" style="font-size:12.5px;color:var(--ink-2)"></span>
+      <span id="vaultProjMeta" style="font-size:12px;color:var(--faint)"></span>
+      <div class="grow"></div>
+      <button class="btn" id="btnRenameProj">重命名</button>
+      <button class="btn" id="btnNewProj2">新建项目</button>
+    </div>
+    <div style="display:flex;gap:8px;margin-bottom:14px;align-items:center;flex-wrap:wrap">
+      <button class="btn" id="btnExport">导出映射</button>
+      <button class="btn" id="btnImport">导入映射</button>
+      <button class="btn" id="btnWipe" style="color:var(--danger)">清空映射</button>
+      <span style="font-size:12px;color:var(--faint);margin-left:4px">换电脑、换浏览器时用导出/导入迁移；清空后已发出的内容无法还原。</span>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:14px;padding:11px 13px;
+         background:#f7f9fc;border:1px solid var(--line);border-radius:8px">
+      <b style="font-size:13px">映射表加密</b>
+      <span id="encState" style="font-size:12.5px;color:var(--muted)">未开启 — 映射表以明文存在浏览器里</span>
+      <div class="grow"></div>
+      <button class="btn" id="btnEncrypt">设置口令</button>
+      <button class="btn" id="btnDecrypt" style="display:none">关闭加密</button>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px;margin:18px 0 8px">
+      <b style="font-size:13px">操作记录</b>
+      <span style="font-size:11.5px;color:var(--faint)">只记时间、项目、字数、实体数，不记内容</span>
+      <div class="grow"></div>
+      <button class="btn ghost" id="btnClearAudit" style="font-size:11.5px;padding:3px 9px">清空</button>
+    </div>
+    <table style="margin-bottom:20px">
+      <thead><tr><th style="width:150px">时间</th><th style="width:180px">项目</th><th style="width:80px">字数</th><th style="width:80px">实体</th></tr></thead>
+      <tbody id="auditBody"><tr><td colspan="4" class="empty-row">还没有记录。</td></tr></tbody>
+    </table>
+
+    <table>
+      <thead><tr><th style="width:96px">类型</th><th style="width:150px">代号</th><th>原文</th></tr></thead>
+      <tbody id="vaultBody">
+        <tr><td colspan="3" class="empty-row">映射库为空。</td></tr>
+      </tbody>
+    </table>
+  </div>
+</main>
+
+<div class="modal" id="projModal">
+  <div class="modal-card" style="max-width:520px">
+    <div class="modal-head">
+      <b>项目</b>
+      <span class="hint">一个项目一套映射，换客户请新建</span>
+      <button class="btn" id="btnProjClose">关闭</button>
+    </div>
+    <div class="modal-body">
+      <div id="projList"></div>
+      <div style="display:flex;gap:8px;margin-top:14px;padding-top:14px;border-top:1px solid var(--line-soft)">
+        <input id="newProjName" placeholder="新项目名称，如：华润万佳-全渠道增长" style="flex:1">
+        <button class="btn primary" id="btnNewProj">新建</button>
+      </div>
+      <p style="font-size:12px;color:var(--faint);line-height:1.7;margin:10px 0 0">
+        换项目时，代号会从 A 重新开始，映射互不影响。导出的映射也只包含当前项目。
+      </p>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="lockModal">
+  <div class="modal-card" style="max-width:430px">
+    <div class="modal-head"><b>映射表已加密</b></div>
+    <div class="modal-body">
+      <p style="margin:0 0 12px;font-size:13px;color:var(--muted);line-height:1.7">
+        输入口令解锁后才能还原内容。口令不会上传，也无法找回——<b style="color:#b45309">忘记就只能重新开始</b>。
+      </p>
+      <input type="password" id="lockPw" placeholder="输入口令" autocomplete="off">
+      <div id="lockMsg" style="color:var(--danger);font-size:12px;min-height:18px;margin-top:6px"></div>
+      <div style="display:flex;gap:8px;margin-top:8px">
+        <button class="btn primary" id="btnUnlock">解锁</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="chunkModal">
+  <div class="modal-card">
+    <div class="modal-head">
+      <b>分段复制</b>
+      <span class="hint" id="chunkHint"></span>
+      <button class="btn" id="btnChunkClose">关闭</button>
+    </div>
+    <div class="modal-body" id="chunkList"></div>
+  </div>
+</div>
+
+<div class="welcome" id="welcome">
+  <div class="welcome-card">
+    <h2>开始之前，三句话</h2>
+    <ul>
+      <li><b>数据不会离开这台电脑。</b>所有计算在浏览器里完成，没有任何网络请求，可以断网使用。</li>
+      <li><b>左边粘原文，右边就是能发给 AI 的版本。</b>金额按同一比例缩放，毛利率、占比、增速保持不变。</li>
+      <li><b>AI 的答案贴回「还原」页，一键换回真实名称。</b>映射表只存在本机浏览器里。</li>
+    </ul>
+    <div class="welcome-actions">
+      <button class="btn primary" id="btnWelcomeDemo">看示例</button>
+      <button class="btn" id="btnWelcomeStart">直接开始</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>/*__ENGINE__*/</script>
+<script>
+const $ = s => document.querySelector(s);
+const $$ = s => [...document.querySelectorAll(s)];
+
+// 引擎没加载成功（浏览器太旧 / 脚本被截断）：给出明确提示，而不是一片死界面
+if (typeof DemaskEngine === 'undefined') {
+  document.body.innerHTML = '<div style="max-width:560px;margin:80px auto;padding:28px 32px;' +
+    'font:15px/1.8 -apple-system,\"PingFang SC\",sans-serif;color:#151a21;background:#fff;' +
+    'border:1px solid #e2e5ea;border-radius:12px">' +
+    '<div style="font-size:17px;font-weight:650;margin-bottom:12px">工具没能启动</div>' +
+    '<p style="margin:0 0 10px;color:#3d4753">当前浏览器版本过低，缺少必要的正则语法支持。</p>' +
+    '<p style="margin:0;color:#7b8593;font-size:13.5px">请用 Chrome 或 Edge（90 以上）打开本文件；' +
+    'Mac 上 Safari 需 16.4 以上。如果是从聊天窗口直接预览的，请先下载到本地再双击打开。</p></div>';
+  throw new Error('DemaskEngine 未加载');
+}
+
+// 沙箱 iframe（如预览面板）里访问 localStorage 会抛 SecurityError，必须探测后再用
+const STORE = (function () {
+  try {
+    const s = window.localStorage;
+    s.setItem('__demask_probe__', '1');
+    s.removeItem('__demask_probe__');
+    return s;
+  } catch (e) { return null; }
+}());
+
+const eng = DemaskEngine.createEngine(STORE);
+const TYPES = DemaskEngine.TYPES;
+
+const state = {
+  opts: Object.assign({}, DemaskEngine.DEFAULT_OPTS, { ai_note: true }),
+  entities: [], masked: '', timer: null, lastInput: ''
+};
+
+/* 放行记录与词库跟项目走：同一个客户的文档反复处理时，不用每次重新点 */
+const PREF_KEY = 'demask.prefs.v1';
+function loadLocalPrefs() {
+  if (!STORE) return;
+  try {
+    const all = JSON.parse(STORE.getItem(PREF_KEY) || '{}');
+    const pid = eng.currentProject().id;
+    const p = all[pid];
+    if (p) {
+      state.opts.exclude = Array.isArray(p.exclude) ? p.exclude : [];
+      if (Array.isArray(p.lexGroups) && p.lexGroups.length) {
+        state.lexOn = new Set(p.lexGroups);
+        state.opts.lex_groups = p.lexGroups;
+      }
+      if (p.dict) {
+        ['ORG', 'PERSON', 'PROJECT'].forEach(k => {
+          (p.dict[k] || []).forEach(w => { try { eng.addWord(k, w, true); } catch (e) {} });
+        });
+      }
+    } else {
+      state.opts.exclude = [];
+    }
+  } catch (e) {}
+}
+function saveLocalPrefs() {
+  if (!STORE) return;
+  try {
+    const all = JSON.parse(STORE.getItem(PREF_KEY) || '{}');
+    all[eng.currentProject().id] = {
+      exclude: state.opts.exclude || [],
+      lexGroups: state.lexOn ? [...state.lexOn] : null,
+      dict: eng.getDict()
+    };
+    STORE.setItem(PREF_KEY, JSON.stringify(all));
+  } catch (e) {}
+}
+
+const BADGE = t => ['ORG', 'PERSON', 'PROJECT', 'MONEY'].indexOf(t) >= 0 ? 'b-' + t.toLowerCase() : 'b-other';
+const TCOLOR = t => (TYPES[t] ? TYPES[t].color : 'sec');
+const TLABEL = t => (TYPES[t] ? TYPES[t].label : t);
+
+function esc(s) {
+  return String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+}
+function toast(msg) {
+  const t = $('#toast'); t.textContent = msg; t.classList.add('show');
+  clearTimeout(t._t); t._t = setTimeout(() => t.classList.remove('show'), 1800);
+}
+
+/* ---------------- 主流程 ---------------- */
+function schedule() { clearTimeout(state.timer); state.timer = setTimeout(runMask, 300); }
+
+function runMask() {
+  const text = $('#input').value;
+  if (!text.trim()) {
+    state.entities = []; state.masked = '';
+    $('#output').className = 'out empty';
+    $('#output').textContent = '处理后的内容会出现在这里，可直接复制给任何 AI 工具。';
+    updateStats(0, 0, 0, [], [], null);
+    renderEntities(); renderRisk([]); renderSuggestions([]); renderPseudo([]); renderReid(null); renderUtility('', null); renderVault();
+    return;
+  }
+  if (text === state.lastInput && state.entities.length) return;
+  state.lastInput = text;
+  let r;
+  try {
+    r = eng.mask(text, state.opts);
+  } catch (err) {
+    state.lastInput = '';
+    $('#output').className = 'out';
+    $('#output').textContent = '处理失败：' + err.message + '\n\n请把这段提示反馈给工具维护者。';
+    console.error(err);
+    return;
+  }
+  state.entities = r.entities; state.masked = r.masked; state.residual = r.residual || [];
+  renderOutput(text, r.entities, r.masked);
+  updateStats(r.stats.chars, r.stats.entities, r.stats.unique, r.residual, r.suggestions, r.reid);
+  renderEntities(); renderRisk(r.residual); renderSuggestions(r.suggestions); renderPseudo(r.pseudo); renderReid(r.reid); renderUtility(r.masked, r.reid);
+  $('#vaultCount').textContent = r.vaultSize;
+  logAudit(r);
+  $('#projName').textContent = eng.currentProject().name;
+  if (eng.saveFailed()) {
+    $('#vaultCount').textContent = r.vaultSize + '（未保存）';
+    $('#vaultCount').style.color = 'var(--danger)';
+    $('#vaultCount').title = '浏览器存储已满，映射只存在于当前页面。请导出映射后清空。';
+  } else {
+    $('#vaultCount').style.color = '';
+    $('#vaultCount').title = '';
+  }
+}
+
+const MAX_MARKS = 3000;
+
+function renderOutput(src, ents, masked) {
+  const el = $('#output');
+  el.className = 'out';
+  if (!ents.length) { el.textContent = masked; return; }
+  if (ents.length > MAX_MARKS) {
+    // 超长文档关掉高亮（几万个 DOM 节点会卡死），但必须显示脱敏后的文本
+    el.textContent = masked;
+    el.dataset.plain = '1';
+    return;
+  }
+  el.dataset.plain = '';
+  const sorted = [...ents].sort((a, b) => a.start - b.start);
+  let html = '', last = 0;
+  for (const e of sorted) {
+    if (e.start < last) continue;
+    html += esc(src.slice(last, e.start));
+    html += `<mark class="t-${TCOLOR(e.type)}" title="${TLABEL(e.type)}${e.note ? ' · ' + esc(e.note) : ''}">${esc(e.shown)}</mark>`;
+    last = e.end;
+  }
+  html += esc(src.slice(last));
+  el.innerHTML = html;
+}
+
+function updateStats(chars, ent, uniq, residual, sug, reid) {
+  $('#cChars').textContent = chars.toLocaleString();
+  $('#cEnt').textContent = ent;
+  $('#cUniq').textContent = uniq;
+  $('#tabEntCnt').textContent = ent;
+  const rs = $('#riskStat');
+  const nSug = (sug && sug.length) || 0;
+  if (residual && residual.length) {
+    rs.style.color = 'var(--warn)';
+    rs.textContent = residual.length + ' 处待复核' + (nSug ? ' · ' + nSug + ' 个简称待确认' : '');
+  } else if (nSug) {
+    rs.style.color = 'var(--warn)';
+    rs.textContent = nSug + ' 个简称待确认';
+  } else if (reid && reid.level === 'high') {
+    rs.style.color = 'var(--warn)';
+    rs.textContent = '名字已脱 · 描述仍可反推';
+  } else {
+    rs.style.color = 'var(--ok)';
+    rs.textContent = chars ? '安全检查通过' : '待处理';
+  }
+  $('#modeLabel').textContent = { scale: '等比缩放', bucket: '区间化', hash: '等长乱数', keep: '原样保留' }[state.opts.num_mode];
+}
+
+function renderEntities() {
+  const tb = $('#entBody');
+  if (!state.entities.length) {
+    tb.innerHTML = '<tr><td colspan="6" class="empty-row">还没有内容。左侧粘贴文本后自动识别。</td></tr>';
+    return;
+  }
+  const seen = new Map();
+  for (const e of state.entities) {
+    const k = e.type + ':' + e.text;
+    if (!seen.has(k)) seen.set(k, Object.assign({}, e, { count: 1 }));
+    else seen.get(k).count++;
+  }
+  tb.innerHTML = [...seen.entries()].map(([k, e]) => {
+    const excluded = state.opts.exclude.indexOf(k) >= 0;
+    const shown = e.type === 'MONEY' && e.shown !== e.text
+      ? `<span style="color:var(--faint)">${esc(e.text)}</span> → ${esc(e.shown)}`
+      : esc(e.shown);
+    return `<tr>
+      <td><span class="badge ${BADGE(e.type)}">${TLABEL(e.type)}</span></td>
+      <td class="mono">${esc(e.text)}${e.count > 1 ? ` <span class="conf">×${e.count}</span>` : ''}</td>
+      <td class="mono" style="color:var(--muted)">${shown}</td>
+      <td class="conf">${esc(e.note || '—')}</td>
+      <td class="conf">${e.conf.toFixed(2)}</td>
+      <td><button class="mini" data-ex="${esc(k)}">${excluded ? '已放行' : '放行'}</button></td>
+    </tr>`;
+  }).join('');
+
+  tb.querySelectorAll('[data-ex]').forEach(b => {
+    b.onclick = () => {
+      const k = b.dataset.ex;
+      const i = state.opts.exclude.indexOf(k);
+      if (i >= 0) state.opts.exclude.splice(i, 1); else state.opts.exclude.push(k);
+      saveLocalPrefs();
+      state.lastInput = ''; runMask();
+    };
+  });
+}
+
+function renderSuggestions(list) {
+  const box = $('#sugBox');
+  if (!list || !list.length) { box.classList.remove('on'); box.innerHTML = ''; return; }
+  box.classList.add('on');
+  box.innerHTML = '<b>检测到可能的简称</b><span style="color:var(--muted)">点一下即一并脱敏：</span>' +
+    list.map(x => `<span class="chip" data-alias="${esc(x.alias)}" title="全称：${esc(x.full)}">${esc(x.alias)} <span style="opacity:.55">×${x.count}</span></span>`).join('');
+  box.querySelectorAll('[data-alias]').forEach(el => {
+    el.onclick = () => {
+      eng.addWord('ORG', el.dataset.alias);
+      renderDict(); state.lastInput = ''; runMask();
+      toast('已加入词库：' + el.dataset.alias);
+    };
+  });
+}
+
+function renderUtility(masked, reid) {
+  const nums = (masked.match(/\d[\d,.]*/g) || []).length;
+  const pcts = (masked.match(/\d+(?:\.\d+)?\s*[%％]/g) || []).length;
+  const el = $('#utilStat');
+  if (!el) return;
+  if (!nums) { el.textContent = ''; return; }
+  el.textContent = '保留 ' + nums + ' 个数字' + (pcts ? '、' + pcts + ' 个比率' : '') + '，AI 仍可测算';
+}
+
+function renderReid(reid) {
+  const box = $('#reidBox');
+  if (!reid || !reid.dims || !reid.dims.length || reid.level === 'low') {
+    box.className = 'reid';
+    box.innerHTML = '';
+    return;
+  }
+  box.className = 'reid on ' + reid.level;
+  const title = reid.level === 'high'
+    ? '<b>还能反推出来</b>：名字脱了，但描述还在'
+    : '<b>留意这几处描述</b>';
+  const dims = reid.dims.map(d =>
+    `<span class="d"><i>${esc(d.label)}</i>${d.items.map(esc).join('、')}</span>`).join('');
+  box.innerHTML = `<span class="x" title="收起">×</span>${title}
+    <div style="margin-top:4px;opacity:.85">${esc(reid.note)}</div>
+    <div class="dims">${dims}</div>`;
+  box.querySelector('.x').onclick = () => { box.className = 'reid'; };
+}
+
+function renderPseudo(list) {
+  const box = $('#pseudoBox');
+  if (!list || !list.length) { box.classList.remove('on'); box.innerHTML = ''; return; }
+  box.classList.add('on');
+  const hits = list.slice(0, 12).map(x => `<span class="hit">${esc(x.text)}</span>`).join('');
+  const tip = list[0].tip || '';
+  box.innerHTML = `<b>检测到 ${list.length} 处行业代称</b>，没有脱敏，但值得再看一眼：<br>${hits}
+    <div class="tip">${esc(tip)}</div>`;
+}
+
+function renderRisk(residual) {
+  const box = $('#riskBox');
+  if (!residual || !residual.length) { box.innerHTML = ''; return; }
+  const items = [...new Set(residual.map(r => r.msg))];
+  box.innerHTML = `<div class="warnbox">
+    <svg width="15" height="15" viewBox="0 0 16 16" fill="none" style="flex:none;margin-top:2px">
+      <path d="M8 5v4M8 11.2v.2" stroke="#b45309" stroke-width="1.7" stroke-linecap="round"/>
+      <path d="M6.9 2.3L1.4 12a1.2 1.2 0 001 1.8h11.2a1.2 1.2 0 001-1.8L9.1 2.3a1.2 1.2 0 00-2.2 0z" stroke="#b45309" stroke-width="1.4"/>
+    </svg>
+    <div><b>还有 ${residual.length} 处需要复核：</b>${items.map(esc).join('；')}。可加入自定义词库后再处理一次。</div>
+  </div>`;
+}
+
+function renderVault() {
+  const cp = eng.currentProject();
+  if ($('#vaultProjName')) {
+    $('#vaultProjName').textContent = cp.name;
+    $('#vaultProjMeta').textContent = '· ' + eng.vaultSize() + ' 条映射';
+  }
+  const items = eng.listVault();
+  $('#vaultCount').textContent = items.length;
+  const tb = $('#vaultBody');
+  if (!items.length) {
+    tb.innerHTML = '<tr><td colspan="3" class="empty-row">映射库为空。</td></tr>';
+    return;
+  }
+  tb.innerHTML = items.map(v => `<tr>
+    <td><span class="badge ${BADGE(v.type)}">${TLABEL(v.type)}</span></td>
+    <td class="mono">${esc(v.token)}</td>
+    <td class="mono">${esc(v.orig)}</td>
+  </tr>`).join('');
+}
+
+/* ---------------- 设置 ---------------- */
+$$('#scopeChips .chip').forEach(c => {
+  c.onclick = () => {
+    c.classList.toggle('on');
+    state.opts[c.dataset.k] = c.classList.contains('on');
+    state.lastInput = ''; runMask(); syncHint();
+  };
+});
+$('#numMode').onchange = e => {
+  state.opts.num_mode = e.target.value;
+  $('#factorWrap').style.display = e.target.value === 'scale' ? '' : 'none';
+  state.lastInput = ''; runMask(); syncHint();
+};
+$('#numFactor').oninput = e => {
+  state.opts.num_factor = parseFloat(e.target.value);
+  $('#factorVal').textContent = '×' + state.opts.num_factor.toFixed(2);
+  state.lastInput = '';
+  clearTimeout(state.timer); state.timer = setTimeout(runMask, 200);
+};
+$('#tokenStyle').onchange = e => { state.opts.token_style = e.target.value; state.lastInput = ''; runMask(); };
+
+function syncHint() {
+  const parts = [];
+  if (state.opts.mask_org) parts.push('企业名');
+  if (state.opts.mask_person) parts.push('人名');
+  if (state.opts.mask_project) parts.push('项目代号');
+  if (state.opts.mask_money) parts.push('金额/财务');
+  if (state.opts.mask_contact) parts.push('联系方式');
+  if (state.opts.mask_equity) parts.push('股权比例');
+  if (state.opts.mask_pct) parts.push('其他比率');
+  const nm = { scale: `等比缩放 ${state.opts.num_factor.toFixed(2)}`, bucket: '区间化', hash: '等长乱数', keep: '金额原样' }[state.opts.num_mode];
+  const lexN = state.lexOn ? state.lexOn.size : 0;
+  $('#settingsHint').textContent = (parts.join('、') || '未选择') + ' · ' + nm + ' · 词库 ' + lexN + '/' + lexKeys.length
+    + (state.opts.token_style === 'mask' ? ' · 掩码模式（不可还原）' : '');
+}
+$('#settingsHead').onclick = () => $('#settings').classList.toggle('open');
+
+/* ---------------- 操作记录（只记元数据） ---------------- */
+const AUDIT_KEY = 'demask.audit.v1';
+
+function logAudit(r) {
+  if (!STORE) return;
+  try {
+    const arr = JSON.parse(STORE.getItem(AUDIT_KEY) || '[]');
+    const last = arr[0];
+    // 连续编辑同一份内容时不要刷屏：同项目 + 同字数，30 秒内只记一次
+    if (last && last.p === eng.currentProject().name && last.c === r.stats.chars &&
+        Date.now() - new Date(last.t).getTime() < 30000) return;
+    arr.unshift({
+      t: new Date().toISOString(),
+      p: eng.currentProject().name,
+      c: r.stats.chars,
+      e: r.stats.entities
+    });
+    STORE.setItem(AUDIT_KEY, JSON.stringify(arr.slice(0, 200)));
+  } catch (e) {}
+}
+
+function renderAudit() {
+  const tb = $('#auditBody');
+  if (!tb) return;
+  let arr = [];
+  if (STORE) { try { arr = JSON.parse(STORE.getItem(AUDIT_KEY) || '[]'); } catch (e) {} }
+  if (!arr.length) {
+    tb.innerHTML = '<tr><td colspan="4" class="empty-row">还没有记录。</td></tr>';
+    return;
+  }
+  tb.innerHTML = arr.slice(0, 20).map(a => {
+    const d = new Date(a.t);
+    const ts = d.toLocaleString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
+    return `<tr><td class="mono" style="color:var(--muted)">${ts}</td>
+      <td>${esc(a.p)}</td><td class="mono">${a.c}</td><td class="mono">${a.e}</td></tr>`;
+  }).join('');
+}
+
+$('#btnClearAudit').onclick = () => {
+  if (!confirm('清空操作记录？')) return;
+  if (STORE) { try { STORE.removeItem(AUDIT_KEY); } catch (e) {} }
+  renderAudit();
+  toast('已清空');
+};
+
+/* ---------------- 自定义规则 ---------------- */
+const RTYPE = { PROJECT: '项目', ORG: '企业', PERSON: '人名', CONTRACT: '编号', MONEY: '金额' };
+
+function renderRules() {
+  const list = eng.listRules();
+  const box = $('#ruleList');
+  if (!list.length) {
+    box.innerHTML = '<div class="empty">还没有规则。适合处理内部项目号、工号、合同号这类固定格式。</div>';
+    return;
+  }
+  box.innerHTML = list.map(r => `
+    <div class="r">
+      <b>${esc(r.name)}</b>
+      <code>${esc(r.pattern)}</code>
+      <span class="tagx">${RTYPE[r.type] || r.type}</span>
+      <span class="del" data-rid="${r.id}" title="删除">×</span>
+    </div>`).join('');
+  box.querySelectorAll('[data-rid]').forEach(el => {
+    el.onclick = () => {
+      eng.removeRule(el.dataset.rid);
+      renderRules(); state.lastInput = ''; runMask();
+      toast('已删除规则');
+    };
+  });
+}
+
+$('#btnAddRule').onclick = () => {
+  const name = $('#ruleName').value.trim();
+  const pat = $('#rulePat').value.trim();
+  if (!pat) return toast('请填写正则');
+  try {
+    eng.addRule(name || '自定义', pat, $('#ruleType').value, 'g');
+    $('#ruleName').value = ''; $('#rulePat').value = '';
+    renderRules(); state.lastInput = ''; runMask();
+    toast('已添加规则');
+  } catch (e) { toast(e.message); }
+};
+$('#rulePat').addEventListener('keydown', e => { if (e.key === 'Enter') $('#btnAddRule').click(); });
+
+/* ---------------- 内置行业词库 ---------------- */
+const LEXG = (DemaskEngine.LEX && DemaskEngine.LEX.GROUPS) || {};
+const lexKeys = Object.keys(LEXG);
+state.lexOn = new Set(lexKeys);
+
+function renderLexChips() {
+  const box = $('#lexChips');
+  let total = 0;
+  box.innerHTML = lexKeys.map(k => {
+    total += LEXG[k].orgs.length;
+    return `<div class="chip ${state.lexOn.has(k) ? 'on' : ''}" data-lex="${k}">
+      <span class="box"></span>${LEXG[k].label}<span style="opacity:.5;font-size:11px;margin-left:2px">${LEXG[k].orgs.length}</span></div>`;
+  }).join('');
+  $('#lexCount').textContent = `· 共 ${total} 个企业简称`;
+  box.querySelectorAll('[data-lex]').forEach(c => {
+    c.onclick = () => {
+      const k = c.dataset.lex;
+      if (state.lexOn.has(k)) state.lexOn.delete(k); else state.lexOn.add(k);
+      c.classList.toggle('on');
+      state.opts.lex_groups = [...state.lexOn];
+      saveLocalPrefs();
+      state.lastInput = ''; runMask();
+    };
+  });
+}
+
+/* ---------------- 词库 ---------------- */
+function renderDict() {
+  const el = $('#dictList');
+  const d = eng.getDict();
+  const all = [];
+  for (const k in d) for (const w of d[k]) all.push([k, w]);
+  if (!all.length) {
+    el.innerHTML = '<span style="font-size:12px;color:var(--faint)">还没有自定义词。加上客户简称、内部代号，识别率会明显提升。</span>';
+    return;
+  }
+  el.innerHTML = all.map(([k, w]) => `<span class="dict-item">${esc(w)}<button data-t="${k}" data-w="${esc(w)}">×</button></span>`).join('');
+  el.querySelectorAll('button').forEach(b => {
+    b.onclick = () => { eng.removeWord(b.dataset.t, b.dataset.w); renderDict(); state.lastInput = ''; runMask(); };
+  });
+}
+$('#dictInput').onkeydown = e => {
+  if (e.key !== 'Enter') return;
+  const w = e.target.value.trim();
+  if (!w) return;
+  eng.addWord($('#dictType').value, w);
+  e.target.value = ''; renderDict(); state.lastInput = ''; runMask();
+};
+
+/* ---------------- 工具栏 ---------------- */
+$('#input').addEventListener('input', () => {
+  schedule();
+  if (STORE) { try { STORE.setItem('demask.draft', $('#input').value); } catch (err) {} }
+});
+$('#input').addEventListener('keydown', e => {
+  if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') { e.preventDefault(); state.lastInput = ''; runMask(); }
+});
+const AI_NOTE = '（说明：下文中的【企业A】【人物A】【标的A】等是脱敏占位符，请按原样保留、不要改写或猜测其真实身份；金额已按同一比例缩放，比率与趋势保持不变。）\n\n';
+
+function withNote(text) {
+  return state.opts.ai_note === false ? text : AI_NOTE + text;
+}
+
+$('#btnCopy').onclick = async () => {
+  if (!state.masked) return toast('还没有可复制的内容');
+  const risk = state.residual || [];
+  if (risk.length) {
+    const list = risk.slice(0, 5).map(r => '· ' + r.msg + '：' + r.text).join('\n');
+    const more = risk.length > 5 ? '\n…还有 ' + (risk.length - 5) + ' 处' : '';
+    if (!confirm('还有 ' + risk.length + ' 处可能没处理：\n\n' + list + more +
+      '\n\n确认这些可以发给 AI 吗？')) return;
+  }
+  try {
+    await navigator.clipboard.writeText(withNote(state.masked));
+    toast('已复制（含占位符说明），可以粘贴给 AI 了');
+  }
+  catch (e) { toast('复制失败，请手动选中'); }
+};
+$('#btnExportFile').onclick = async () => {
+  if (!state.srcFile) return toast('请先上传 docx / xlsx / pptx');
+  const btn = $('#btnExportFile');
+  const old = btn.textContent;
+  btn.disabled = true; btn.textContent = '处理中…';
+  try {
+    const r = await DemaskEngine.maskOfficeFile(state.srcFile.name, state.srcFile.buffer, eng);
+    const ext = state.srcFile.name.split('.').pop();
+    const base = state.srcFile.name.replace(/\.[^.]+$/, '');
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(r.blob);
+    a.download = base + '-脱敏.' + ext;
+    a.click(); URL.revokeObjectURL(a.href);
+
+    const st = r.stats;
+    let msg = '已导出：' + st.entities + ' 处实体、' + (st.cells || 0) + ' 个表格数字';
+    if (st.formulas) msg += '；' + st.formulas + ' 个公式单元格未处理，Excel 打开会重算回真实值';
+    toast(msg);
+  } catch (e) {
+    toast('导出失败：' + e.message);
+  } finally {
+    btn.disabled = false; btn.textContent = old;
+  }
+};
+
+$('#btnDownload').onclick = () => {
+  if (!state.masked) return toast('还没有可导出的内容');
+  const risk = state.residual || [];
+  if (risk.length && !confirm('还有 ' + risk.length + ' 处可能没处理，仍要导出吗？')) return;
+  const blob = new Blob([withNote(state.masked)], { type: 'text/plain;charset=utf-8' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = '脱敏稿-' + new Date().toISOString().slice(0, 10) + '.txt';
+  a.click(); URL.revokeObjectURL(a.href);
+  toast('已导出');
+};
+$('#btnClear').onclick = () => { $('#input').value = ''; state.lastInput = ''; runMask(); };
+$('#btnSample').onclick = () => { $('#input').value = SAMPLE; state.lastInput = ''; runMask(); };
+
+/* ---------------- 整理断行（PDF 复制过来的文本） ---------------- */
+$('#btnTidy').onclick = () => {
+  const src = $('#input').value;
+  if (!src.trim()) return toast('没有内容');
+  const lines = src.split('\n');
+  const out = [];
+  let merged = 0;
+  for (const raw of lines) {
+    const t = raw.trim();
+    if (!t) { out.push(''); continue; }
+    const prev = out.length ? out[out.length - 1] : '';
+    const prevEndsMidSentence = prev && !/[。！？；：""）】》\d%]$/.test(prev) && /[\u4e00-\u9fa5A-Za-z]$/.test(prev);
+    const curStartsCJK = /^[\u4e00-\u9fa5A-Za-z]/.test(t);
+    if (prevEndsMidSentence && curStartsCJK) { out[out.length - 1] = prev + t; merged++; }
+    else out.push(t);
+  }
+  $('#input').value = out.join('\n');
+  state.lastInput = ''; runMask();
+  toast(merged ? ('已合并 ' + merged + ' 处断行，请检查表格是否受影响') : '没有发现需要合并的断行');
+};
+
+/* ---------------- 映射表加密 ---------------- */
+function refreshEncState() {
+  const el = $('#encState');
+  const on = eng.isEncrypted();
+  el.textContent = on
+    ? '已开启 — 映射表以密文保存，需口令才能还原'
+    : '未开启 — 映射表以明文存在浏览器里';
+  el.style.color = on ? 'var(--ok)' : 'var(--muted)';
+  $('#btnEncrypt').style.display = on ? 'none' : '';
+  $('#btnDecrypt').style.display = on ? '' : 'none';
+}
+
+$('#btnEncrypt').onclick = async () => {
+  if (!eng.cryptoAvailable()) return toast('当前环境不支持加密接口');
+  const p1 = prompt('设置一个口令（至少 6 位）。\n口令不会上传，忘记就无法找回，请自己记牢。');
+  if (p1 === null) return;
+  if (!p1 || p1.length < 6) return toast('口令至少 6 位');
+  const p2 = prompt('再输一次确认');
+  if (p2 !== p1) return toast('两次输入不一致');
+  try {
+    await eng.enableEncryption(p1);
+    refreshEncState();
+    toast('已加密。下次打开需要输入口令。');
+  } catch (e) { toast('加密失败：' + e.message); }
+};
+
+$('#btnDecrypt').onclick = async () => {
+  if (!confirm('关闭加密后，映射表会以明文保存。确定？')) return;
+  try {
+    await eng.disableEncryption();
+    refreshEncState();
+    toast('已关闭加密');
+  } catch (e) { toast(e.message); }
+};
+
+/* ---------------- 解锁 ---------------- */
+async function doUnlock() {
+  const pw = $('#lockPw').value;
+  if (!pw) return;
+  $('#lockMsg').textContent = '';
+  const btn = $('#btnUnlock');
+  btn.disabled = true; btn.textContent = '解锁中…';
+  try {
+    await eng.unlock(pw);
+    $('#lockModal').classList.remove('on');
+    refreshEncState(); renderDict(); renderLexChips(); renderVault();
+    state.lastInput = ''; runMask();
+    toast('已解锁');
+  } catch (e) {
+    $('#lockMsg').textContent = e.message;
+  } finally {
+    btn.disabled = false; btn.textContent = '解锁';
+  }
+}
+$('#btnUnlock').onclick = doUnlock;
+$('#lockPw').addEventListener('keydown', e => { if (e.key === 'Enter') doUnlock(); });
+
+/* ---------------- 分段复制 ---------------- */
+const CHUNK_LIMIT = 6000;
+
+function splitChunks(text, limit) {
+  const paras = text.split(/\n{2,}/);
+  const chunks = [];
+  let cur = '';
+  const push = () => { if (cur.trim()) chunks.push(cur); cur = ''; };
+  for (const p of paras) {
+    if (p.length > limit) {
+      push();
+      // 超长段落按换行再切
+      let buf = '';
+      for (const line of p.split('\n')) {
+        if (buf && buf.length + line.length + 1 > limit) { chunks.push(buf); buf = ''; }
+        buf = buf ? buf + '\n' + line : line;
+      }
+      if (buf) chunks.push(buf);
+      continue;
+    }
+    if (cur && cur.length + p.length + 2 > limit) push();
+    cur = cur ? cur + '\n\n' + p : p;
+  }
+  push();
+  return chunks;
+}
+
+$('#btnChunk').onclick = () => {
+  if (!state.masked) return toast('还没有可分段的内容');
+  const chunks = splitChunks(state.masked, CHUNK_LIMIT);
+  $('#chunkHint').textContent = `共 ${state.masked.length.toLocaleString()} 字，切成 ${chunks.length} 段（每段 ≤ ${CHUNK_LIMIT} 字）`;
+  $('#chunkList').innerHTML = chunks.map((c, i) => `
+    <div class="chunk">
+      <div class="chunk-head">
+        <b>第 ${i + 1} 段</b><span>${c.length.toLocaleString()} 字</span>
+        <button class="btn" data-i="${i}">复制本段</button>
+      </div>
+      <div class="chunk-text">${esc(c.slice(0, 120))}${c.length > 120 ? ' …' : ''}</div>
+    </div>`).join('');
+  $('#chunkList').querySelectorAll('[data-i]').forEach(b => {
+    b.onclick = async () => {
+      try {
+        const i = +b.dataset.i;
+        await navigator.clipboard.writeText(i === 0 ? withNote(chunks[0]) : chunks[i]);
+        toast('已复制第 ' + (i + 1) + ' 段');
+      }
+      catch (e) { toast('复制失败，请手动选中'); }
+    };
+  });
+  $('#chunkModal').classList.add('on');
+};
+$('#btnChunkClose').onclick = () => $('#chunkModal').classList.remove('on');
+$('#chunkModal').onclick = e => { if (e.target.id === 'chunkModal') $('#chunkModal').classList.remove('on'); };
+
+/* ---------------- 文件解析 ---------------- */
+const extractText = DemaskEngine.extractText;
+
+async function readFile(file) {
+  if (file.size > 40 * 1024 * 1024) return toast('文件超过 40MB，建议拆分后处理');
+  toast('正在读取 ' + file.name);
+  try {
+    const buf = await file.arrayBuffer();
+    const txt = await extractText(file.name, buf);
+    if (txt === null) return toast('暂不支持该格式，请复制粘贴正文');
+    // 记住原文件，脱敏后可以导出"保持原格式"的版本
+    if (/\.(docx|xlsx|pptx)$/i.test(file.name)) {
+      state.srcFile = { name: file.name, buffer: buf };
+      $('#btnExportFile').style.display = '';
+      $('#btnExportFile').textContent = '导出脱敏版 ' + file.name.split('.').pop().toUpperCase();
+    }
+    $('#input').value = txt;
+    state.lastInput = ''; runMask();
+    // PDF 转出来的文本经常在句中硬断行，公司名会被切碎
+    const broken = detectBrokenLines(txt);
+    if (broken > 3) {
+      toast(`检测到 ${broken} 处疑似断行，建议先点「整理断行」`);
+      $('#btnTidy').classList.add('attn');
+      setTimeout(() => $('#btnTidy').classList.remove('attn'), 6000);
+    } else {
+      toast('已导入 ' + file.name);
+    }
+  } catch (e) {
+    toast('读取失败：' + e.message);
+  }
+}
+$('#btnUpload').onclick = () => {
+  const f = document.createElement('input');
+  f.type = 'file';
+  f.multiple = true;
+  f.accept = '.docx,.xlsx,.pptx,.txt,.md,.csv';
+  f.onchange = () => {
+    if (!f.files.length) return;
+    if (f.files.length > 1) batchProcess([...f.files]);
+    else readFile(f.files[0]);
+  };
+  f.click();
+};
+// 粗略判断"是不是被 PDF 断行了"：行尾没标点、下一行接着中文
+function detectBrokenLines(txt) {
+  const lines = txt.split('\n');
+  let n = 0;
+  for (let i = 0; i < lines.length - 1; i++) {
+    const a = lines[i].trim(), b = lines[i + 1].trim();
+    if (!a || !b) continue;
+    if (/[。！？；：，、）】》%\d]$/.test(a)) continue;
+    if (!/[\u4e00-\u9fa5A-Za-z]$/.test(a)) continue;
+    if (!/^[\u4e00-\u9fa5A-Za-z]/.test(b)) continue;
+    if (a.length > 45) continue;
+    n++;
+  }
+  return n;
+}
+
+/* ---------------- 批量处理：一次拖入多份，打包下载 ---------------- */
+async function batchProcess(files) {
+  if (files.length > 20) return toast('一次最多 20 个文件');
+  const bar = $('#batchBar');
+  bar.classList.add('on');
+  const total = files.length;
+  const out = [];
+  const log = [];
+  let ent = 0, cells = 0;
+
+  for (let i = 0; i < files.length; i++) {
+    const f = files[i];
+    bar.querySelector('.txt').textContent = `正在处理 ${i + 1}/${total}：${f.name}`;
+    bar.querySelector('.fill').style.width = Math.round((i / total) * 100) + '%';
+    await new Promise(r => setTimeout(r, 0));   // 让界面刷新
+
+    try {
+      const buf = await f.arrayBuffer();
+      const base = f.name.replace(/\.[^.]+$/, '');
+      const ext = (f.name.split('.').pop() || '').toLowerCase();
+
+      if (['docx', 'xlsx', 'pptx'].indexOf(ext) >= 0) {
+        const r = await DemaskEngine.maskOfficeFile(f.name, buf, eng);
+        const ab = await r.blob.arrayBuffer();
+        out.push({ name: base + '-脱敏.' + ext, data: new Uint8Array(ab) });
+        ent += r.stats.entities || 0;
+        cells += r.stats.cells || 0;
+      } else {
+        const txt = await extractText(f.name, buf);
+        if (txt === null) { log.push(f.name + '：格式不支持，已跳过'); continue; }
+        const m = eng.mask(txt);
+        out.push({ name: base + '-脱敏.txt', data: new TextEncoder().encode(withNote(m.masked)) });
+        ent += m.entities.length;
+      }
+    } catch (e) {
+      log.push(f.name + '：' + e.message);
+    }
+  }
+
+  bar.querySelector('.fill').style.width = '100%';
+  bar.querySelector('.txt').textContent = `完成：${out.length}/${total} 个文件，共 ${ent} 处实体`;
+  setTimeout(() => bar.classList.remove('on'), 3000);
+
+  if (!out.length) return toast('没有成功处理的文件');
+
+  const zip = await DemaskEngine.writeZip(out);
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(zip);
+  a.download = '脱敏结果-' + new Date().toISOString().slice(0, 10) + '.zip';
+  a.click(); URL.revokeObjectURL(a.href);
+
+  toast(`已打包 ${out.length} 个文件（${ent} 处实体${cells ? '，' + cells + ' 个表格数字' : ''}）`);
+  if (log.length) console.warn('批量处理跳过：', log);
+}
+
+const dropEl = $('#drop');
+['dragenter', 'dragover'].forEach(ev => document.addEventListener(ev, e => {
+  if (e.dataTransfer && [...e.dataTransfer.types].indexOf('Files') >= 0) { e.preventDefault(); dropEl.classList.add('on'); }
+}));
+document.addEventListener('dragleave', e => {
+  if (e.target === document.documentElement) dropEl.classList.remove('on');
+});
+document.addEventListener('drop', e => {
+  e.preventDefault(); dropEl.classList.remove('on');
+  const fs = e.dataTransfer && e.dataTransfer.files;
+  if (!fs || !fs.length) return;
+  if (fs.length > 1) batchProcess([...fs]); else readFile(fs[0]);
+  if (f) readFile(f);
+});
+
+/* ---------------- 标签页 ---------------- */
+$$('.tab').forEach(t => {
+  t.onclick = () => {
+    $$('.tab').forEach(x => x.classList.remove('active'));
+    $$('.pane').forEach(x => x.classList.remove('active'));
+    t.classList.add('active');
+    $('#' + t.dataset.pane).classList.add('active');
+    if (t.dataset.pane === 'paneVault') { renderVault(); renderAudit(); }
+  };
+});
+
+/* ---------------- 还原 ---------------- */
+const TOK_LEFT = /[【\[［〔]\s*[\u4e00-\u9fa5]{1,4}\s*[A-Z]{1,2}\d?\s*[】\]］〕]/g;
+state.restoreLog = [];
+
+function renderRestoreLog() {
+  const box = $('#restoreLog');
+  const n = state.restoreLog.length;
+  $('#restoreCount').style.display = n ? '' : 'none';
+  $('#restoreCount').textContent = n + ' 轮';
+  if (!n) {
+    box.innerHTML = '<div class="empty" style="color:var(--faint)">还原后的文本会累积在这里。<br>和 AI 聊几轮就点几次，最后一次性复制。</div>';
+    return;
+  }
+  box.innerHTML = state.restoreLog.map((r, i) => `
+    <div class="rlog">
+      <div class="rlog-head">
+        <b>第 ${i + 1} 轮</b><span>${r.len} 字</span>
+        <button class="btn" data-cp="${i}">复制本轮</button>
+      </div>
+      <div class="rlog-body">${r.html}</div>
+    </div>`).join('');
+  box.querySelectorAll('[data-cp]').forEach(b => {
+    b.onclick = async () => {
+      try {
+        await navigator.clipboard.writeText(state.restoreLog[+b.dataset.cp].plain);
+        toast('已复制第 ' + (+b.dataset.cp + 1) + ' 轮');
+      } catch (e) { toast('复制失败，请手动选中'); }
+    };
+  });
+  box.scrollTop = box.scrollHeight;
+}
+
+$('#btnRestore').onclick = () => {
+  const t = $('#aiInput').value;
+  if (!t.trim()) return toast('请先粘贴 AI 的回复');
+  if (state.opts.token_style === 'mask') {
+    return toast('当前是掩码模式，无法还原——切回代号模式再试');
+  }
+  const html = eng.restore(t, { mark: true });
+  const plain = eng.restore(t);
+  state.restoreLog.push({ html: html, plain: plain, len: plain.length });
+  renderRestoreLog();
+  $('#aiInput').value = '';
+  const out = plain;
+
+  // 还有代号没还原 → 多半是这段内容属于别的项目
+  const left = (out.match(TOK_LEFT) || []);
+  const hint = $('#restoreHint');
+  if (!left.length) { hint.classList.remove('on'); hint.innerHTML = ''; toast('已还原真实名称'); return; }
+
+  const others = eng.projectsCanRestore(t).filter(p => !p.current);
+  const uniq = [...new Set(left)].slice(0, 6).join(' ');
+  hint.classList.add('on');
+  if (others.length) {
+    hint.innerHTML = '<b>有 ' + left.length + ' 个代号没还原</b>：' + uniq +
+      '<br>这段内容看起来属于项目「<b>' + esc(others[0].name) + '</b>」' +
+      '（能还原 ' + others[0].hit + ' 个）。' +
+      '<span class="lk" data-sw="' + others[0].id + '">切过去并重新还原</span>';
+    hint.querySelector('[data-sw]').onclick = () => {
+      eng.switchProject(others[0].id);
+      renderProjects(); afterProjectChange();
+      $('#btnRestore').click();
+      toast('已切换到「' + others[0].name + '」');
+    };
+  } else {
+    hint.innerHTML = '<b>有 ' + left.length + ' 个代号没还原</b>：' + uniq +
+      '<br>这些代号不属于当前项目。可能来自别的项目，或映射表被清空了。';
+  }
+};
+$('#btnClearRestore').onclick = () => {
+  if (!state.restoreLog.length) return;
+  if (!confirm('清空 ' + state.restoreLog.length + ' 轮还原记录？')) return;
+  state.restoreLog = [];
+  $('#restoreHint').classList.remove('on');
+  $('#aiInput').value = '';
+  renderRestoreLog();
+};
+$('#btnCopyRestore').onclick = async () => {
+  if (!state.restoreLog.length) return toast('还没有还原结果');
+  const all = state.restoreLog.map(r => r.plain).join('\n\n');
+  try { await navigator.clipboard.writeText(all); toast('已复制 ' + state.restoreLog.length + ' 轮内容'); }
+  catch (e) { toast('复制失败，请手动选中'); }
+};
+
+/* ---------------- 映射库 ---------------- */
+$('#btnExport').onclick = () => {
+  const blob = new Blob([eng.exportVault()], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = '脱敏映射-' + new Date().toISOString().slice(0, 10) + '.json';
+  a.click(); URL.revokeObjectURL(a.href);
+  toast('已导出映射文件，请妥善保管');
+};
+$('#btnImport').onclick = () => {
+  const f = document.createElement('input');
+  f.type = 'file'; f.accept = '.json';
+  f.onchange = () => {
+    const file = f.files[0];
+    if (!file) return;
+    const rd = new FileReader();
+    rd.onload = () => {
+      try {
+        eng.importVault(rd.result);
+        renderVault(); renderDict(); state.lastInput = ''; runMask();
+        toast('映射已导入');
+      } catch (e) { toast('导入失败：' + e.message); }
+    };
+    rd.readAsText(file);
+  };
+  f.click();
+};
+$('#btnWipe').onclick = () => {
+  if (!confirm('清空映射后，之前发给 AI 的内容将无法还原。确定？')) return;
+  eng.reset(); renderVault(); renderEntities(); state.lastInput = ''; runMask();
+  toast('映射已清空');
+};
+/* ---------------- 项目管理 ---------------- */
+function renderProjects() {
+  const list = eng.listProjects();
+  const cur = eng.currentProject();
+  $('#projName').textContent = cur.name;
+  $('#projList').innerHTML = list.map(p => `
+    <div class="proj-item ${p.current ? 'on' : ''}" data-pid="${p.id}">
+      ${p.current ? '<span class="tick">✓</span>' : '<span style="width:12px"></span>'}
+      <span class="nm" style="flex:1">${esc(p.name)}</span>
+      <span class="meta">${p.entities} 条</span>
+      <span class="ren" data-ren="${p.id}" title="重命名">改名</span>
+      ${list.length > 1 ? '<span class="del" data-del="' + p.id + '" title="删除">×</span>' : ''}
+    </div>`).join('');
+
+  $('#projList').querySelectorAll('[data-pid]').forEach(el => {
+    el.onclick = e => {
+      if (e.target.dataset.del || e.target.dataset.ren) return;
+      const id = el.dataset.pid;
+      if (id === eng.currentProject().id) return;
+      eng.switchProject(id);
+      renderProjects(); afterProjectChange();
+      toast('已切换到「' + eng.currentProject().name + '」');
+    };
+  });
+  $('#projList').querySelectorAll('[data-ren]').forEach(el => {
+    el.onclick = e => {
+      e.stopPropagation();
+      const id = el.dataset.ren;
+      const p = list.find(x => x.id === id);
+      const name = prompt('项目名称', p.name);
+      if (name === null) return;
+      if (id === eng.currentProject().id) eng.renameProject(name.trim());
+      else { const back = eng.currentProject().id; eng.switchProject(id); eng.renameProject(name.trim()); eng.switchProject(back); }
+      renderProjects(); afterProjectChange();
+      toast('已重命名');
+    };
+  });
+  $('#projList').querySelectorAll('[data-del]').forEach(el => {
+    el.onclick = e => {
+      e.stopPropagation();
+      const id = el.dataset.del;
+      const p = list.find(x => x.id === id);
+      if (!confirm('删除项目「' + p.name + '」及其 ' + p.entities + ' 条映射？\n已发出的内容将无法还原。')) return;
+      try {
+        eng.deleteProject(id);
+        renderProjects(); afterProjectChange();
+        toast('已删除');
+      } catch (err) { toast(err.message); }
+    };
+  });
+}
+
+function afterProjectChange() {
+  loadLocalPrefs();
+  renderLexChips(); renderRules(); renderVault(); renderDict();
+
+  // 换项目时清空正文：上一个项目的文档如果留在输入框里，
+  // 会被静默重新脱敏到新项目，映射就串了。
+  const had = $('#input').value.trim().length > 0;
+  $('#input').value = '';
+  state.lastInput = ''; state.masked = ''; state.entities = [];
+  $('#output').className = 'out empty';
+  $('#output').textContent = '切换项目后请重新粘贴内容。';
+  renderEntities(); renderRisk([]); renderSuggestions([]); renderPseudo([]);
+  updateStats(0, 0, 0, [], [], null);
+  $('#restoreHint').classList.remove('on');
+  state.restoreLog = []; renderRestoreLog();
+  $('#btnExportFile').style.display = 'none';
+  state.srcFile = null;
+
+  $('#vaultCount').textContent = eng.vaultSize();
+  if (had) toast('已清空正文——不同项目的文档不要混在一起');
+}
+
+$('#projBtn').onclick = () => { renderProjects(); $('#projModal').classList.add('on'); };
+$('#btnProjClose').onclick = () => $('#projModal').classList.remove('on');
+$('#projModal').onclick = e => { if (e.target.id === 'projModal') $('#projModal').classList.remove('on'); };
+$('#btnNewProj').onclick = () => {
+  const name = $('#newProjName').value.trim();
+  eng.newProject(name || undefined);
+  $('#newProjName').value = '';
+  renderProjects(); afterProjectChange();
+  toast('已新建项目，代号从 A 重新开始');
+};
+$('#newProjName').addEventListener('keydown', e => { if (e.key === 'Enter') $('#btnNewProj').click(); });
+$('#btnNewProj2').onclick = () => { renderProjects(); $('#projModal').classList.add('on'); };
+$('#btnRenameProj').onclick = () => {
+  const cur = eng.currentProject();
+  const name = prompt('项目名称', cur.name);
+  if (name === null) return;
+  eng.renameProject(name.trim());
+  renderProjects(); renderVault(); toast('已重命名');
+};
+
+/* ---------------- 说明 ---------------- */
+$('#btnHelp').onclick = () => { $('#help').classList.add('on'); window.scrollTo({ top: 0, behavior: 'smooth' }); };
+$('#btnHelpClose').onclick = () => $('#help').classList.remove('on');
+
+/* ---------------- 示例 ---------------- */
+const SAMPLE = `华润万佳商业集团 2026 年全渠道增长战略（讨论稿）
+
+项目组：启明星项目 · 项目经理 李明
+客户联系人：张伟（张总），手机 13812345678，邮箱 zhangwei@crvanguard.com.cn
+统一社会信用代码：91440300192195337X
+
+一、财务摘要（单位：万元）
+项目	2024A	2025E	2026E
+营业收入	128,600	152,300	180,500
+营业成本	98,200	115,800	136,200
+毛利率	23.8%	24.0%	24.5%
+销售费用	12,400	14,100	16,300
+净利润	8,600	10,900	13,400
+经营性现金流	15,200	18,700	21,600
+
+二、核心结论
+1. 2025 年集团营收 128.6 亿元，同比增长 12.4%，线上 GMV 占比 26.6%。
+2. 预计 2028 年市场规模达到 2100 亿元，建议以 8.5 亿元估值收购深圳优鲜科技有限公司。
+3. 单店月均销售额 186 万元，坪效 3200 元/平米，人效 42 万元/人。
+
+三、主要风险
+- 与供应商 广州百佳供应链有限公司 的合同金额 1.26 亿元将于 2027 年 3 月到期，合同编号 CRV-2026-FIN-0187。
+- 内网系统 http://bi.crv.internal:8080/dashboard，负责人 王芳 13800138000。
+- 尽调材料中身份证 440301199003078512、银行卡 6222020200112345678 需按规范留存，不得外发。`;
+
+/* ---------------- 能力检测 ---------------- */
+(function checkCaps(){
+  const hard = [];   // 功能受损
+  if (typeof DecompressionStream !== 'function') hard.push('Office 文件解析');
+  if (typeof TextDecoder !== 'function') hard.push('文本解码');
+  const soft = !STORE ? ['本地存储'] : [];
+  if (!hard.length && !soft.length) return;
+  const bar = $('#capbar');
+  bar.classList.add('on');
+  let msg = '';
+  if (hard.length) {
+    msg += '<b>当前浏览器功能受限：</b>' + hard.join('、') +
+      ' 不可用。粘贴文本仍可正常脱敏，建议改用 Chrome 或 Edge（90 以上）打开本文件。';
+  }
+  if (soft.length) {
+    if (msg) msg += '<br>';
+    msg += '<b>当前环境不支持本地存储</b>（可能是在预览窗口里打开的）：' +
+      '脱敏和还原都正常，但映射不会保存，刷新页面后已发出的内容将无法还原。' +
+      '把文件下载到本地、用浏览器直接打开即可正常保存。';
+  }
+  bar.innerHTML = msg;
+})();
+
+/* ---------------- 启动 ---------------- */
+renderDict(); renderProjects(); loadLocalPrefs(); renderLexChips(); renderRules(); renderAudit(); syncHint(); refreshEncState();
+if (eng.isLocked()) {
+  $('#lockModal').classList.add('on');
+  setTimeout(() => $('#lockPw').focus(), 100);
+}
+if (STORE) {
+  try {
+    const saved = STORE.getItem('demask.draft');
+    if (saved) $('#input').value = saved;
+  } catch (e) {}
+}
+const qs = new URLSearchParams(location.search);
+if (qs.has('demo')) $('#input').value = SAMPLE;
+if (qs.has('settings')) $('#settings').classList.add('open');
+if (qs.get('tab') === 'restore') {
+  $$('.tab').forEach(x => x.classList.remove('active'));
+  $$('.pane').forEach(x => x.classList.remove('active'));
+  document.querySelector('[data-pane="paneRestore"]').classList.add('active');
+  $('#paneRestore').classList.add('active');
+  $('#aiInput').value = '基于【企业A】2025年 79.5 亿元营收与 21.1 亿元线上 GMV 测算，线上占比约 26.5%，与【企业B】相比增速更高。建议由【人物A】牵头，在【项目A】二期加入履约成本优化模块，预计可将履约成本率从 14.2% 压降至 11.8%。';
+}
+// 首次打开：三句话引导
+(function welcome(){
+  const q = new URLSearchParams(location.search);
+  if (q.has('demo') || q.has('nointro')) return;
+  if (eng.isLocked()) return;   // 加密锁优先，别两个弹层打架
+  let seen = false;
+  if (STORE) { try { seen = STORE.getItem('demask.seen') === '1'; } catch (e) {} }
+  if (seen) return;
+  const el = $('#welcome');
+  el.classList.add('on');
+  const close = () => {
+    el.classList.remove('on');
+    if (STORE) { try { STORE.setItem('demask.seen', '1'); } catch (e) {} }
+  };
+  $('#btnWelcomeStart').onclick = () => { close(); $('#input').focus(); };
+  $('#btnWelcomeDemo').onclick = () => {
+    close();
+    $('#input').value = SAMPLE;
+    state.lastInput = ''; runMask();
+  };
+})();
+
+if ($('#input').value.trim()) {
+  runMask();
+  if (qs.get('tab') === 'restore') $('#btnRestore').click();
+} else {
+  $('#input').focus();
+}
+</script>
+</body>
+</html>
