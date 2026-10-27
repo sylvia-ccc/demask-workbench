@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AI 时代的数据脱敏工具：市场格局、选型与咨询场景落地方案</title>
+<style>
+  :root{
+    --ink:#161b22; --ink2:#39424e; --muted:#6b7583; --faint:#98a1ae;
+    --line:#e4e7ec; --line2:#eef0f3;
+    --accent:#1b3a5c; --accent2:#2f5d8a; --soft:#f2f5f8;
+    --warn:#b45309; --warn-bg:#fffbeb; --warn-line:#fde68a;
+    --ok:#0f766e; --ok-bg:#f0fdfa; --ok-line:#ccfbf1;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0;background:#eef0f3;color:var(--ink);
+    font:15px/1.78 -apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  .page{max-width:900px;margin:0 auto;background:#fff;padding:64px 76px 90px;box-shadow:0 1px 3px rgba(0,0,0,.06)}
+  @media(max-width:760px){.page{padding:34px 22px 60px}}
+
+  .kicker{font-size:11.5px;letter-spacing:1.6px;color:var(--accent2);font-weight:600;text-transform:uppercase;margin-bottom:14px}
+  h1{font-size:32px;line-height:1.35;margin:0 0 14px;letter-spacing:-.4px;font-weight:700}
+  .sub{font-size:16px;color:var(--muted);line-height:1.7;margin:0 0 26px;font-weight:400}
+  .meta{display:flex;flex-wrap:wrap;gap:22px;font-size:12.5px;color:var(--faint);padding:16px 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+  .meta b{color:var(--ink2);font-weight:600}
+
+  h2{font-size:20px;margin:52px 0 16px;letter-spacing:-.2px;font-weight:650;padding-top:8px}
+  h2 .num{color:var(--accent2);font-variant-numeric:tabular-nums;margin-right:10px;font-weight:600}
+  h3{font-size:15.5px;margin:28px 0 10px;font-weight:650;color:var(--ink)}
+  p{margin:0 0 14px}
+  ul,ol{margin:0 0 16px;padding-left:22px}
+  li{margin-bottom:7px}
+  strong{font-weight:650}
+  em{font-style:normal;background:linear-gradient(transparent 62%, #dfeaf5 62%);padding:0 1px}
+
+  .lead{font-size:16px;color:var(--ink2)}
+  .callout{
+    background:var(--soft);border-left:3px solid var(--accent2);padding:16px 20px;margin:22px 0;
+    font-size:14px;line-height:1.75;border-radius:0 6px 6px 0;
+  }
+  .callout .t{font-weight:650;color:var(--accent);display:block;margin-bottom:6px;font-size:13.5px}
+  .warnbox{background:var(--warn-bg);border-left:3px solid #d97706;padding:15px 20px;margin:22px 0;font-size:14px;border-radius:0 6px 6px 0}
+  .okbox{background:var(--ok-bg);border-left:3px solid var(--ok);padding:15px 20px;margin:22px 0;font-size:14px;border-radius:0 6px 6px 0}
+
+  table{width:100%;border-collapse:collapse;margin:20px 0 26px;font-size:13px;line-height:1.6}
+  th{
+    text-align:left;font-weight:600;color:var(--ink2);background:#f7f8fa;
+    padding:9px 11px;border-bottom:1px solid var(--line);font-size:12.5px;white-space:nowrap;
+  }
+  td{padding:10px 11px;border-bottom:1px solid var(--line2);vertical-align:top}
+  tr:last-child td{border-bottom:1px solid var(--line)}
+  td.nw{white-space:nowrap}
+  .tag{display:inline-block;font-size:11px;padding:1px 7px;border-radius:4px;font-weight:600;white-space:nowrap}
+  .tag.a{background:#eef2ff;color:#4f46e5}
+  .tag.b{background:#ecfdf5;color:#0f766e}
+  .tag.c{background:#fff7ed;color:#b45309}
+  .tag.d{background:#f1f5f9;color:#475569}
+  .score{font-variant-numeric:tabular-nums;font-weight:650}
+  .s5{color:#0f766e}.s4{color:#2f7d6e}.s3{color:#b45309}.s2{color:#b91c1c}.s1{color:#b91c1c}
+
+  figure{margin:26px 0 30px}
+  figure img{width:100%;border:1px solid var(--line);border-radius:7px;display:block;cursor:zoom-in;transition:.2s}
+  figure img:hover{box-shadow:0 6px 22px rgba(27,58,92,.14)}
+  figcaption{font-size:12px;color:var(--faint);margin-top:9px;line-height:1.6}
+
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:20px 0}
+  @media(max-width:760px){.grid2{grid-template-columns:1fr}}
+  .box{border:1px solid var(--line);border-radius:8px;padding:15px 17px;font-size:13.5px;line-height:1.7}
+  .box .h{font-weight:650;margin-bottom:6px;font-size:13px;color:var(--accent)}
+  .box.bad .h{color:#b91c1c}
+  .box.good .h{color:var(--ok)}
+
+  .flow{display:grid;grid-template-columns:repeat(3,1fr);gap:0;margin:24px 0}
+  .flow.five{grid-template-columns:repeat(5,1fr)}
+  .step{border:1px solid var(--line);padding:14px 15px;font-size:12.8px;line-height:1.6;position:relative}
+  .step:first-child{border-radius:8px 0 0 8px}
+  .step:last-child{border-radius:0 8px 8px 0}
+  .step + .step{border-left:0}
+  @media(max-width:820px){.flow,.flow.five{grid-template-columns:1fr}
+    .step + .step{border-left:1px solid var(--line);border-top:0}
+    .step:first-child{border-radius:8px 8px 0 0}.step:last-child{border-radius:0 0 8px 8px}}
+  .step .n{font-size:10px;color:var(--accent2);font-weight:700;letter-spacing:1px;display:block;margin-bottom:4px}
+  .step b{display:block;margin-bottom:3px;font-size:13.5px}
+  .step span.d{color:var(--muted)}
+
+  .footnote{font-size:12px;color:var(--faint);line-height:1.7;border-top:1px solid var(--line);margin-top:44px;padding-top:18px}
+  .toc{background:#fafbfc;border:1px solid var(--line);border-radius:8px;padding:18px 22px;margin:28px 0 10px;font-size:13.5px}
+  .toc .h{font-size:11.5px;letter-spacing:1.4px;color:var(--faint);font-weight:600;margin-bottom:9px}
+  .toc ol{margin:0;padding-left:20px;columns:2;column-gap:34px}
+  @media(max-width:760px){.toc ol{columns:1}}
+  .toc li{margin-bottom:5px;color:var(--ink2)}
+  .toc a{color:inherit;text-decoration:none;border-bottom:1px solid transparent}
+  .toc a:hover{border-bottom-color:var(--accent2)}
+
+  @media print{
+    body{background:#fff}
+    .page{box-shadow:none;padding:0;max-width:none}
+    h2{page-break-after:avoid}
+    table,figure{page-break-inside:avoid}
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <div class="kicker">技术调研 · 数据安全</div>
+  <h1>AI 时代的数据脱敏工具<br>市场格局、选型与咨询场景落地方案</h1>
+  <p class="sub">面向咨询、研究、投行等"高频产出文档 + 高频使用大模型"的知识型工作场景</p>
+  <div class="meta">
+    <div>调研范围　<b>企业级脱敏平台 / 文档 PII 工具 / AI 网关 / 终端 DLP</b></div>
+    <div>结论　<b>现成工具均存在场景错配，需自建轻量层</b></div>
+    <div>日期　<b>2026 年 10 月</b></div>
+  </div>
+
+  <div class="toc">
+    <div class="h">目录</div>
+    <ol>
+      <li><a href="#s1">问题定义：你要防的不是身份证</a></li>
+      <li><a href="#s2">市场格局：四类工具与代表厂商</a></li>
+      <li><a href="#s3">为什么现成工具都不顺手</a></li>
+      <li><a href="#s4">选型矩阵</a></li>
+      <li><a href="#s5">建议方案：三层架构</a></li>
+      <li><a href="#s6">合规边界（非法律意见）</a></li>
+      <li><a href="#s7">已交付的工具</a></li>
+      <li><a href="#s8">效果、局限与演进</a></li>
+      <li><a href="#s9">怎么发给同事用</a></li>
+    </ol>
+  </div>
+
+  <h2 id="s0"><span class="num">00</span>摘要</h2>
+  <p class="lead">市面上不缺脱敏产品，缺的是<strong>为"人对着聊天框干活"设计的脱敏产品</strong>。</p>
+  <p>现有工具可以清晰分成四层：数据库脱敏平台、文档 PII 识别服务、AI 网关、终端 DLP。它们各自解决了一个明确问题，但都建立在一个假设上——<em>数据在系统里、流向是可枚举的</em>。而咨询顾问的真实工作流是：从客户那儿拿到一堆 Excel 和访谈记录，在本地写成 Word/PPT，遇到卡壳就把一段话复制进 ChatGPT、Claude 或豆包。</p>
+  <p>这条链路里，数据既不在数据库，也不经过任何可被网关拦截的 API。它是<strong>剪贴板</strong>。</p>
+  <p>因此本报告的结论是：不要买一套企业级 DLP 来解决这个问题（重、贵、且管不到剪贴板），也不必从零攒开源库。合理路径是<strong>先做一个本地轻量工作台，把"脱敏—发给 AI—还原"这条链路做顺，等团队规模上来再补网关和策略中心</strong>。报告附带的工具即按此思路实现，可直接使用。</p>
+
+  <div class="callout">
+    <span class="t">三个最关键的判断</span>
+    ① 咨询场景的核心敏感信息不是身份证号，而是<strong>客户名称、项目代号、交易金额、未公开财务数据</strong>——绝大多数 PII 工具对后四类几乎无感。<br>
+    ② 你要的是<strong>可逆脱敏</strong>：企业级产品追求"不可还原"，但你的交付物必须还原成真名，方向相反。<br>
+    ③ 只改名字不够。<strong>金额和结构本身就是指纹</strong>，必须一起处理，否则行研的人三分钟就能反推。
+  </div>
+
+  <h2 id="s1"><span class="num">01</span>问题定义：你要防的不是身份证</h2>
+
+  <h3>三类风险，权重完全不同</h3>
+  <table>
+    <thead><tr><th style="width:104px">风险类型</th><th>具体内容</th><th style="width:196px">泄露后果</th><th style="width:86px">现实频率</th></tr></thead>
+    <tbody>
+      <tr>
+        <td class="nw"><span class="tag d">个人信息</span></td>
+        <td>身份证、手机号、银行卡、住址、访谈对象姓名与职务</td>
+        <td>违反《个人信息保护法》，行政处罚 + 民事赔偿</td>
+        <td class="nw">中</td>
+      </tr>
+      <tr>
+        <td class="nw"><span class="tag a">商业机密</span></td>
+        <td>客户名称、项目代号、未公开财务、报价与折扣、并购标的、组织人事</td>
+        <td>违反 NDA，丢客户、赔款、行业口碑受损</td>
+        <td class="nw"><strong>极高</strong></td>
+      </tr>
+      <tr>
+        <td class="nw"><span class="tag c">可推断信息</span></td>
+        <td>行业 + 地域 + 规模 + 时间 + 渠道结构的组合</td>
+        <td>即使删掉名字，仍能唯一定位到具体企业</td>
+        <td class="nw">高，且<strong>最常被忽略</strong></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>关键洞察：匿名化的边界是可识别性，不是名字</h3>
+  <p>下面这段话，把公司名去掉之后，你觉得还安全吗？</p>
+  <div class="warnbox">
+    "某华东区域乳制品企业，2025 年营收 <strong>128.6 亿元</strong>，线上 GMV 占比 <strong>26.6%</strong>，2027 年 3 月与主要供应商合同到期，全国门店约 <strong>1,240</strong> 家。"
+  </div>
+  <p>对任何做过消费行业研究的人来说，这四五个数字的组合基本等价于公司名。这在数据保护领域叫<strong>准标识符（quasi-identifier）</strong>——单个字段不敏感，组合起来唯一可识别。</p>
+  <p>这就是为什么"把客户名换成客户 A"的脱敏方式在实践中经常失效。真正有效的处理必须同时动<strong>结构</strong>：把金额按统一比例缩放、把绝对数改成区间、把精确日期改成季度。缩放之后，比例关系（毛利率、线上占比、增速）全部保留，AI 照样能算，但指纹被破坏了。</p>
+
+  <div class="okbox">
+    <strong>由此推出四条功能要求</strong>，也是后文评判所有工具的标准：<br>
+    ① 能识别中文商业实体（公司、项目代号、人名），不只是证件号；<br>
+    ② 可逆，且还原要能容忍大模型改写；<br>
+    ③ 能对数值做<strong>保结构变换</strong>，而不只是打码；<br>
+    ④ 全流程留在本机，不产生新的数据出境。
+  </div>
+
+  <h2 id="s2"><span class="num">02</span>市场格局：四类工具与代表厂商</h2>
+  <p>按"拦截位置"划分，市面上的产品可以归为四类，另有合成数据作为补充路线。</p>
+
+  <h3>第一类　数据库静态 / 动态脱敏平台</h3>
+  <p><strong>代表</strong>：美创科技、闪捷信息、安恒信息、启明星辰、天融信、天空卫士、明朝万达、亿赛通、神州数码、国投智能（美亚柏科）；国外 Oracle Data Masking、Delphix、Immuta、Protegrity、Informatica。</p>
+  <p><strong>强项</strong>：字段级规则成熟，脱敏后保持主外键与统计特征一致，支持可逆脱敏与权限化动态脱敏；对"开发测试取数""数据共享交换"这类场景是标准答案。</p>
+  <p><strong>短板</strong>：整套体系围绕数据库与数据中台构建，交付周期以月计，按库/节点/模块计价，量级通常在十万至百万每年。而咨询顾问的分析稿、访谈纪要、PPT 里的表格，<strong>根本不在这类产品的覆盖范围内</strong>。</p>
+
+  <h3>第二类　文档 / 文本 PII 识别与脱敏</h3>
+  <p><strong>代表</strong>：Microsoft Presidio（开源，MIT）、AWS Comprehend、Google Cloud DLP、Nightfall AI、Private AI、Skyflow、Tonic Textual、Gretel；开源侧还有 Protect AI 的 LLM Guard（内置基于 Presidio 的 Anonymize 扫描器）。</p>
+  <p><strong>强项</strong>：实体识别能力强，支持自定义识别器，可容器化私有部署，能处理自由文本与部分文档格式。</p>
+  <p><strong>短板</strong>：</p>
+  <ul>
+    <li><strong>以"个人信息"为中心设计。</strong>Presidio 内置识别器以欧美证件（SSN、信用卡、IBAN）为主，中文人名与机构名需要自行接入中文 NER 模型，效果依赖调优；"启明星项目""华润万佳"这类商业实体基本识别不到。</li>
+    <li><strong>多为 API 形态。</strong>用它的云服务，意味着数据仍然要出本机——只是换了一个接收方。</li>
+    <li><strong>不可逆或还原成本高。</strong>设计目标是"抹掉"，不是"还能换回来"。</li>
+  </ul>
+
+  <h3>第三类　AI 网关 / 大模型防火墙</h3>
+  <p><strong>代表</strong>：Kong AI Gateway、Cloudflare AI Gateway、F5 AI Gateway（Guardrails 能力来自 2025 年收购的 CalypsoAI）、Portkey、LiteLLM；国内腾讯云 LLM-WAF、奇安信、绿盟、瑞莱智慧等的大模型安全网关产品。</p>
+  <p><strong>强项</strong>：统一入口、密钥托管、限流计费、提示注入防护、全量审计日志，部分产品内置输入输出双向脱敏。这是企业"把 AI 用起来又不失控"的正确基础设施。</p>
+  <p><strong>短板</strong>：<strong>它只能看见 API 调用。</strong>你在 ChatGPT / Claude / 豆包 / Kimi 的网页版里选中一段文字按 ⌘V，网关一无所知。而对个人和小团队来说，网页版恰恰是主要用法。此外这类产品要求你改造调用方式、通常按流量计价，个人顾问用不上。</p>
+
+  <h3>第四类　终端 DLP / CASB</h3>
+  <p><strong>代表</strong>：天空卫士、亿赛通、明朝万达；国外 Zscaler、Netskope、Forcepoint。</p>
+  <p><strong>强项</strong>：能拦住"复制到网页""上传到网盘""外发邮件"，有完整审计链路，是合规检查的硬指标。</p>
+  <p><strong>短板</strong>：误报高、弹窗多、体验差。它只"堵"不"疏"，结果是顾问用手机拍屏幕、用个人账号、用没装客户端的设备绕过去——<strong>风险没消失，只是从可见变成不可见</strong>。</p>
+
+  <h3>补充路线　合成数据</h3>
+  <p><strong>代表</strong>：Gretel、Mostly AI、Tonic。</p>
+  <p>适合"我要一份能拿去训练模型/做演示的数据"，不适合"我这份报告的第三段想让 AI 帮我改一版"。生成合成数据本身需要原始数据进入工具，且无法还原，与咨询交付的需求不匹配。</p>
+
+  <h2 id="s3"><span class="num">03</span>为什么现成工具都不顺手</h2>
+  <p>把上面四类产品放进同一个工作流里看，会发现五种系统性错配：</p>
+
+  <table>
+    <thead><tr><th style="width:130px">错配</th><th>工具假设</th><th>你的现实</th></tr></thead>
+    <tbody>
+      <tr><td class="nw"><strong>位置错配</strong></td><td>数据在数据库、在 API 流量里</td><td>数据在 Word、Excel、PPT 和剪贴板里</td></tr>
+      <tr><td class="nw"><strong>实体错配</strong></td><td>敏感 = 身份证、手机号、银行卡</td><td>敏感 = 客户名、项目代号、金额、未公开财务</td></tr>
+      <tr><td class="nw"><strong>方向错配</strong></td><td>脱敏要不可逆，防止还原</td><td>交付物必须还原成真名</td></tr>
+      <tr><td class="nw"><strong>语义错配</strong></td><td>把数字替换成 *** 就安全了</td><td>数字被抹掉，AI 就没法帮你算 CAGR、做敏感性分析</td></tr>
+      <tr><td class="nw"><strong>成本错配</strong></td><td>按节点/流量/席位计价，十万起</td><td>个人或三五人团队，预算与运维能力都有限</td></tr>
+    </tbody>
+  </table>
+
+  <div class="callout">
+    <span class="t">一个容易被忽略的事实</span>
+    在网页版大模型里，<strong>"复制粘贴"这个动作本身就是一次数据出境</strong>，而且不留下任何企业侧日志。任何只覆盖 API 流量的方案，对这条路径都是盲的。这是本方案把着力点放在"复制之前"的原因。
+  </div>
+
+  <h2 id="s4"><span class="num">04</span>选型矩阵</h2>
+  <p>用第 1 节推出的四条要求，加上部署成本与工作流侵入性，对五条路线打分（5 分制，仅代表本场景适用度，不代表产品优劣）。</p>
+
+  <table>
+    <thead>
+      <tr>
+        <th style="width:150px">方案</th>
+        <th>中文商业<br>实体识别</th>
+        <th>可逆<br>还原</th>
+        <th>数值保<br>结构</th>
+        <th>覆盖<br>剪贴板</th>
+        <th>部署<br>成本</th>
+        <th>不改<br>工作流</th>
+        <th style="width:52px">合计</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td class="nw">企业级脱敏平台</td>
+        <td class="score s2">2</td><td class="score s3">3</td><td class="score s3">3</td>
+        <td class="score s1">1</td><td class="score s1">1</td><td class="score s2">2</td>
+        <td class="score">12</td>
+      </tr>
+      <tr>
+        <td class="nw">开源库自建<br><span style="color:var(--faint);font-size:11.5px">Presidio / LLM Guard</span></td>
+        <td class="score s2">2</td><td class="score s2">2</td><td class="score s1">1</td>
+        <td class="score s4">4</td><td class="score s4">4</td><td class="score s2">2</td>
+        <td class="score">15</td>
+      </tr>
+      <tr>
+        <td class="nw">商业 PII API<br><span style="color:var(--faint);font-size:11.5px">Private AI / Nightfall</span></td>
+        <td class="score s3">3</td><td class="score s2">2</td><td class="score s1">1</td>
+        <td class="score s4">4</td><td class="score s2">2</td><td class="score s3">3</td>
+        <td class="score">15</td>
+      </tr>
+      <tr>
+        <td class="nw">AI 网关</td>
+        <td class="score s3">3</td><td class="score s2">2</td><td class="score s1">1</td>
+        <td class="score s1">1</td><td class="score s3">3</td><td class="score s1">1</td>
+        <td class="score">11</td>
+      </tr>
+      <tr style="background:#f7fbfa">
+        <td class="nw"><strong>本地脱敏工作台</strong><br><span style="color:var(--faint);font-size:11.5px">本报告附带</span></td>
+        <td class="score s4">4</td><td class="score s5">5</td><td class="score s5">5</td>
+        <td class="score s5">5</td><td class="score s5">5</td><td class="score s4">4</td>
+        <td class="score" style="color:#0f766e">28</td>
+      </tr>
+    </tbody>
+  </table>
+  <p style="font-size:12.5px;color:var(--faint);margin-top:-10px">
+    说明：企业级平台在"可逆"一项得分中等，是因为其可逆脱敏通常面向字段级、需配套密钥管理系统，无法覆盖自由文本中的公司名；"覆盖剪贴板"指能否在用户把内容粘贴进网页版大模型之前生效。
+  </p>
+
+  <h2 id="s5"><span class="num">05</span>建议方案：三层架构，分阶段落地</h2>
+  <p>不要一步到位。按"人 → 团队 → 组织"三个阶段推进，每阶段都有独立价值。</p>
+
+  <div class="flow">
+    <div class="step">
+      <span class="n">LAYER 1 · 现在</span>
+      <b>个人工作台</b>
+      <span class="d">本地脱敏 + 可逆还原。解决"我今天就要把这份纪要发给 AI"。</span>
+    </div>
+    <div class="step">
+      <span class="n">LAYER 2 · 5 人以上</span>
+      <b>团队策略中心</b>
+      <span class="d">统一词库、映射库加密托管、使用审计。解决"不同人脱敏口径不一致"。</span>
+    </div>
+    <div class="step">
+      <span class="n">LAYER 3 · 有合规要求</span>
+      <b>AI 网关 + DLP</b>
+      <span class="d">所有模型调用走代理，自动脱敏/还原，异常外发阻断。解决"审计能过"。</span>
+    </div>
+  </div>
+
+  <h3>Layer 1 为什么是本地工具，而不是 SaaS</h3>
+  <p>逻辑很简单：<strong>脱敏工具本身不能成为新的泄露点</strong>。如果脱敏要先把原文上传到某个云端服务，那只是把风险从 A 公司转移给 B 公司。因此这一层必须满足"零网络请求、零依赖、可离线运行"。</p>
+  <p>技术选型上，本方案刻意只使用 Python 标准库：单个文件、双击即用、不需要 pip install、不会因为依赖冲突跑不起来。对非技术背景的顾问来说，这一点比任何算法指标都重要。</p>
+
+  <h3>Layer 3 什么时候必须上</h3>
+  <ul>
+    <li>客户合同里明确要求"AI 使用需可审计"；</li>
+    <li>团队超过 20 人，无法靠自觉保证口径一致；</li>
+    <li>开始用私有化模型（此时网关的价值从"防泄露"转为"统一治理"）。</li>
+  </ul>
+
+  <h2 id="s6"><span class="num">06</span>合规边界（非法律意见）</h2>
+
+  <table>
+    <thead><tr><th style="width:180px">法规</th><th>与本场景相关的要点</th></tr></thead>
+    <tbody>
+      <tr>
+        <td class="nw"><strong>《个人信息保护法》</strong><br><span style="color:var(--faint);font-size:11.5px">第 4 条、第 73 条</span></td>
+        <td>第 73 条区分两个概念：<strong>去标识化</strong>——不借助额外信息无法识别特定自然人；<strong>匿名化</strong>——无法识别且不能复原。匿名化后的信息<strong>不属于个人信息</strong>，去标识化后的仍属于。<br>
+        推论：本工具是<strong>可逆</strong>的，法律性质上属于"去标识化"，处理后的文本仍是个人信息，仍受个保法约束。它的价值是<strong>显著降低泄露风险与责任</strong>，而不是让数据"变成非个人信息"。任何声称"一键匿名化、从此不受监管"的产品都值得警惕。</td>
+      </tr>
+      <tr>
+        <td class="nw"><strong>《数据安全法》</strong></td>
+        <td>要求建立数据分类分级保护制度。实操上应至少区分"可外发 / 需脱敏 / 禁止出本机"三档，并在项目启动时就标注。</td>
+      </tr>
+      <tr>
+        <td class="nw"><strong>《网络数据安全管理条例》</strong><br><span style="color:var(--faint);font-size:11.5px">国务院令第 790 号，2025-01-01 施行</span></td>
+        <td>细化了个人信息处理规则、重要数据识别与申报、跨境提供安全评估。把客户数据贴进境外模型服务，可能同时触及"向第三方提供"与"数据出境"两条线。</td>
+      </tr>
+      <tr>
+        <td class="nw"><strong>《生成式人工智能服务管理暂行办法》</strong></td>
+        <td>对服务提供者提出训练数据与内容责任要求。对使用方而言，更现实的是<strong>合同义务</strong>：多数客户 NDA 约定"未经书面同意不得向第三方披露保密信息"，把内容输入公有云大模型是否构成"披露"，目前司法实践尚无统一结论，但风险敞口是实在的。</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="warnbox">
+    <strong>三条实操红线</strong>（比任何工具都重要）<br>
+    ① 原始数据、可反推的组合数据，一律不进公有云模型；<br>
+    ② 项目启动时在 engagement letter 里写明 AI 使用条款与脱敏措施，把"是否允许"变成白纸黑字；<br>
+    ③ 保留脱敏与还原的操作记录，出问题时能证明"已采取合理措施"。
+  </div>
+
+  <h2 id="s7"><span class="num">07</span>已交付的工具</h2>
+  <p>按上述思路实现了一个可运行的工作台，核心是把"脱敏—发给 AI—还原"做成一条顺手的链路，而不是一个需要学习的安全系统。</p>
+
+  <div class="callout">
+    <span class="t">交付形态：一个 HTML 文件</span>
+    不装 Python、不装客户端、不连服务器——整个工具是一个 81 KB 的 <code>.html</code>，双击用浏览器打开即可。发给同事就是发一个附件，微信、邮件、共享盘都行，对方不需要任何准备。<br>
+    这个选择不只是为了省事：<strong>如果脱敏工具要求"先把原文上传到某个服务"，它自己就成了新的泄露点</strong>。单文件 + 浏览器本地计算，是唯一能同时满足"零安装"和"零外发"的形态。
+  </div>
+
+  <figure>
+    <img src="img/main.png" alt="脱敏工作台主界面">
+    <figcaption>左：原文；右：脱敏结果（按实体类型着色）。财务摘要里 128,600 万元 → 79,475 万元、8,600 万元 → 5,315 万元，而毛利率 23.8%、增长率 12.4% <strong>分毫未动</strong>——比例关系完整保留，AI 照样能做测算。下方实体清单可逐条"放行"。</figcaption>
+  </figure>
+
+  <h3>六个设计决定</h3>
+  <table>
+    <thead><tr><th style="width:150px">决定</th><th>理由</th></tr></thead>
+    <tbody>
+      <tr><td class="nw"><strong>代号用【企业A】</strong></td><td>实测中，中文方括号内的内容被大模型改写的概率最低。模型可能把"客户A"改写成"该客户"，但很少动【】里的东西，这直接决定还原成功率。</td></tr>
+      <tr><td class="nw"><strong>金额等比缩放</strong></td><td>默认 ×0.618。所有金额同比例变化，增速、占比、弹性、敏感性分析结果不变，但绝对值指纹被破坏。需要精确计算时切回"原样保留"，改用区间化或纯代号。</td></tr>
+      <tr><td class="nw"><strong>映射库落本地</strong></td><td>存于工具目录下的 vault/，不上传、不同步。提供"新建会话"一键重置编号，避免不同项目串号。</td></tr>
+      <tr><td class="nw"><strong>还原要容错</strong></td><td>同时匹配【企业A】、企业A、__ORG_A__ 三种形态。模型把括号吃掉、加了空格、换成全角，都能还原。</td></tr>
+      <tr><td class="nw"><strong>给置信度，不假装全对</strong></td><td>每条识别结果标注依据（后缀识别 / 角色词 / 校验位 / 词库）与置信度。低置信度的让人扫一眼，比宣称 99% 准确更负责。</td></tr>
+      <tr><td class="nw"><strong>单文件交付</strong></td><td>引擎、界面、Office 文件解析（浏览器原生解 zip）全部装进一个 HTML，映射存浏览器本地。<strong>零安装是"能不能被真正用起来"的分水岭</strong>——要求装环境的工具，在咨询团队里通常活不过一周。</td></tr>
+      <tr><td class="nw"><strong>残留检测</strong></td><td>脱敏后再扫一遍：还有没有 11 位数字、18 位数字、邮箱、密级标识。漏了会亮黄条，而不是静默通过。</td></tr>
+    </tbody>
+  </table>
+
+  <figure>
+    <img src="img/settings.png" alt="脱敏策略设置">
+    <figcaption>策略面板：识别范围可逐类开关；数值支持等比缩放 / 区间化 / 等长乱数 / 原样保留；自定义词库用于补充客户简称与内部代号——这一项对识别率提升最明显。</figcaption>
+  </figure>
+
+  <h3>还原：把 AI 的答案变回人话</h3>
+  <p>这是整个工具真正的价值点。发给 AI 的是代号，拿回来的分析结论必须能直接进交付文档。</p>
+
+  <figure>
+    <img src="img/restore.png" alt="还原界面">
+    <figcaption>AI 回复中的【企业A】【人物A】【项目A】以及缩放后的 79.5 亿元，被一次性还原为真实名称与原始金额。占比 26.5% 未被改动——因为百分比本来就没脱敏，这类结构性指标应当保留。</figcaption>
+  </figure>
+
+  <h3>使用方法</h3>
+  <div class="flow five">
+    <div class="step"><span class="n">STEP 1</span><b>双击打开</b><span class="d">双击 HTML 文件，用 Chrome / Edge 打开，不装任何东西。</span></div>
+    <div class="step"><span class="n">STEP 2</span><b>粘贴或拖入</b><span class="d">支持 .docx / .xlsx / .pptx / .txt / .md / .csv，直接拖拽。</span></div>
+    <div class="step"><span class="n">STEP 3</span><b>扫一眼清单</b><span class="d">确认没有误伤，把不该脱的"放行"，漏掉的加进词库。</span></div>
+    <div class="step"><span class="n">STEP 4</span><b>复制给 AI</b><span class="d">一键复制，粘到任何大模型。此时流出的只有代号。</span></div>
+    <div class="step"><span class="n">STEP 5</span><b>还原</b><span class="d">把回复贴回"还原"页，一键换回真名，直接进报告。</span></div>
+  </div>
+
+  <h2 id="s8"><span class="num">08</span>效果、局限与演进</h2>
+
+  <h3>诚实的能力边界</h3>
+  <div class="grid2">
+    <div class="box good">
+      <div class="h">做得住的</div>
+      手机号、身份证、银行卡、统一社会信用代码、邮箱、IP/内网地址、车牌——规则 + 校验位，接近 100%。<br>
+      带后缀的企业名（有限公司、集团、银行、事务所…）——中等偏上，泛称已过滤。<br>
+      角色引导的人名（"项目经理 李明""联系人：张伟"）——较可靠。
+    </div>
+    <div class="box bad">
+      <div class="h">做不到的</div>
+      无后缀的简称与内部黑话（"老东家""那个乳企"）——必须靠词库。<br>
+      扫描件 PDF、图片里的文字——需 OCR，当前不支持。<br>
+      复杂嵌套表格的单元格语义——抽取为文本后可能错位。<br>
+      模型自行发明的"客户甲"等新称谓——无法还原，需人工替换。
+    </div>
+  </div>
+  <p>因此工具的设计不是"自动完成"，而是<strong>"把该看的都摆出来，让人 30 秒确认"</strong>。在脱敏这件事上，一个宣称全自动的系统比一个诚实的检查清单更危险。</p>
+
+  <h3>后续可以加的（按性价比排序）</h3>
+  <ol>
+    <li><strong>浏览器插件</strong>：监听输入框粘贴事件，在内容进入 ChatGPT 之前自动替换，用完在页面上还原。这一步能把"要记得先脱敏"变成"不可能忘记"。</li>
+    <li><strong>剪贴板守护进程</strong>：常驻后台，复制长文本时弹一个小条提示"检测到 3 处疑似敏感信息，已脱敏"。覆盖所有应用，包括微信。</li>
+    <li><strong>Office 插件</strong>：在 Word / PPT 里选中一段直接"发送到工作台"，处理完回填。</li>
+    <li><strong>团队词库同步</strong>：客户名、项目代号由项目负责人维护，全员共享，避免各自为政。</li>
+    <li><strong>中文 NER 模型接入</strong>：用小型本地模型替换规则，提升无后缀实体召回。代价是启动变重，建议做成可选插件。</li>
+  </ol>
+
+  <div class="okbox">
+    <strong>一句话结论</strong><br>
+    这个问题的本质不是"买什么脱敏软件"，而是<strong>"在数据离开你手指之前的最后 10 厘米，装一道自己能控制的闸门"</strong>。企业级产品覆盖不到这里，开源库要自己攒，所以最合理的做法是自己搭一个足够小、足够顺手的本地工具——然后用团队策略和网关去补它管不到的地方。
+  </div>
+
+
+  <h2 id="s9"><span class="num">09</span>怎么发给同事用</h2>
+  <p>工具做得再好，如果对方要"先装个 Python"，实际使用率会掉到接近零。分发方式本身就是产品设计的一部分。</p>
+
+  <table>
+    <thead><tr><th style="width:150px">方式</th><th>对方要做什么</th><th style="width:78px">上手成本</th><th style="width:110px">适用</th></tr></thead>
+    <tbody>
+      <tr style="background:#f7fbfa">
+        <td class="nw"><strong>单文件 HTML</strong></td>
+        <td>保存附件 → 双击 → 浏览器打开就用</td>
+        <td class="nw"><span class="tag b">零</span></td>
+        <td class="nw">个人 / 小团队</td>
+      </tr>
+      <tr>
+        <td class="nw">内网网页服务</td>
+        <td>打开内网地址；需 IT 部署与运维</td>
+        <td class="nw"><span class="tag c">中</span></td>
+        <td class="nw">20 人以上</td>
+      </tr>
+      <tr>
+        <td class="nw">桌面客户端</td>
+        <td>下载安装包、过安全软件、处理签名告警</td>
+        <td class="nw"><span class="tag c">高</span></td>
+        <td class="nw">不推荐</td>
+      </tr>
+      <tr>
+        <td class="nw">在线 SaaS</td>
+        <td>注册账号，把原文上传到别人服务器</td>
+        <td class="nw"><span class="tag b">低</span></td>
+        <td class="nw"><strong>与目标矛盾</strong></td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <div class="callout">
+    <span class="t">"上云"有两种，只有一种是安全的</span>
+    <strong>静态托管</strong>：服务器只负责把这个 HTML 发出去，计算仍然发生在每个人的浏览器里。安全性与离线文件完全相同，只是分发更方便、改一次全员生效。<br>
+    <strong>服务端处理</strong>：把原文传到服务器再脱敏。此时你就从"使用者"变成了《个人信息保护法》下的个人信息处理者，要承担存储、加密、访问控制、泄露报告的全部责任。<strong>风险没有消失，只是从 AI 厂商转移到了你自己身上。</strong>
+  </div>
+
+  <p>静态托管的残余风险是<strong>下发链路被篡改</strong>——页面正好处理最敏感的数据，一旦服务器被入侵、HTML 被植入窃取代码，等于把后门直接发给了全员。缓解办法很简单：HTTPS、只允许内网访问、发布前把文件哈希发到群里让同事核对，页面上也留了版本号。</p>
+
+  <h3>发送时的五个实操细节</h3>
+  <ol>
+    <li><strong>压缩成 zip 再发。</strong>部分邮箱和企业微信会拦截 <code>.html</code> 附件，zip 几乎不会被拦，也避免对方在聊天窗口里直接预览成一堆代码。</li>
+    <li><strong>让对方在电脑上打开，别用手机。</strong>手机微信的内置浏览器不能正常运行本地文件。电脑上双击，Chrome / Edge 都可以；Mac 上 Safari 需 16.4 以上，建议直接指明用 Chrome。</li>
+    <li><strong>随附三句话说明</strong>：① 这是纯本地网页，可断网使用；② 数据只在你自己的浏览器里，不会上传；③ 打开后点"看示例"先看效果。</li>
+    <li><strong>第一次用先跑示例。</strong>比任何说明书都有效——看到 128,600 变成 79,475、毛利率还是 23.8%，概念立刻就懂了。</li>
+    <li><strong>提醒映射表的边界。</strong>映射存在各自浏览器里，不跨设备。换电脑前先"导出映射"，否则之前发出去的内容还原不回来。</li>
+  </ol>
+
+  <div class="warnbox">
+    <strong>一个容易被忽略的信任问题</strong><br>
+    同事收到一个陌生 <code>.html</code> 文件，第一反应往往是"这会不会是病毒"。所以随附说明里要讲清楚：单文件、无外链、无网络请求，可以断网打开验证。<strong>能离线运行，本身就是最好的安全证明。</strong>
+  </div>
+
+  <div class="footnote">
+    调研基于公开资料与产品文档整理，厂商能力以官方最新说明为准；价格区间为公开招标与市场反馈的量级参考，实际需询价。<br>
+    法规部分仅为技术方案设计参考，不构成法律意见，具体合规判断请咨询专业律师。<br>
+    文中截图来自随附工具的实际运行界面，数据为虚构示例。
+  </div>
+
+</div>
+<script>
+document.querySelectorAll("figure img").forEach(img=>{
+  img.title = "点击查看大图";
+  img.onclick = () => window.open(img.src, "_blank");
+});
+</script>
+</body>
+</html>

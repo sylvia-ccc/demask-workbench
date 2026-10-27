@@ -1,0 +1,544 @@
+{
+  "_note": "留出验证集。写的时候不看引擎结果，写完直接跑，用来检测是否过拟合。",
+  "cases": [
+    {
+      "id": "h-ipo-01",
+      "cat": "招股书",
+      "text": "发行人本次拟公开发行不超过4,000万股，募集资金12.8亿元，主要用于苏州工业园区智能制造基地建设项目。保荐机构（主承销商）为华泰联合证券有限责任公司。",
+      "expect": [
+        {
+          "text": "4,000",
+          "type": "MONEY"
+        },
+        {
+          "text": "12.8",
+          "type": "MONEY"
+        },
+        {
+          "text": "苏州工业园区",
+          "type": "ADDR"
+        },
+        {
+          "text": "华泰联合证券有限责任公司",
+          "type": "ORG"
+        }
+      ]
+    },
+    {
+      "id": "h-dd-01",
+      "cat": "尽调报告",
+      "text": "经核查，目标公司实际控制人陈建国通过直接和间接方式合计持有67.4%的股权，其中直接持股41.2%。另有3名一致行动人合计持股9.8%。",
+      "expect": [
+        {
+          "text": "陈建国",
+          "type": "PERSON"
+        },
+        {
+          "text": "67.4%",
+          "type": "PCT"
+        },
+        {
+          "text": "41.2%",
+          "type": "PCT"
+        },
+        {
+          "text": "9.8%",
+          "type": "PCT"
+        }
+      ]
+    },
+    {
+      "id": "h-lp-01",
+      "cat": "基金LP报告",
+      "text": "本基金规模人民币25亿元，已投项目14个，其中3个已完成退出，DPI为0.82，IRR为18.6%。LP包括国创引导基金、苏州元禾控股、以及若干家族办公室。",
+      "expect": [
+        {
+          "text": "25",
+          "type": "MONEY"
+        },
+        {
+          "text": "国创引导基金",
+          "type": "ORG"
+        },
+        {
+          "text": "苏州元禾控股",
+          "type": "ORG"
+        }
+      ],
+      "keep": [
+        "0.82",
+        "18.6%",
+        "DPI",
+        "IRR"
+      ]
+    },
+    {
+      "id": "h-train-01",
+      "cat": "培训课件",
+      "text": "案例讨论：某区域连锁超市在2024年实现营收36.5亿元，同比增长8.3%，但净利率仅1.9%。请分析其坪效与库存周转的关系。",
+      "expect": [
+        {
+          "text": "36.5",
+          "type": "MONEY"
+        }
+      ],
+      "keep": [
+        "8.3%",
+        "1.9%",
+        "2024年"
+      ]
+    },
+    {
+      "id": "h-minutes-01",
+      "cat": "会议纪要",
+      "text": "时间：2026年3月12日 14:00\n地点：上海办公室 28F 会议室\n参会：王建国、李晓芸、周敏、赵鹏\n记录：周敏\n\n议题一：华东区渠道调整。王建国指出，经销商数量从原来的312家压缩到187家。",
+      "expect": [
+        {
+          "text": "上海办公室",
+          "type": "ADDR"
+        },
+        {
+          "text": "王建国",
+          "type": "PERSON"
+        },
+        {
+          "text": "李晓芸",
+          "type": "PERSON"
+        },
+        {
+          "text": "周敏",
+          "type": "PERSON"
+        },
+        {
+          "text": "赵鹏",
+          "type": "PERSON"
+        }
+      ],
+      "keep": [
+        "2026年3月12日",
+        "28F",
+        "312",
+        "187"
+      ]
+    },
+    {
+      "id": "h-news-01",
+      "cat": "新闻稿风格",
+      "text": "据悉，本次并购由中金公司担任买方财务顾问，君合律师事务所提供法律服务。交易完成后，标的公司将纳入上市公司合并报表范围。",
+      "expect": [
+        {
+          "text": "中金公司",
+          "type": "ORG"
+        },
+        {
+          "text": "君合律师事务所",
+          "type": "ORG"
+        }
+      ],
+      "keep": [
+        "标的公司",
+        "上市公司"
+      ]
+    },
+    {
+      "id": "h-mixed-en-01",
+      "cat": "中英混排",
+      "text": "项目 Code Name: Project Phoenix。Client: Acme Industrial Group. Contact: David Chen, david.chen@acme-ind.com, +86 138 0013 8000.",
+      "expect": [
+        {
+          "text": "Project Phoenix",
+          "type": "PROJECT"
+        },
+        {
+          "text": "Acme Industrial Group",
+          "type": "ORG"
+        },
+        {
+          "text": "david.chen@acme-ind.com",
+          "type": "EMAIL"
+        },
+        {
+          "text": "138 0013 8000",
+          "type": "PHONE"
+        },
+        {
+          "text": "David Chen",
+          "type": "PERSON"
+        }
+      ]
+    },
+    {
+      "id": "h-table-space-01",
+      "cat": "表格-多空格",
+      "text": "客户名称          2025营收      毛利率      联系人\n杭州鲜丰供应链    86,400        18.2%       陈晓东\n宁波海翔贸易      32,100        12.7%       林芳",
+      "expect": [
+        {
+          "text": "杭州鲜丰供应链",
+          "type": "ORG"
+        },
+        {
+          "text": "宁波海翔贸易",
+          "type": "ORG"
+        },
+        {
+          "text": "86,400",
+          "type": "MONEY"
+        },
+        {
+          "text": "32,100",
+          "type": "MONEY"
+        },
+        {
+          "text": "陈晓东",
+          "type": "PERSON"
+        },
+        {
+          "text": "林芳",
+          "type": "PERSON"
+        }
+      ],
+      "keep": [
+        "18.2%",
+        "12.7%"
+      ]
+    },
+    {
+      "id": "h-phone-paren-01",
+      "cat": "座机-括号",
+      "text": "总机：(021) 5888-1234，分部：0755-8666 7890。",
+      "expect": [
+        {
+          "text": "(021) 5888-1234",
+          "type": "PHONE"
+        },
+        {
+          "text": "0755-8666 7890",
+          "type": "PHONE"
+        }
+      ]
+    },
+    {
+      "id": "h-id15-01",
+      "cat": "老身份证15位",
+      "text": "经办人身份证号 440301900307851，请核对。",
+      "expect": [
+        {
+          "text": "440301900307851",
+          "type": "IDCARD"
+        }
+      ]
+    },
+    {
+      "id": "h-noSuffix-01",
+      "cat": "无后缀公司名",
+      "text": "本次合作方为优鲜科技与百佳供应链，两家均为区域龙头。",
+      "expect": [
+        {
+          "text": "优鲜科技",
+          "type": "ORG"
+        },
+        {
+          "text": "百佳供应链",
+          "type": "ORG"
+        }
+      ]
+    },
+    {
+      "id": "h-codename-01",
+      "cat": "内部代号",
+      "text": "内部代号\"凤凰\"项目已进入第二阶段，代号 CRV-2026 用于全部对外文件。",
+      "expect": [
+        {
+          "text": "凤凰",
+          "type": "PROJECT"
+        },
+        {
+          "text": "CRV-2026",
+          "type": "PROJECT"
+        }
+      ]
+    },
+    {
+      "id": "h-pseudo-01",
+      "cat": "行业代称-不脱",
+      "text": "某头部乳企2025年营收约1,200亿元，华东大客户贡献34%。",
+      "expect": [
+        {
+          "text": "1,200",
+          "type": "MONEY"
+        }
+      ],
+      "keep": [
+        "某头部乳企",
+        "华东大客户"
+      ]
+    },
+    {
+      "id": "h-enname-01",
+      "cat": "英文人名",
+      "text": "The meeting was chaired by John Smith and attended by Mary Johnson.",
+      "expect": [
+        {
+          "text": "John Smith",
+          "type": "PERSON"
+        },
+        {
+          "text": "Mary Johnson",
+          "type": "PERSON"
+        }
+      ]
+    },
+    {
+      "id": "h-addr-short-01",
+      "cat": "地址简写",
+      "text": "办公地点位于上海张江，研发中心在深圳南山。",
+      "expect": [
+        {
+          "text": "上海张江",
+          "type": "ADDR"
+        },
+        {
+          "text": "深圳南山",
+          "type": "ADDR"
+        }
+      ]
+    },
+    {
+      "id": "h-long-01",
+      "cat": "多段长文",
+      "text": "一、项目背景\n华润万佳商业集团有限公司成立于1998年，总部位于深圳，是国内领先的零售企业。截至2025年末，集团拥有门店1,240家，员工5.2万人。\n\n二、交易方案\n本次交易由中信证券担任财务顾问，拟以现金方式收购深圳优鲜科技有限公司100%股权，交易对价8.5亿元。\n\n三、风险提示\n华润万佳的主要风险在于租赁成本上升。2025年租金支出12.6亿元，占营业收入的9.8%。",
+      "expect": [
+        {
+          "text": "华润万佳商业集团有限公司",
+          "type": "ORG"
+        },
+        {
+          "text": "中信证券",
+          "type": "ORG"
+        },
+        {
+          "text": "深圳优鲜科技有限公司",
+          "type": "ORG"
+        },
+        {
+          "text": "8.5",
+          "type": "MONEY"
+        },
+        {
+          "text": "12.6",
+          "type": "MONEY"
+        }
+      ],
+      "keep": [
+        "1998年",
+        "2025年末",
+        "1,240",
+        "5.2万",
+        "100%",
+        "9.8%",
+        "深圳"
+      ]
+    },
+    {
+      "id": "h-neg-percent-range-01",
+      "cat": "负例-区间",
+      "text": "毛利率区间为20%-25%，营收区间120-130亿元。",
+      "expect": [
+        {
+          "text": "120",
+          "type": "MONEY"
+        },
+        {
+          "text": "130",
+          "type": "MONEY"
+        }
+      ],
+      "keep": [
+        "20%-25%"
+      ]
+    },
+    {
+      "id": "h-neg-unit-word-01",
+      "cat": "负例-单位词",
+      "text": "公司员工人数5,000人，办公面积12,000平方米，注册资本1亿元。",
+      "expect": [
+        {
+          "text": "1亿",
+          "type": "MONEY"
+        }
+      ],
+      "keep": [
+        "5,000",
+        "12,000"
+      ]
+    },
+    {
+      "id": "h-securities-01",
+      "cat": "证券简称",
+      "text": "证券代码：600519.SH 证券简称：贵州茅台 公告编号：2026-018",
+      "expect": [
+        {
+          "text": "600519.SH",
+          "type": "TICKER"
+        },
+        {
+          "text": "贵州茅台",
+          "type": "ORG"
+        },
+        {
+          "text": "2026-018",
+          "type": "CONTRACT"
+        }
+      ]
+    },
+    {
+      "id": "h-bankname-01",
+      "cat": "银行名称",
+      "text": "开户行：中国工商银行深圳福田支行，户名：深圳优鲜科技有限公司，账号：4000023419200123456。",
+      "expect": [
+        {
+          "text": "中国工商银行深圳福田支行",
+          "type": "ORG"
+        },
+        {
+          "text": "深圳优鲜科技有限公司",
+          "type": "ORG"
+        },
+        {
+          "text": "4000023419200123456",
+          "type": "BANK"
+        }
+      ]
+    },
+    {
+      "id": "h-legal-01",
+      "cat": "合同条款",
+      "text": "甲方：华润万佳商业集团有限公司\n乙方：广州百佳供应链有限公司\n法定代表人（甲方）：李明\n签订日期：2026年3月12日\n合同金额：人民币壹亿贰仟万元整（¥120,000,000.00）",
+      "expect": [
+        {
+          "text": "华润万佳商业集团有限公司",
+          "type": "ORG"
+        },
+        {
+          "text": "广州百佳供应链有限公司",
+          "type": "ORG"
+        },
+        {
+          "text": "李明",
+          "type": "PERSON"
+        },
+        {
+          "text": "壹亿贰仟万元整",
+          "type": "MONEY"
+        },
+        {
+          "text": "120,000,000.00",
+          "type": "MONEY"
+        }
+      ],
+      "keep": [
+        "2026年3月12日"
+      ]
+    },
+    {
+      "id": "h-report-num-01",
+      "cat": "报告编号",
+      "text": "报告编号：CR-2026-0312-A，评估基准日：2025年12月31日。",
+      "expect": [
+        {
+          "text": "CR-2026-0312-A",
+          "type": "CONTRACT"
+        }
+      ],
+      "keep": [
+        "2025年12月31日"
+      ]
+    },
+    {
+      "id": "h-repeated-01",
+      "cat": "重复提及",
+      "text": "宁德时代2025年营收3,620亿元。宁德时代在动力电池领域市占率37.9%。宁德时代与比亚迪竞争激烈。",
+      "expect": [
+        {
+          "text": "宁德时代",
+          "type": "ORG"
+        },
+        {
+          "text": "3,620",
+          "type": "MONEY"
+        },
+        {
+          "text": "比亚迪",
+          "type": "ORG"
+        }
+      ],
+      "keep": [
+        "37.9%"
+      ]
+    },
+    {
+      "id": "h-dept-01",
+      "cat": "部门名",
+      "text": "对接部门：华润万佳商业集团战略投资部，负责人：陈立。",
+      "expect": [
+        {
+          "text": "华润万佳商业集团",
+          "type": "ORG"
+        },
+        {
+          "text": "陈立",
+          "type": "PERSON"
+        }
+      ]
+    },
+    {
+      "id": "h-amount-words-01",
+      "cat": "金额-万/亿混用",
+      "text": "注册资本5,000万元，实缴资本3,200万元，总资产2.8亿元。",
+      "expect": [
+        {
+          "text": "5,000",
+          "type": "MONEY"
+        },
+        {
+          "text": "3,200",
+          "type": "MONEY"
+        },
+        {
+          "text": "2.8",
+          "type": "MONEY"
+        }
+      ]
+    },
+    {
+      "id": "h-email-cn-01",
+      "cat": "邮箱-中文域名",
+      "text": "联系邮箱：li.ming@huarun.com，备用：contact@shanghai-office.cn",
+      "expect": [
+        {
+          "text": "li.ming@huarun.com",
+          "type": "EMAIL"
+        },
+        {
+          "text": "contact@shanghai-office.cn",
+          "type": "EMAIL"
+        }
+      ]
+    },
+    {
+      "id": "h-url-ip-01",
+      "cat": "内网IP",
+      "text": "系统地址 192.168.10.25，VPN 入口 vpn.crv-internal.com。",
+      "expect": [
+        {
+          "text": "192.168.10.25",
+          "type": "IP"
+        },
+        {
+          "text": "vpn.crv-internal.com",
+          "type": "URL"
+        }
+      ]
+    }
+  ]
+}

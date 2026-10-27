@@ -1,0 +1,10 @@
+.DS_Store
+Thumbs.db
+__pycache__/
+*.pyc
+node_modules/
+*.log
+
+# 本地工作目录与项目数据
+.workbuddy-ai/
+demask/
