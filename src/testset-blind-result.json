@@ -2,7 +2,7 @@
   "tp": 78,
   "fn": 0,
   "fp": 0,
-  "typeErr": 0,
+  "typeErr": 1,
   "keepOk": 65,
   "keepBad": 0,
   "precision": 1,
@@ -125,5 +125,5 @@
       "fp": 0
     }
   },
-  "failures": 0
+  "failures": 1
 }

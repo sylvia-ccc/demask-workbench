@@ -56,12 +56,14 @@
     PLATE:    { label: '车牌',     prefix: '车辆', color: 'sec' },
     TICKER:   { label: '股票代码', prefix: '股票', color: 'sec' },
     CONTRACT: { label: '合同/项目编号', prefix: '编号', color: 'sec' },
-    INVOICE:  { label: '发票号',   prefix: '发票', color: 'sec' }
+    INVOICE:  { label: '发票号',   prefix: '发票', color: 'sec' },
+    ACCOUNT:  { label: '账号/证券账户', prefix: '账号', color: 'sec' },
+    BIRTH:    { label: '出生日期', prefix: '日期', color: 'sec' }
   };
 
   const PRIO = {
     IDCARD: 10, BANK: 10, SECRET: 10, USCC: 9, EMAIL: 9, PHONE: 8,
-    ADDR: 7, URL: 6, IP: 6, PLATE: 6, TICKER: 9, CONTRACT: 9, INVOICE: 9,
+    ADDR: 7, URL: 6, IP: 6, PLATE: 6, TICKER: 9, CONTRACT: 9, INVOICE: 9, ACCOUNT: 11, BIRTH: 7,
     ORG: 5, PERSON: 5, PROJECT: 4, MONEY: 3, PCT: 1
   };
 
@@ -69,7 +71,15 @@
   const SURNAMES =
     '王李张刘陈杨黄赵吴周徐孙马朱胡郭何高林罗郑梁谢宋唐许韩冯邓曹彭曾肖田董袁潘于蒋蔡余杜叶程苏魏吕丁任沈' +
     '姚卢姜崔钟谭陆汪范金石廖贾夏韦付方白邹孟熊秦邱江尹薛闫段雷侯龙史陶黎贺顾毛郝龚邵万钱严覃武戴莫孔向汤' +
-    '欧阳司马上官诸葛东方尉迟皇甫';
+    '欧阳司马上官诸葛东方尉迟皇甫' +
+    // v2.0 补充：原表约 100 个单姓，"柯振宇""戚家豪""施雨桐"整类漏掉。这里只放几乎不打头常用词的姓
+    '柯戚詹葛祁阮聂仇柏邢翟殷喻鲍巫樊卜刁鄂芦冉岳饶匡裴雍郁骆耿柴' +
+    '倪滕鞠蔺伍邬奚茅屈晏霍蒲璩郜粟佟淳隋荆瞿褚汝湛桑闵佘郎栗敖阙郗靳钮' +
+    '邴虞苟臧韶';
+  // 也是常用字的姓（管理/时间/明确/华东/路径…）：只在强引导（职务、名单、称谓、由…担任）后才认
+  // 歧义档姓打头的常用词：命中就不是人名
+  const AMBIG_WORDS = new Set(('管理 管控 管道 管辖 解决 解释 解读 单位 单独 单价 单店 车辆 车间 车型 包括 包装 包含 路径 路线 路演 齐全 时间 时候 时期 时代 时点 景气 简单 简称 简要 房地 房产 华东 华南 华北 华中 华西 华为 华夏 华润 连续 连锁 连接 应收 应付 应当 应用 应对 关于 关注 关联 关系 关键 明确 明年 明细 明显 符合 费用 费率 相关 相应 相比 查询 查看 荣誉 宫格 门店 门槛 门户 尚未 尚需 古典 艾瑞 商品 商业 商务 商誉 麻烦 燕麦 伏笔 乐观 昌盛 冷链 冷却 那些 那么 税务 税收 税率 税前 税后 权益 权利 权限 皮肤 毕业 丰富 丰田 康复 洪水 鲁棒 习惯 边际 边界 童装 宁可 危机 危险 兰州 迟滞 项目 季度 纪要 纪律 储备 储能 焦点 凌晨 薄弱 庞大 谈判 谈话 施工 施行 牛市 游戏 游客 颜色 卓越 衡量 廉洁 舒适 辛苦 蓝图 幸运 揭示 庄园 苗头 伊始 丛林 甘肃 池子 麦当 乔迁 成本 成功 成立 成长 成为 成交 成熟 成果 成员 盛行 盛大 区域').split(' '));
+  const SURNAMES_AMBIG = '成盛项季纪储焦凌薄庞谈施牛游颜卓衡廉舒辛蓝幸揭庄苗伊丛楚甘池麦乔管解单车包路齐时景简房华连应关明符费相查荣宫门尚古翁艾商麻燕伏乐昌冷那税权皮毕丰康洪鲁习边童宁危兰迟';
 
   const TITLE_SUFFIX = [
     '董事长', '总裁', '总监', '经理', '副总', '先生', '女士', '小姐', '老师', '博士', '教授',
@@ -149,6 +159,39 @@
     return s[17].toUpperCase() === m[total % 11];
   }
 
+  // IPv6：最多一个 "::"；每段 1–4 位十六进制；不压缩时必须 8 段；排除 14:05:12 这类时间
+  function ipv6Ok(v) {
+    if (!/\d/.test(v) || /^\d{1,2}:\d{2}(?::\d{2})?$/.test(v)) return false;
+    const dbl = v.split('::');
+    if (dbl.length > 2) return false;
+    const segs = dbl.map(x => x ? x.split(':') : []);
+    const all = segs[0].concat(segs[1] || []);
+    if (!all.every(g => /^[0-9A-Fa-f]{1,4}$/.test(g))) return false;
+    if (dbl.length === 1) return all.length === 8;
+    return all.length <= 7 && (/[A-Fa-f]/.test(v) || all.length >= 2);
+  }
+
+  // IBAN：把前 4 位挪到末尾，字母转数字，对 97 取余应为 1
+  function ibanOk(s) {
+    const c = s.replace(/\s/g, '').toUpperCase();
+    if (c.length < 15 || c.length > 34) return false;
+    const r = c.slice(4) + c.slice(0, 4);
+    let rem = 0;
+    for (const ch of r) {
+      if (ch >= '0' && ch <= '9') rem = (rem * 10 + (ch.charCodeAt(0) - 48)) % 97;
+      else if (ch >= 'A' && ch <= 'Z') rem = (rem * 100 + (ch.charCodeAt(0) - 55)) % 97;
+      else return false;
+    }
+    return rem === 1;
+  }
+  // 占位符不是密钥：your_api_key / example / xxxx / ****** / 示例
+  function secretPlausible(v) {
+    if (/^[*xX•·.]+$/.test(v)) return false;
+    if (/example|sample|placeholder|your|changeme|change_me|dummy|fake|mock|todo|replace|insert|redacted|xxxx|示例|占位|你的/i.test(v)) return false;
+    if (/^(?:process\.env|os\.environ|\$\{|\{\{|<)/.test(v)) return false;
+    return true;
+  }
+
   function luhnOk(s) {
     const d = s.replace(/\D/g, '');
     if (d.length < 14 || d.length > 19) return false;
@@ -176,7 +219,7 @@
 
   // 人名判定的最后一道闸。年报的"公司治理"章全是"任公司董事长""现任董事"
   // 这类表述，光靠姓氏首字会大量误判——必须排除职务/机构词素。
-  const NAME_BAD_PARTS = /公司|董事|监事|经理|总裁|职工|现任|任期|担任|兼任|执行|财务|采购|销售|独立|兼职|联席|办公室|委员会|集团|股份|有限|证券|银行|基金|上海|北京|深圳|广州|杭州|南京|成都|武汉|西安|苏州|天津|重庆|宁波|青岛|程序|关联|遴选|考核|评估|治理|结构|调整|运营|生产|研发|技术|质量|安全|环保|人力|行政|任职|副董|司副|^副|副$/;
+  const NAME_BAD_PARTS = /^方授|^方代|双方|各方|对方|法定|公司|董事|监事|经理|总裁|职工|现任|任期|担任|兼任|执行|财务|采购|销售|独立|兼职|联席|办公室|委员会|集团|股份|有限|证券|银行|基金|上海|北京|深圳|广州|杭州|南京|成都|武汉|西安|苏州|天津|重庆|宁波|青岛|程序|关联|遴选|考核|评估|治理|结构|调整|运营|生产|研发|技术|质量|安全|环保|人力|行政|任职|副董|司副|^副|副$/;
   const COMPOUND_SURNAME = /^(?:欧阳|司马|上官|诸葛|东方|皇甫|尉迟|公孙|慕容|长孙|宇文|司徒|司空|夏侯|令狐|端木|独孤|南宫|西门|百里|东郭|呼延|羊舌|微生|梁丘|左丘|东门|南荣)$/;
   const COMPOUND_PAIRS = '欧阳 司马 上官 诸葛 东方 皇甫 尉迟 公孙 慕容 长孙 宇文 司徒 司空 夏侯 令狐 端木 独孤 南宫 西门 百里 东郭 呼延 羊舌 微生 梁丘 左丘 东门 南荣'.split(' ');
 
@@ -188,9 +231,14 @@
     return COMPOUND_PAIRS.indexOf(two) >= 0;
   }
 
-  function looksLikeName(s) {
+  function looksLikeName(s, strong) {
     if (!s || s.length < 2 || s.length > 4) return false;
-    if (SURNAMES.indexOf(s[0]) < 0) return false;
+    if (SURNAMES.indexOf(s[0]) < 0 && !(strong && SURNAMES_AMBIG.indexOf(s[0]) >= 0)) return false;
+    if (SURNAMES.indexOf(s[0]) < 0) {
+      // 歧义档：时间 / 管理层 / 项目组 / 华东区 / 季度复盘 / 华为
+      if (AMBIG_WORDS.has(s.slice(0, 2))) return false;
+      if (/[层组区部队方会处科室局院所司业务期度项线面级量率额]$/.test(s)) return false;
+    }
     const BAD = ['高管', '高工', '高级', '方式', '方法', '方案', '成本', '成功', '成果',
       '金额', '金融', '历史', '周期', '周边', '于是', '余下', '徐缓', '王国', '马上'];
     if (BAD.indexOf(s) >= 0) return false;
@@ -264,7 +312,7 @@
       'ORG', 0.85, null, '英文公司后缀');
     add(/(?:sk-[A-Za-z0-9_-]{16,}|AKIA[0-9A-Z]{16}|gh[pousr]_[A-Za-z0-9]{20,}|xox[baprs]-[A-Za-z0-9-]{10,}|eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{5,})/g,
       'SECRET', 1, null, '');
-    add(/(?:password|passwd|pwd|secret|token|api[_-]?key)\s*[:=]\s*[^\s,;，；"']{4,}/gi, 'SECRET', 0.9, null, '');
+    add(/(?:password|passwd|pwd|secret|token|api[_-]?key|access[_-]?key|secret[_-]?key)["']?\s*[:=]\s*["']?([^\s,;，；"']{4,})/gi, 'SECRET', 0.9, secretPlausible, '');
     add(/(?<![\d.])(?:(?:10|127|172|192)\.\d{1,3}\.\d{1,3}\.\d{1,3})(?::\d{2,5})?(?![\d.])/g, 'IP', 0.85, null, '');
     add(/\b[A-Za-z0-9-]+\.(?:internal|local|corp|lan|intra)\b/g, 'IP', 0.8, null, '');
     add(/https?:\/\/[^\s，。、；）)"']+/g, 'URL', 0.9, null, '');
@@ -276,7 +324,7 @@
     // 城市 + 知名片区：上海张江 / 深圳南山 / 苏州工业园区
     add(/(?:北京|上海|广州|深圳|杭州|南京|成都|武汉|西安|苏州|天津|重庆|宁波|青岛|长沙|郑州|合肥|福州|厦门|济南|沈阳|大连|无锡|佛山|东莞|珠海|中山)(?:市)?(?:张江|南山|前海|中关村|陆家嘴|亦庄|望京|金融城|科技园|高新区|经开区|自贸区|保税区|工业园区|开发区|软件园|科学城|办公室|办事处|分公司|总部)/g,
       'ADDR', 0.82, null, '城市+片区');
-    add(/(?:[\u4e00-\u9fa5]{2,8}(?:省|市|区|县|镇|乡|街道)){1,4}[\u4e00-\u9fa5A-Za-z0-9]{2,20}(?:路|街|道|巷|弄|大厦|大楼|广场|园区)(?:[\u4e00-\u9fa5A-Za-z0-9]{1,10}(?:号|层|楼|室|单元))*/g,
+    add(/(?:[\u4e00-\u9fa5]{2,8}(?:省|市|区|县|镇|乡|街道)){1,4}[\u4e00-\u9fa5A-Za-z0-9]{2,20}(?:路|街|道|巷|弄|大厦|大楼|广场|园区)(?:\s*[A-Za-z0-9\-]{1,8}\s*号)?(?:\s*[\u4e00-\u9fa5A-Za-z0-9]{1,10}(?:号|层|楼|室|单元))*/g,
       'ADDR', 0.85, null, '含路名');
     // 只有"数字+号"才算门牌，"招银叁号"这类不算
     // 城市 + 知名片区：上海张江 / 深圳南山 / 苏州工业园区
@@ -284,6 +332,36 @@
       'ADDR', 0.82, null, '城市+片区');
     add(/(?:[\u4e00-\u9fa5]{2,8}(?:省|市|区|县|镇|乡|街道)){1,4}[\u4e00-\u9fa5A-Za-z0-9]{2,20}\d+\s*号(?:[\u4e00-\u9fa5A-Za-z0-9]{1,10}(?:层|楼|室|单元))*/g,
       'ADDR', 0.85, null, '含门牌号');
+
+    /* ---- v2.0 格式类补充 ---- */
+    // 国际电话：+852 9123 4567 / +1 (415) 555-0132；数字 8–15 位且不全相同
+    add(/(?<![\w+])\+[1-9]\d{0,3}[\s-]?(?:\(\d{1,4}\)[\s-]?)?\d{2,5}(?:[\s-]?\d{2,5}){1,3}(?![\d])/g, 'PHONE', 0.92,
+      v => { const d = v.replace(/\D/g, ''); return d.length >= 8 && d.length <= 15 && !/^(\d)\1+$/.test(d); }, '国际电话');
+    // 公网 IPv4（原规则只认内网段）；排除版本号语境
+    add(/(?<![\d.])(?:\d{1,3}\.){3}\d{1,3}(?::\d{2,5})?(?![\d.])/g, 'IP', 0.82, v => {
+      const ip = v.split(':')[0];
+      if (!ip.split('.').every(x => +x <= 255 && !(x.length > 1 && x[0] === '0'))) return false;
+      return true;
+    }, 'IPv4');
+    // IPv6：要有数字且至少 4 个冒号或含 "::"，避免 std::vector、14:05:12
+    add(/(?<![0-9A-Za-z:])[0-9A-Fa-f]{0,4}(?::[0-9A-Fa-f]{0,4}){2,7}(?![0-9A-Za-z:])/g, 'IP', 0.85, ipv6Ok, 'IPv6');
+    // IBAN（跨境交易收款账户）：mod-97 校验
+    add(/\b[A-Z]{2}\d{2}(?:\s?[A-Z0-9]{4}){2,7}(?:\s?[A-Z0-9]{1,4})?\b/g, 'BANK', 0.95, ibanOk, 'IBAN 校验通过');
+    // SWIFT / BIC：必须有语境，8 或 11 位
+    add(/(?:SWIFT(?:\s*Code)?|BIC|Swift\s*Code|银行代码|SWIFT码)\s*[:：]?\s*([A-Z]{4}[A-Z]{2}[A-Z0-9]{2}(?:[A-Z0-9]{3})?)\b/g, 'BANK', 0.9, null, 'SWIFT 语境');
+    // 云厂商与常见平台密钥（补：Google AIza、GitHub PAT、阿里云 LTAI、腾讯云 AKID、Bearer）
+    add(/(?:AIza[0-9A-Za-z_-]{35}|github_pat_[A-Za-z0-9_]{20,}|LTAI[A-Za-z0-9]{12,24}|AKID[A-Za-z0-9]{32})/g, 'SECRET', 1, null, '平台密钥');
+    add(/\b[Bb]earer\s+([A-Za-z0-9._~+\/-]{16,}=*)/g, 'SECRET', 0.95, secretPlausible, 'Bearer');
+    // 中文密码 / 口令 / 验证码：只换值，键名留着，AI 才看得懂上下文
+    add(/(?:登录密码|初始密码|支付密码|交易密码|资金密码|密码|口令|验证码|动态码|PIN码?|pin码?)\s*(?:是|为)?\s*[:：=]?\s*([A-Za-z0-9!@#$%^&*._\-+=]{4,32})/g, 'SECRET', 0.9, secretPlausible, '中文密码');
+    // 账号类（金融场景重点：证券账户、资金账号、股东账户）
+    add(/(?:证券账户|证券账号|资金账号|资金账户|股东账户|股东代码|基金账户|期货账户|客户号|客户编号|QQ号?|微信号|微信|WeChat|工号|员工编号|员工号|会员号|会员卡号|学号|社保号|社保卡号|医保卡号|公积金账号)\s*[:：]?\s*([A-Za-z0-9][A-Za-z0-9_-]{4,24})/g,
+      'ACCOUNT', 0.9, v => !/^(?:\d)\1+$/.test(v), '账号语境');
+    // 驾驶证 / 军官证 / 居住证 / 港澳台居民居住证
+    add(/(?:驾驶证|驾照|军官证|士兵证|居住证|居民居住证)(?:号|号码|编号)?\s*[:：]?\s*([A-Za-z0-9]{8,20})/g, 'IDCARD', 0.88, null, '证件语境');
+    // 出生日期（准标识符：和职务、学历组合就能反推是谁）
+    add(/(?:出生日期|出生年月|生日|出生于|(?<![先学医后新卫考女])生于)\s*[:：]?\s*((?:19|20)\d{2}\s*(?:年|[-\/.])\s*\d{1,2}\s*(?:月|[-\/.])?(?:\s*\d{1,2}\s*日?)?)/g, 'BIRTH', 0.9, null, '出生日期');
+    add(/((?:19|20)\d{2}\s*年(?:\s*\d{1,2}\s*月)?)(?=出生(?:[，,。；;）)\s]|于|$)|生人|生，)/g, 'BIRTH', 0.88, null, '某年出生');
 
     // 中文大写金额：人民币壹仟贰佰万元整
     add(/(?:人民币|RMB)?\s*([零壹贰叁肆伍陆柒捌玖拾佰仟万亿]{2,}(?:元|圆)(?:整)?)/g, 'MONEY', 0.9,
@@ -296,6 +374,11 @@
 
     // 股票代码：必须带交易所后缀，或紧邻"股票代码/证券代码"
     add(/\b(?:00|30|60|68|83|87|92)\d{4}\.(?:SZ|SH|BJ|sz|sh|bj)\b/g, 'TICKER', 0.95, null, '交易所后缀');
+    add(/\b\d{4,5}\.(?:HK|hk)\b/g, 'TICKER', 0.95, null, '港股');
+    add(/(?:NYSE|NASDAQ|Nasdaq|纳斯达克|纽交所|美股)\s*[:：]\s*([A-Z]{1,5})\b/g, 'TICKER', 0.9, null, '美股');
+    // 公司名（股票代码）：蓝鲸新材（688236.SH）——代码前面的就是公司简称
+    add(/([一-龥A-Za-z]{2,10})(?=\s*[（(]\s*(?:\d{6}\.(?:SH|SZ|BJ)|\d{4,5}\.HK|[A-Z]{1,5}\.(?:US|N|O))\s*[）)])/g, 'ORG', 0.95,
+      v => !/^(?:公司|本公司|发行人|标的|其中|包括|如|例如|对标|可比公司)$/.test(v), '代码前名称');
     add(/(?:股票代码|证券代码|代码)\s*[:：]?\s*((?:00|30|60|68|83|87|92)\d{4})\b/g, 'TICKER', 0.85, null, '语境');
 
     // 合同 / 项目编号
@@ -312,6 +395,27 @@
     add(/\b[A-Z][A-Za-z&.'\- ]{1,32}?(?:Inc\.?|LLC|Ltd\.?|Limited|Corp\.?|Corporation|GmbH|S\.A\.|Pte\.?|Partners|Capital|Holdings|Group|Advisors|Securities)\b/g,
       'ORG', 0.8, null, '英文实体');
 
+    // 行政区链 + 园区名：湖南省长沙市星沙经济开发区三一工业城 / 内蒙古自治区呼和浩特市和林格尔县盛乐…集聚区
+    add(/(?:[\u4e00-\u9fa5]{2,6}(?:省|自治区))[\u4e00-\u9fa5]{2,6}?(?:市|自治州|盟|地区)(?:[\u4e00-\u9fa5]{1,6}?(?:区|县|旗|市))?[\u4e00-\u9fa5A-Za-z0-9]{2,24}?(?:开发区|工业园|产业园|工业城|集聚区|园区|新区|高新区|总部|基地|大厦|中心|厂区)/g,
+      'ADDR', 0.85, null, '行政区链');
+    // 版本号不是 IP：v1.2.3.4 / build 1.0.0.1 / 版本 2.3.1.0
+    for (const sp of out) {
+      if (sp.type !== 'IP' || sp.note !== 'IPv4') continue;
+      const pre = text.slice(Math.max(0, sp.start - 12), sp.start);
+      if (/[A-Za-z]$/.test(pre) || /(?:v|V|ver\.?|version|Version|build|Build|版本号?|固件|软件|内核)\s*[:：]?\s*$/.test(pre)) sp._drop = true;
+    }
+    for (let i = out.length - 1; i >= 0; i--) if (out[i]._drop) out.splice(i, 1);
+    // 地址前缀收紧："总部搬到了南山区…""工厂位于江苏省…"——行政区前面的 2–8 字可能吞进动词短语
+    for (const sp of out) {
+      if (sp.type !== 'ADDR') continue;
+      const head = sp.text.slice(0, 12);
+      let cut = -1, mm;
+      const cueRe = /位于|坐落于|搬到了|搬到|迁至|迁往|设在|设于|地址[:：]?|注册地[:：]?|寄到|送到|发往|在|于|到|是|了|的|为/g;
+      while ((mm = cueRe.exec(head)) !== null) cut = mm.index + mm[0].length;
+      if (cut > 0 && cut < sp.text.length - 4) {
+        sp.start += cut; sp.text = sp.text.slice(cut);
+      }
+    }
     return refineGrouped(text, out);
   }
 
@@ -456,6 +560,8 @@
       // 项目名太长多半吞了别的东西
       if (s.length > 14) continue;
       if (/^(某|该|本|这|那|一|多|几|各|此|新|老|大|小)/.test(s)) continue;
+      // 描述性短语不是项目名：曾担任多个研究项目 / 参与重点项目
+      if (/多个|多项|若干|担任|参与|负责|主持|承担|研究项目$|重点项目$|相关项目$|科研项目$|建设项目$|投资项目$/.test(s)) continue;
       out.push(Span(m.index, m.index + s.length, 'PROJECT', s, 0.7, '后缀识别'));
     }
     const re2 = /\b(?:Project|Proj\.?|Operation|Program)\s+([A-Z][A-Za-z0-9]{2,})/g;
@@ -535,7 +641,171 @@
       const st = m.index + m[0].length - cand.length;
       out.push(Span(st, st + cand.length, 'PERSON', cand, 0.75, '语境'));
     }
+
+    /* ---- v2.0：真实文体里的人名写法（年报董监高、尽调、纪要、邮件） ---- */
+    // 7) 强引导 + 名单：独立董事：冯晓光、蒋一帆 / 实际控制人为邓志远 / 分别为：戚家豪（首席科学家）、施雨桐
+    const r7 = new RegExp('(?:' + STRONG_CUE + ')(?:分别为|分别是|包括|依次为|为|是|系|由)?\\s*[:：]?\\s*', 'g');
+    while ((m = r7.exec(text)) !== null) {
+      let pos = m.index + m[0].length, k = 0;
+      while (k < 10) {
+        const nm = pickName(text, pos, true);
+        if (!nm) break;
+        out.push(Span(pos, pos + nm.length, 'PERSON', nm, k === 0 ? 0.9 : 0.88, '强引导'));
+        k++;
+        pos += nm.length;
+        // 名字后的括注：（首席科学家）/（转法务部）
+        const par = /^[（(][^）)\n]{1,12}[）)]/.exec(text.slice(pos));
+        if (par) pos += par[0].length;
+        const sep = /^\s*(?:、|，|,|和|及|与|\/)\s*/.exec(text.slice(pos));
+        if (!sep) break;
+        pos += sep[0].length;
+      }
+    }
+    // 8) 由X担任 / 由X主持
+    const r8 = new RegExp('由(' + NAME_SRC + ')(?=担任|出任|兼任|主持|召集|牵头|负责|签署|代表)', 'g');
+    while ((m = r8.exec(text)) !== null) {
+      const st = m.index + 1, nm = pickName(text, st, true);
+      if (nm) out.push(Span(st, st + nm.length, 'PERSON', nm, 0.9, '由…担任'));
+    }
+    // 9) 履历开头：欧阳楚英，1971年出生，中国国籍 / 赵敏，女，汉族
+    const r9 = new RegExp('(?:^|[\\n。；;])\\s*(' + NAME_SRC + ')[，,]\\s*(?=男|女|(?:19|20)\\d{2}\\s*年|中国国籍|汉族|硕士|博士|本科|大专|研究生|高级|注册会计师|教授|经济师|会计师|工程师|律师)', 'g');
+    while ((m = r9.exec(text)) !== null) {
+      const nm = m[1], st = m.index + m[0].indexOf(nm);
+      if (looksLikeName(nm, true)) out.push(Span(st, st + nm.length, 'PERSON', nm, 0.92, '履历'));
+    }
+    // 10) 履历动词：司马文涛曾任职于 / 现任 / 历任 / 毕业于
+    const r10 = new RegExp('(' + NAME_SRC + ')(?=曾任|现任|历任|曾就职|曾在|毕业于|任职于|获聘|当选|辞去|辞任|兼任|出任|直接持有|间接持有|持有公司)', 'g');
+    while ((m = r10.exec(text)) !== null) {
+      const nm = pickName(text, m.index, false);
+      if (nm && !cutInsideCompound(text, m.index, nm)) out.push(Span(m.index, m.index + nm.length, 'PERSON', nm, 0.88, '履历动词'));
+    }
+    // 11) 姓 + 职务简称：王总、张总监、李总工、刘董、小刘、老陈
+    const r11 = new RegExp('(?:[老小](?:' + SURNAME_CLASS_SAFE + ')|(?:' + SURNAME_CLASS + ')(?:总监|总工|总|董|工|经理|律师|老师|行长|主任|先生|女士))(?=' + NAME_FOLLOW + ')', 'g');
+    while ((m = r11.exec(text)) !== null) {
+      const pc = text[m.index - 1] || '';
+      if (/\d/.test(pc)) continue;                       // 40小时 / 3小组
+      if (pc && /[\u4e00-\u9fa5]/.test(pc) && SHORT_PREV.indexOf(pc) < 0) continue;
+      out.push(Span(m.index, m.index + m[0].length, 'PERSON', m[0], 0.82, '姓+称谓'));
+    }
+    // 12) 邮件称呼和签名：Hi 思远 / Dear Mr. Tanaka / Best, Grace Lin / CFO Linda Wu
+    const r12 = /(?:\b(?:Hi|Hello|Dear|Hey)|致|亲爱的)\s*[,，]?\s*([\u4e00-\u9fa5]{2,3})(?=[，,：:！!\s]|$)/g;
+    while ((m = r12.exec(text)) !== null) {
+      const st = m.index + m[0].length - m[1].length;
+      if (!NAME_BAD_PARTS.test(m[1])) out.push(Span(st, st + m[1].length, 'PERSON', m[1], 0.88, '称呼'));
+    }
+    const r13 = /\b(?:(?:(?:Hi|Hello|Dear|Hey)\s+(?:(?:Mr|Ms|Mrs|Dr|Prof)\.?\s+)?|(?:Mr|Ms|Mrs|Dr|Prof)\.?\s+)((?:Mc|O')?[A-Z][a-z]+(?:[-'][A-Z]?[a-z]+)?(?:\s+(?:Mc|O')?[A-Z][a-z]+(?:[-'][A-Z]?[a-z]+)?){0,2})|(?:CEO|CFO|COO|CTO|CIO|VP|MD|SVP|EVP|Partner|Director|Analyst|Associate|Principal)\s+((?:Mc|O')?[A-Z][a-z]+(?:\s+(?:Mc|O')?[A-Z][a-z']+){1,2}))/g;
+    while ((m = r13.exec(text)) !== null) {
+      const nm = m[1] || m[2];
+      if (EN_NOT_NAME.test(nm)) continue;
+      const st = m.index + m[0].lastIndexOf(nm);
+      out.push(Span(st, st + nm.length, 'PERSON', nm, 0.88, '英文称呼'));
+    }
+    const r14 = /(?:^|\n|[.。!！]\s*)(?:Best(?: regards)?|Regards|Kind regards|Thanks|Thank you|Cheers|Sincerely|BR)\s*[,，]?\s*\n?\s*((?:Mc|O')?[A-Z][a-z]+(?:\s+(?:Mc|O')?[A-Z][a-z']+){0,2})(?![a-z])/g;
+    while ((m = r14.exec(text)) !== null) {
+      if (EN_NOT_NAME.test(m[1])) continue;
+      const st = m.index + m[0].length - m[1].length;
+      out.push(Span(st, st + m[1].length, 'PERSON', m[1], 0.88, '邮件签名'));
+    }
+    // 15) 表格行：李西廷 男 73 董事长 / 2 曹成虎 董事、总经理 / 王 莉 董事 女（两字名常被补空格）
+    const r15 = new RegExp('(?:^|\\n)[ \\t]*(?:\\d{1,3}[ \\t]+|\\d{1,3}[、.）)][ \\t]*)?((?:' + SURNAME_CLASS + ')[ \\u3000]?[\\u4e00-\\u9fa5]{1,2}|(?:' + COMPOUND_SRC + ')[\\u4e00-\\u9fa5]{1,2})(?=[ \\t]+(?:男|女|\\d{2}[ \\t]|董事|监事|独立|总经理|副总|总裁|副总裁|财务|董事会|职工|现任|离任|执行|非执行|首席|核心|[\\u4e00-\\u9fa5]{2,30}(?:有限公司|集团|大学|研究院)))', 'g');
+    while ((m = r15.exec(text)) !== null) {
+      const nm = m[1], st = m.index + m[0].length - nm.length;
+      const bare = nm.replace(/[ \u3000]/g, '');
+      if (bare.length < 2 || bare.length > 4 || NAME_BAD_PARTS.test(bare)) continue;
+      out.push(Span(st, st + nm.length, 'PERSON', nm, 0.9, '表格行'));
+    }
+    // 16) 邮件头：From: 陈思远 <…> / To: 周凯 / 发件人：Susan Liu
+    const r16 = /(?:^|\n)[ \t]*(?:From|To|Cc|Bcc|发件人|收件人|抄送)[ \t]*[:：][ \t]*([^\n<]{2,60})/gi;
+    while ((m = r16.exec(text)) !== null) {
+      const seg = m[1], base = m.index + m[0].length - seg.length;
+      const re2 = /[A-Z][a-z]+(?:\s+[A-Z][a-z']+){0,2}|[\u4e00-\u9fa5]{2,4}/g;
+      let mm;
+      while ((mm = re2.exec(seg)) !== null) {
+        const w = mm[0];
+        if (/[\u4e00-\u9fa5]/.test(w) && !looksLikeName(w, true) && COMPOUND_PAIRS.indexOf(w.slice(0, 2)) < 0) continue;
+        if (EN_NOT_NAME.test(w)) continue;
+        out.push(Span(base + mm.index, base + mm.index + w.length, 'PERSON', w, 0.9, '邮件头'));
+      }
+    }
+    // 17) 签名行：李晓蕾 | 投资经理 / 张伟⏎合伙人
+    const r17 = new RegExp('(?:^|\\n)[ \\t]*(' + NAME_SRC + ')[ \\t]*(?:[|｜/·]|\\n)[ \\t]*(?:' + TITLE_WORDS + ')', 'g');
+    while ((m = r17.exec(text)) !== null) {
+      const nm = m[1], st = m.index + m[0].indexOf(nm);
+      if (looksLikeName(nm, true) || COMPOUND_PAIRS.indexOf(nm.slice(0, 2)) >= 0) out.push(Span(st, st + nm.length, 'PERSON', nm, 0.9, '签名行'));
+    }
+    // 18) 复姓 + 名 + 常见后续：尉迟建国先生 / 东方宇轩任董事会秘书 / 皇甫嵩为独立董事
+    const r18 = new RegExp('(?:' + COMPOUND_SRC + ')(?=[\\u4e00-\\u9fa5])', 'g');
+    while ((m = r18.exec(text)) !== null) {
+      const nm = pickName(text, m.index, true);
+      if (nm && nm.length >= 3) out.push(Span(m.index, m.index + nm.length, 'PERSON', nm, 0.9, '复姓'));
+    }
+    // 19) 中文引导 + 英文名：反对人：Susan Liu / 联系人: Kevin Zhang / 与 Linda 和 Mark 对齐
+    const r19 = /(?:人|代表|对接|联系)\s*[:：]\s*([A-Z][a-z]+(?:\s+[A-Z][a-z']+){0,2})/g;
+    while ((m = r19.exec(text)) !== null) {
+      if (EN_NOT_NAME.test(m[1])) continue;
+      const st = m.index + m[0].length - m[1].length;
+      out.push(Span(st, st + m[1].length, 'PERSON', m[1], 0.88, '英文名'));
+    }
+    const r20 = /(?<=[与和跟找问让请同给@、])\s*([A-Z][a-z]{2,12})(?=\s*(?:和|与|、|，|,|说|提|对齐|确认|沟通|讨论|负责|一起|聊|开会|$))/g;
+    while ((m = r20.exec(text)) !== null) {
+      if (EN_NOT_NAME.test(m[1]) || EN_COMMON.test(m[1])) continue;
+      const st = m.index + m[0].length - m[1].length;
+      out.push(Span(st, st + m[1].length, 'PERSON', m[1], 0.8, '英文单名'));
+    }
     return out;
+  }
+
+  /* ---- v2.0 人名工具 ---- */
+  const TITLE_WORDS = '投资经理|投资总监|合伙人|董事总经理|执行董事|副总裁|总裁|总经理|经理|总监|分析师|研究员|顾问|律师|会计师|主管|助理|VP|MD|ED|Partner|Director|Analyst|Associate|Manager';
+  const EN_COMMON = /^(?:Excel|Word|Wind|Choice|Bloomberg|Python|Google|Apple|Microsoft|Amazon|Tesla|Meta|OpenAI|Claude|ChatGPT|Kimi|Zoom|Teams|Slack|Email|Mail|Deck|Memo|Model|Data|Note|Notes|Update|Action|Items|Draft|Final)$/;
+  const SURNAME_CLASS = (function () {
+    const singles = (SURNAMES + SURNAMES_AMBIG).replace(/欧阳|司马|上官|诸葛|东方|尉迟|皇甫/g, '');
+    return '[' + Array.from(new Set(singles.split(''))).join('') + ']';
+  })();
+  const SURNAME_CLASS_SAFE = '[' + Array.from(new Set(SURNAMES.replace(/欧阳|司马|上官|诸葛|东方|尉迟|皇甫/g, '').split(''))).join('') + ']';
+  const COMPOUND_SRC = COMPOUND_PAIRS.join('|');
+  // 候选：复姓 + 1–2 字，或单字 + 1–2 字；长度由 pickName 按后文判定
+  const NAME_SRC = '(?:' + COMPOUND_SRC + ')[\\u4e00-\\u9fa5]{1,2}|[\\u4e00-\\u9fa5]{2,3}';
+  // 名字之后通常紧跟的字或词：标点、称谓、动词、连词
+  const NAME_FOLLOW = '[，。、；：:,;！!？?）)（(\\s]|$|先生|女士|小姐|担任|出任|兼任|表示|认为|说|讲|补充|主持|召集|负责|汇报|确认|同意|反对|曾|现任|历任|任|为|是|与|和|及|等|兼|已|于|在|因|的|将|对|也|则|作为|辞|签|提供|反馈|发言|提出|指出|透露|介绍|牵头|对接|跟进|存在|持有|直接|间接|系|之|手机|电话|邮箱|微信|周[一二三四五六日]|今天|明天|下周|上周|这|那|他|她|我|你|们|要|会|还|就|都|又|只|再|去|来|到|把|被|让|给|跟|问|看|做|想|觉得|一起|也是';
+  const NAME_FOLLOW_RE = new RegExp('^(?:' + NAME_FOLLOW + ')');
+  const SHORT_PREV = '的由与和向给请找跟同及、，。：:（(被让叫问；;对是为把\n ';
+  const STRONG_CUE = [
+    '监事会主席', '职工代表监事', '非独立董事', '独立董事', '董事会秘书', '高级管理人员', '核心技术人员',
+    '法定代表人', '法人代表', '实际控制人', '实控人', '控股股东', '创始人', '联合创始人',
+    '董事长', '副董事长', '总经理', '副总经理', '财务总监', '财务负责人', '董秘', '总裁', '副总裁',
+    '保荐代表人', '项目协办人', '签字会计师', '签字律师', '经办律师', '经办人', '签字人',
+    '联系人', '收件人', '寄件人', '收货人', '抄送', '记录人', '记录', '主持人', '召集人', '参会人员', '参会人', '出席人员',
+    '原告', '被告', '申请人', '被申请人', '第三人', '借款人', '出借人', '担保人', '保证人', '债务人', '债权人', '自然人', '受益人',
+    '配偶', '之子', '之女', '其妻', '其夫', '老板', '老总', '一把手',
+    '负责人', '项目经理', '项目负责人', '合伙人', '分析师', '研究员', '律师', '会计师',
+    '分别为', '分别是', '名单如下', '成员为', '成员包括', '成员有',
+    '股东还包括', '股东包括', '人员包括', '团队（', '授权代表', '委托代理人', '首席代表',
+    '纪要整理', '整理人', '整理', '撰写人', '起草人', '编制人', '审核人', '复核人', '批准人',
+    '厂长', '店长', '行长', '院长', '校长', '处长', '科长', '局长', '部长', '主任', '组长', '所长', '会长', '秘书长',
+    '投资经理', '投资总监', '销售总监', '运营总监', '技术总监', '财务经理', '总监', '经理', '主管'
+  ].sort((a, b) => b.length - a.length).join('|');
+  const EN_NOT_NAME = /^(?:Mr|Ms|Mrs|Dr|Prof|Team|All|Sir|Madam|Board|Committee|Company|Group|Partners|Capital|Fund|The|This|That|Please|Thanks|Best|Regards|Report|Meeting|Project|Investment|Investor|Investors|Management|Shareholders|Client|Customer)\b/;
+
+  // 从 pos 开始取一个人名：先试 3/4 字，再试 2 字，以"后面紧跟的是不是名字后常见的字词"为准
+  function pickName(text, pos, strong) {
+    const two = text.slice(pos, pos + 2);
+    const comp = COMPOUND_PAIRS.indexOf(two) >= 0;
+    const lens = comp ? [4, 3] : [3, 2];
+    for (const L of lens) {
+      const c = text.slice(pos, pos + L);
+      if (c.length < L || !/^[\u4e00-\u9fa5]+$/.test(c)) continue;
+      if (!comp && !looksLikeName(c, strong)) continue;
+      if (comp && (NAME_BAD_PARTS.test(c) || c.length < 3)) continue;
+      if (!NAME_FOLLOW_RE.test(text.slice(pos + L, pos + L + 4))) continue;
+      return c;
+    }
+    // 强引导后（"老板黄建国理念不合"）：后文判不出来时按 3 字名兜底，中文姓名以 3 字为主
+    if (strong && !comp && SURNAMES.indexOf(text[pos]) >= 0) {
+      const c = text.slice(pos, pos + 3);
+      if (c.length === 3 && /^[\u4e00-\u9fa5]+$/.test(c) && looksLikeName(c, true)) return c;
+    }
+    return null;
   }
 
   /* ---------------- 检测器：金额 ---------------- */
@@ -641,6 +911,7 @@
 
   function detectMoney(text) {
     const out = [];
+    const docCurrency = /单位\s*[:：]\s*(?:人民币)?\s*(?:元|千元|万元|百万元|亿元)|人民币|RMB|万元|亿元|千元/.test(text);
     MONEY_RE.lastIndex = 0;
     let m;
     while ((m = MONEY_RE.exec(text)) !== null) {
@@ -687,9 +958,10 @@
       if (!unit && /^(?:19|20)\d{2}$/.test(digits)) continue;
 
       // 后面跟量词的不是金额：5.2万人、12,000平方米、1,240家门店
-      const qFrom = ne0 + (unit ? unit.length : 0);
+      // 起点用整个匹配的末尾：数字和单位之间可能有空格（"4.2 万平方米"）
+      const qFrom = m.index + m[0].length;
       const quant = text.slice(qFrom, qFrom + 4);
-      if (/^(?:人|家|个|台|辆|吨|平方米|平米|亩|间|所|条|次|位|张|套|批|只|件|箱|瓶|袋|支|片|克|千克|公斤|斤|升|毫升|度|小时|分钟|公里|千米|米|座|栋|层)/.test(quant)) continue;
+      if (/^(?:人|家|个|台|辆|吨|平方米|平米|亩|间|所|条|次|位|张|套|批|只|件|箱|瓶|袋|支|片|克|千克|公斤|斤|升|毫升|度|小时|分钟|公里|千米|米|座|栋|层|手|户|票|单|笔|项|例|款|名|天|年|月)/.test(quant)) continue;
 
       const v = parseFloat(digits);
       if (isNaN(v)) continue;
@@ -697,10 +969,24 @@
       const real = v * mult;
       const ctx = text.slice(Math.max(0, ns0 - 14), ns0) + text.slice(ne0, ne0 + 14);
       const nearCtx = new RegExp(MONEY_CONTEXT, 'i').test(ctx);
-      if (!(cur || unit || nearCtx)) continue;
+      // PDF 表格拍平后，"单位：万元"在表头、数字在几行之后：带千分位的数字在有货币单位的文档里按金额处理
+      const afterTxt = text.slice(m.index + m[0].length, m.index + m[0].length + 10);
+      const tableMoney = (docCurrency && /,\d{3}/.test(num)) ||
+        /^\d{1,3}(?:,\d{3})+\.\d{2}$/.test(num) ||                       // 千分位 + 两位小数（26,315.91），几乎只出现在金额里
+        (/,\d{3}/.test(num) && /^\s*\d{1,3}(?:\.\d{1,2})?%/.test(afterTxt));  // 表格的金额加占比：173,906 2.10%
+      if (!(cur || unit || nearCtx || tableMoney)) continue;
       if (!(cur || unit) && real < 100) continue;
 
       out.push(Span(ns0, ne0, 'MONEY', num, 0.9, unit ? '含单位' : (cur ? '货币' : '语境')));
+    }
+    // 斜杠系列：4.8/6.3/8.1 亿元——单位只写在最后一个，前面的同样是金额
+    const SER = /(?<![\d\/.])(\d{1,12}(?:\.\d{1,6})?(?:\s{0,2}\/\s{0,2}\d{1,12}(?:\.\d{1,6})?){1,8})\s*(?:十亿元|亿元|万元|千万元|百万元|亿|万|元|million|billion|bn|mn)/g;
+    let sm;
+    while ((sm = SER.exec(text)) !== null) {
+      const base = sm.index;
+      const re3 = /\d+(?:\.\d+)?/g;
+      let x;
+      while ((x = re3.exec(sm[1])) !== null) out.push(Span(base + x.index, base + x.index + x[0].length, 'MONEY', x[0], 0.88, '系列值'));
     }
     return out;
   }
@@ -972,6 +1258,7 @@
     return okB && okA;
   }
 
+  const PLACE_LIKE_BRANDS = new Set(['王府井', '西单', '五道口', '国贸', '徐家汇', '春熙路', '太古里', '万象城']);
   function detectLexicon(text, enabledGroups) {
     const out = [];
     const useAll = (enabledGroups === undefined || enabledGroups === null);
@@ -991,6 +1278,9 @@
         }
         // 只有两字词歧义大（美的/大众/小米）；三字以上品牌名直接认
         if (name.length <= 2 && LEX.WEAK.has(name) && !weakContextOk(text, i, i + name.length)) continue;
+        // 品牌同时是地名（王府井/西单/五道口…）：后面跟"店/商圈/大街/一带"时按地名处理
+        if (/^(?:店|商圈|大街|步行街|商业街|地区|一带|附近|片区|周边|地铁站|站)/.test(text.slice(i + name.length, i + name.length + 3))) continue;
+        if (/[在于]$/.test(text.slice(Math.max(0, i - 1), i)) && /^[、，和与及]/.test(text[i + name.length] || '') && PLACE_LIKE_BRANDS.has(name)) continue;
         out.push(Span(i, i + name.length, 'ORG', name, 0.95, '内置词库'));
         i += name.length - 1;
         break;
@@ -1135,8 +1425,13 @@
     }
     bounds.push([st, text.length]);
 
+    // 机构按位置排序后用指针推进：原来每句都 filter 一遍全部机构，句子 × 机构是平方级
+    orgs.sort((a, b) => a.start - b.start);
+    let oi = 0;
     for (const [bs, be] of bounds) {
-      const inSent = orgs.filter(o => o.start >= bs && o.end <= be);
+      while (oi < orgs.length && orgs[oi].start < bs) oi++;
+      const inSent = [];
+      for (let k = oi; k < orgs.length && orgs[k].start < be; k++) if (orgs[k].end <= be) inSent.push(orgs[k]);
       if (!inSent.length) continue;
       const sent = text.slice(bs, be);
 
@@ -1222,6 +1517,31 @@
   }
 
   /* ---------------- 重叠消解 ---------------- */
+  // 同字头简称：全称"内蒙古双欣环保材料股份有限公司"在文中出现时，
+  // "双欣化工""双欣资源"这类"字头 + 行业词"的写法也是同一集团的主体
+  const REGION_PREFIX = /^(?:中国|内蒙古|黑龙江|新疆|西藏|宁夏|广西|香港|澳门|台湾|[一-龥]{2}省|[一-龥]{2}市|北京|上海|天津|重庆|河北|山西|辽宁|吉林|江苏|浙江|安徽|福建|江西|山东|河南|湖北|湖南|广东|海南|四川|贵州|云南|陕西|甘肃|青海|深圳|广州|杭州|南京|苏州|成都|武汉|西安|宁波|青岛|厦门|长沙|郑州|合肥|无锡|东莞|佛山|珠海)+/;
+  const INDUSTRY_TAIL = '电子|国际|化工|资源|医疗|光电|新材|物流|生物|资本|投资|科技|医药|控股|集团|股份|实业|环保|能源|材料|制造|智能|汽车|食品|地产|置业|传媒|网络|软件|数据|信息|电气|机械|重工|重能|重装|旅游|酒店|文旅|索道|航空|物业|商贸|贸易|供应链|半导体|健康|新能源|证券|基金|银行|保险|金融|租赁';
+  const HEAD_STOP = /^(?:中国|中华|国际|全球|亚洲|华东|华南|华北|华中|西南|东北|西北|股份|有限|集团|控股|投资|科技|实业|发展|建设|产业|新材|电子|医药|生物|能源|资本|信息|技术|管理|咨询|服务|贸易|国家|人民|公司)$/;
+  function detectHeadAliases(text, orgSpans, spans) {
+    const heads = new Set();
+    for (const o of orgSpans) {
+      if (!/有限公司|有限责任公司|股份有限公司|集团|控股|合伙/.test(o.text)) continue;
+      const body = o.text.replace(REGION_PREFIX, '');
+      const h = body.slice(0, 2);
+      if (h.length === 2 && /^[一-龥]{2}$/.test(h) && !HEAD_STOP.test(h)) heads.add(h);
+    }
+    if (!heads.size) return [];
+    const out = [];
+    const re = new RegExp('(' + Array.from(heads).join('|') + ')(?:' + INDUSTRY_TAIL + ')(?:公司|集团)?', 'g');
+    let m;
+    while ((m = re.exec(text)) !== null) {
+      const st = m.index, en = st + m[0].length;
+      if (spans.some(x => x.start <= st && x.end >= en)) continue;   // 已在别的实体里
+      out.push(Span(st, en, 'ORG', m[0], 0.88, '同字头简称'));
+    }
+    return out;
+  }
+
   function resolveOverlaps(spans) {
     // 项目名里如果套着公司名（"华润万佳项目"），公司名优先——
     // 代号类型错了会让 AI 误判，而且公司名泄露风险更高
@@ -1546,8 +1866,13 @@
       return vault.num[key];
     }
 
+    // 会话级设置：Office 导出、批量处理内部逐段调用 mask(plain) 时没有传 opts，
+    // 以前会退回默认设置——界面上的"放行"和类型开关在导出文件里不生效。现在由界面同步进来。
+    let sessionOpts = null;
+    function setOpts(o) { sessionOpts = o ? Object.assign({}, o) : null; }
+
     function mask(text, opts) {
-      const o = Object.assign({}, DEFAULT_OPTS, opts || {});
+      const o = Object.assign({}, DEFAULT_OPTS, sessionOpts || {}, opts || {});
       if (!o.num_factor || o.num_factor === 'auto') o.num_factor = sessionFactor();
       let spans = [];
 
@@ -1589,6 +1914,7 @@
         const orgSpans = spans.filter(x => x.type === 'ORG');
         if (text.length <= 40000 && orgSpans.length <= 120) {
           let extra = mergeOrgAliases(text, orgSpans, spans);
+          extra = extra.concat(detectHeadAliases(text, orgSpans, spans));
           extra = extra.concat(detectDeclaredAliases(text, spans));
           if (extra.length) spans = resolveOverlaps(spans.concat(extra));
         }
@@ -1627,6 +1953,17 @@
       if (LEX.GENERIC && LEX.GENERIC.size) {
         spans = spans.filter(sp => !(sp.type === 'ORG' && LEX.GENERIC.has(sp.text)));
       }
+      // 动词或引导词被吞进机构名："担任投资基金" / "开户行中国工商银行"
+      for (const sp of spans) {
+        if (sp.type !== 'ORG') continue;
+        const mm = /^(?:开户行|开户银行|担任|任职于|任职|加入|就职于|供职于|曾任|现任|历任|兼任|毕业于|任|于|在)/.exec(sp.text);
+        if (mm && sp.text.length - mm[0].length >= 4) { sp.start += mm[0].length; sp.text = sp.text.slice(mm[0].length); }
+        else if (mm) sp._drop = true;
+      }
+      spans = spans.filter(sp => !sp._drop && !(sp.type === 'ORG' && LEX.GENERIC && LEX.GENERIC.has(sp.text)));
+      // 泛指 + 机构后缀不是具体机构：客户证券账户 / 对方银行 / 本基金 / 某保险
+      spans = spans.filter(sp => !(sp.type === 'ORG' && sp.text.length <= 6 &&
+        /^(?:客户|我方|对方|本|该|其|各|某|相关|其他|主要|部分|多家|一家|这家|那家|境内|境外|国内|海外)/.test(sp.text)));
 
       // 手动放行
       if (o.exclude && o.exclude.length) {
@@ -1748,7 +2085,7 @@
 
       let out = text;
       // 兼容 AI 的各种改写：全角/半角方括号、括号内空格、markdown 包裹
-      const tokRe = /[【\[［〔]\s*([\u4e00-\u9fa5]{1,4})\s*([A-Z]{1,2}\d?)\s*[】\]］〕]/g;
+      const tokRe = /[【\[［〔]\s*([\u4e00-\u9fa5]{1,4}|IP)\s*([A-Z]{1,2}\d?)\s*[】\]］〕]/g;
       out = out.replace(tokRe, (m, p, lab) => {
         const key = '【' + p + lab + '】';
         return (key in rev) ? wrap(rev[key]) : m;
@@ -1759,7 +2096,7 @@
       for (const tok of keys) {
         const bare = tok.replace(/^【|】$/g, '');
         if (!bare) continue;
-        const re = new RegExp('(?<![A-Za-z0-9])' + bare.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '(?![A-Za-z0-9])', 'g');
+        const re = new RegExp((/^[\u4e00-\u9fa5]/.test(bare) ? '(?<![A-Za-z])' : '(?<![A-Za-z0-9])') + bare.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '(?![A-Za-z0-9])', 'g');
         out = out.replace(re, () => wrap(rev[tok]));
       }
       out = out.replace(/__[A-Z]+_[A-Z0-9]+__/g, m => (m in rev ? wrap(rev[m]) : m));
@@ -1905,17 +2242,25 @@
       const rules = [
         [/(?<!\d)1[3-9]\d{9}(?!\d)/g, '疑似未处理手机号'],
         [/(?<!\d)\d{17}[\dXx](?!\d)/g, '疑似未处理身份证号'],
-        [/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g, '疑似未处理邮箱'],
+        // 本地部分限长 64：不限长时 5 万个连续字母会让这条正则退化成平方级（实测 1–2 秒）
+        [/(?<![A-Za-z0-9._%+-])[A-Za-z0-9._%+-]{1,64}@[A-Za-z0-9-]{1,63}(?:\.[A-Za-z0-9-]{1,63}){0,4}\.[A-Za-z]{2,10}/g, '疑似未处理邮箱'],
         [/机密|保密|内部资料|未经许可|禁止外传|confidential|internal only/gi, '文档含密级标识，建议同时去除'],
-        [/(?<!\d)\d{16,19}(?!\d)/g, '疑似未处理长数字（账号）']
+        [/(?<!\d)\d{16,19}(?!\d)/g, '疑似未处理长数字（账号）'],
+        [/(?<![\w+])\+[1-9]\d{0,3}[\s-]?\d{2,5}[\s-]?\d{3,5}[\s-]?\d{0,5}(?!\d)/g, '疑似未处理国际电话'],
+        [/(?:sk-[A-Za-z0-9_-]{16,}|AKIA[0-9A-Z]{16}|AIza[0-9A-Za-z_-]{35}|LTAI[A-Za-z0-9]{12,24}|AKID[A-Za-z0-9]{32}|gh[pousr]_[A-Za-z0-9]{20,}|github_pat_\w{20,}|eyJ[\w-]{10,}\.[\w-]{10,}\.[\w-]{5,})/g, '疑似未处理密钥'],
+        [/(?:密码|口令|password|passwd)\s*[:：=]\s*(?![*•xX]{3,})\S{4,}/gi, '疑似未处理密码']
       ];
+      const seen = new Set();
       for (const [re, msg] of rules) {
         re.lastIndex = 0;
         let m;
         while ((m = re.exec(text)) !== null) {
+          if (m[0].length === 0) { re.lastIndex++; continue; }
+          const k = msg + ':' + m.index;
+          if (seen.has(k)) continue;      // 同一处只报一次（实测报告里"密级标识重复报"）
+          seen.add(k);
           warn.push({ text: m[0].slice(0, 30), msg, pos: m.index });
           if (warn.length > 20) return warn;
-          if (m[0].length === 0) re.lastIndex++;
         }
       }
       return warn;
@@ -1953,7 +2298,7 @@
     }
 
     return {
-      mask, restore, riskScan,
+      mask, restore, riskScan, setOpts,
       addWord, removeWord, reset, exportVault, importVault, listVault,
       getDict: () => dict,
       getFactor: () => sessionFactor(),

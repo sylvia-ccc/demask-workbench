@@ -1,0 +1,22 @@
+name: test
+on: [push, pull_request]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: 端到端
+        run: cd src && node test.js
+      - name: 回归测试集（必须 100%）
+        run: |
+          cd src
+          for f in testset.json testset-holdout.json testset-blind.json testset-rules-v2.json; do
+            echo "== $f"
+            node eval.js $f | tee /tmp/out.txt | grep -E "Precision|Recall|F1"
+            grep -q "F1              100.0%" /tmp/out.txt || { echo "回归失败：$f"; exit 1; }
+          done
+      - name: 真实文体评测（只报告，不卡）
+        run: cd src && node eval.js testset-real-holdout.json | grep -E "Precision|Recall|F1"

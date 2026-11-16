@@ -8,7 +8,7 @@
 import os
 import time
 
-VERSION = "v1.9"
+VERSION = "v2.0"
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
@@ -47,6 +47,22 @@ def main():
 
     kb = len(out.encode("utf-8")) / 1024
     print(f"已生成 {OUT}  ({kb:.0f} KB, {VERSION})")
+
+    # 分发包：成品 HTML + 使用说明（文件名用 UTF-8 标记，Windows 解压不乱码）
+    import zipfile
+    zpath = os.path.join(ROOT, "脱敏工作台-分发包.zip")
+    with zipfile.ZipFile(zpath, "w", zipfile.ZIP_DEFLATED) as z:
+        z.writestr(zipfile.ZipInfo("脱敏工作台.html", date_time=time.localtime()[:6]), out.encode("utf-8"), zipfile.ZIP_DEFLATED)
+        with open(os.path.join(HERE, "使用说明.txt"), encoding="utf-8") as f:
+            z.writestr(zipfile.ZipInfo("使用说明.txt", date_time=time.localtime()[:6]), f.read().encode("utf-8"), zipfile.ZIP_DEFLATED)
+
+    # 校验和：发布时附在 Release 里，用户可核对下载的文件没被篡改
+    import hashlib
+    with open(os.path.join(ROOT, "SHA256SUMS.txt"), "w", encoding="utf-8") as f:
+        for name in ("脱敏工作台.html", "脱敏工作台-分发包.zip"):
+            h = hashlib.sha256(open(os.path.join(ROOT, name), "rb").read()).hexdigest()
+            f.write(f"{h}  {name}\n")
+    print("已生成 分发包.zip 与 SHA256SUMS.txt")
 
 
 if __name__ == "__main__":

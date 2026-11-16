@@ -1,0 +1,488 @@
+{
+ "_note": "v2.0 规则回归集：每条新增或修复的规则各配正例和反例。规则写完后才写本文件，属于开发集，不能当泛化证据。",
+ "cases": [
+  {
+   "id": "r-surname-01",
+   "cat": "扩充姓氏",
+   "text": "法定代表人柯振宇签署了本协议。",
+   "expect": [
+    {
+     "text": "柯振宇",
+     "type": "PERSON"
+    }
+   ],
+   "keep": [
+    "法定代表人"
+   ]
+  },
+  {
+   "id": "r-surname-02",
+   "cat": "扩充姓氏·反例",
+   "text": "项目管理负责采购，时间表示下周完成，季度纪要已发出。",
+   "expect": [],
+   "keep": [
+    "项目管理",
+    "时间",
+    "季度纪要"
+   ]
+  },
+  {
+   "id": "r-list-01",
+   "cat": "名单",
+   "text": "独立董事：冯晓光、蒋一帆、上官静。",
+   "expect": [
+    {
+     "text": "冯晓光",
+     "type": "PERSON"
+    },
+    {
+     "text": "蒋一帆",
+     "type": "PERSON"
+    },
+    {
+     "text": "上官静",
+     "type": "PERSON"
+    }
+   ],
+   "keep": [
+    "独立董事"
+   ]
+  },
+  {
+   "id": "r-list-02",
+   "cat": "名单+括注",
+   "text": "项目组成员为：施雨桐（组长）、牛博文、詹若曦。",
+   "expect": [
+    {
+     "text": "施雨桐",
+     "type": "PERSON"
+    },
+    {
+     "text": "牛博文",
+     "type": "PERSON"
+    },
+    {
+     "text": "詹若曦",
+     "type": "PERSON"
+    }
+   ],
+   "keep": [
+    "组长"
+   ]
+  },
+  {
+   "id": "r-bio-01",
+   "cat": "履历",
+   "text": "欧阳楚英，1971年出生，中国国籍，硕士研究生学历。",
+   "expect": [
+    {
+     "text": "欧阳楚英",
+     "type": "PERSON"
+    },
+    {
+     "text": "1971年",
+     "type": "BIRTH"
+    }
+   ],
+   "keep": [
+    "中国国籍",
+    "硕士研究生学历"
+   ]
+  },
+  {
+   "id": "r-by-01",
+   "cat": "由…担任",
+   "text": "监事会主席由孙卫东担任。",
+   "expect": [
+    {
+     "text": "孙卫东",
+     "type": "PERSON"
+    }
+   ],
+   "keep": [
+    "监事会主席"
+   ]
+  },
+  {
+   "id": "r-title-01",
+   "cat": "姓+称谓",
+   "text": "会议由王总主持，张总监汇报，李总工确认，刘董表示同意。",
+   "expect": [
+    {
+     "text": "王总",
+     "type": "PERSON"
+    },
+    {
+     "text": "张总监",
+     "type": "PERSON"
+    },
+    {
+     "text": "李总工",
+     "type": "PERSON"
+    },
+    {
+     "text": "刘董",
+     "type": "PERSON"
+    }
+   ],
+   "keep": [
+    "主持",
+    "汇报"
+   ]
+  },
+  {
+   "id": "r-title-02",
+   "cat": "姓+称谓·反例",
+   "text": "总额为 3 亿元，最高总价不超过预算，双方总经理会签。",
+   "expect": [
+    {
+     "text": "3",
+     "type": "MONEY"
+    }
+   ],
+   "keep": [
+    "最高总价",
+    "双方总经理"
+   ]
+  },
+  {
+   "id": "r-xiao-01",
+   "cat": "老/小+姓",
+   "text": "你可以问采购部的小刘，老陈也知道。",
+   "expect": [
+    {
+     "text": "小刘",
+     "type": "PERSON"
+    },
+    {
+     "text": "老陈",
+     "type": "PERSON"
+    }
+   ],
+   "keep": [
+    "采购部"
+   ]
+  },
+  {
+   "id": "r-mail-01",
+   "cat": "邮件称呼",
+   "text": "Hi 思远，附件是估值模型。Best, Grace Lin",
+   "expect": [
+    {
+     "text": "思远",
+     "type": "PERSON"
+    },
+    {
+     "text": "Grace Lin",
+     "type": "PERSON"
+    }
+   ],
+   "keep": [
+    "估值模型"
+   ]
+  },
+  {
+   "id": "r-mail-02",
+   "cat": "英文称呼",
+   "text": "Dear Mr. Tanaka, CFO Linda Wu has signed the SPA.",
+   "expect": [
+    {
+     "text": "Tanaka",
+     "type": "PERSON"
+    },
+    {
+     "text": "Linda Wu",
+     "type": "PERSON"
+    }
+   ],
+   "keep": [
+    "SPA"
+   ]
+  },
+  {
+   "id": "r-addr-01",
+   "cat": "地址前缀",
+   "text": "总部搬到了南山区粤海街道高新南七道 018 号。",
+   "expect": [
+    {
+     "text": "南山区粤海街道高新南七道 018 号",
+     "type": "ADDR"
+    }
+   ],
+   "keep": [
+    "总部搬到了"
+   ]
+  },
+  {
+   "id": "r-money-01",
+   "cat": "量词",
+   "text": "厂区面积约 4.2 万平方米，年产能 12 万吨，营收 8.6 亿元。",
+   "expect": [
+    {
+     "text": "8.6",
+     "type": "MONEY"
+    }
+   ],
+   "keep": [
+    "4.2 万平方米",
+    "12 万吨"
+   ]
+  },
+  {
+   "id": "r-place-01",
+   "cat": "地名品牌",
+   "text": "王府井店客流回升，公司在王府井、陆家嘴均有门店。",
+   "expect": [],
+   "keep": [
+    "王府井店",
+    "王府井、陆家嘴"
+   ]
+  },
+  {
+   "id": "r-phone-intl",
+   "cat": "国际电话",
+   "text": "香港联系人电话 +852 9123 4567，美国办公室 +1 415-555-0132。",
+   "expect": [
+    {
+     "text": "+852 9123 4567",
+     "type": "PHONE"
+    },
+    {
+     "text": "+1 415-555-0132",
+     "type": "PHONE"
+    }
+   ],
+   "keep": [
+    "香港联系人"
+   ]
+  },
+  {
+   "id": "r-ip-01",
+   "cat": "公网 IP",
+   "text": "服务器 47.96.123.10 已开放，内网 10.0.3.17。",
+   "expect": [
+    {
+     "text": "47.96.123.10",
+     "type": "IP"
+    },
+    {
+     "text": "10.0.3.17",
+     "type": "IP"
+    }
+   ],
+   "keep": [
+    "服务器"
+   ]
+  },
+  {
+   "id": "r-ip-02",
+   "cat": "IP·反例",
+   "text": "会议时间 14:05:12，版本 v2.3.1，增长 1.2 倍。",
+   "expect": [],
+   "keep": [
+    "14:05:12",
+    "v2.3.1",
+    "1.2 倍"
+   ]
+  },
+  {
+   "id": "r-iban-01",
+   "cat": "IBAN/SWIFT",
+   "text": "收款账户 IBAN GB82 WEST 1234 5698 7654 32，SWIFT Code: HSBCHKHHHKH。",
+   "expect": [
+    {
+     "text": "GB82 WEST 1234 5698 7654 32",
+     "type": "BANK"
+    },
+    {
+     "text": "HSBCHKHHHKH",
+     "type": "BANK"
+    }
+   ],
+   "keep": [
+    "收款账户"
+   ]
+  },
+  {
+   "id": "r-key-01",
+   "cat": "云密钥",
+   "text": "AccessKey ID: LTAI5tQz8Rk3pXyN2mWv9cJd，Google key AIzaSyA1b2C3d4E5f6G7h8I9j0K1l2M3n4O5p6Q",
+   "expect": [
+    {
+     "text": "LTAI5tQz8Rk3pXyN2mWv9cJd",
+     "type": "SECRET"
+    },
+    {
+     "text": "AIzaSyA1b2C3d4E5f6G7h8I9j0K1l2M3n4O5p6Q",
+     "type": "SECRET"
+    }
+   ],
+   "keep": [
+    "AccessKey ID"
+   ]
+  },
+  {
+   "id": "r-pwd-01",
+   "cat": "中文密码",
+   "text": "数据室登录密码：Vdr@2026x，验证码 482913。",
+   "expect": [
+    {
+     "text": "Vdr@2026x",
+     "type": "SECRET"
+    },
+    {
+     "text": "482913",
+     "type": "SECRET"
+    }
+   ],
+   "keep": [
+    "数据室登录密码"
+   ]
+  },
+  {
+   "id": "r-pwd-02",
+   "cat": "密码·反例",
+   "text": "password: your_password_here，密码：******",
+   "expect": [],
+   "keep": [
+    "your_password_here",
+    "******"
+   ]
+  },
+  {
+   "id": "r-acct-01",
+   "cat": "证券账户",
+   "text": "客户证券账户 A123456789，资金账号 880012345678，微信号 lina_crv2026。",
+   "expect": [
+    {
+     "text": "A123456789",
+     "type": "ACCOUNT"
+    },
+    {
+     "text": "880012345678",
+     "type": "ACCOUNT"
+    },
+    {
+     "text": "lina_crv2026",
+     "type": "ACCOUNT"
+    }
+   ],
+   "keep": [
+    "客户证券账户"
+   ]
+  },
+  {
+   "id": "r-birth-01",
+   "cat": "出生日期",
+   "text": "出生日期：1985年3月12日，入职日期 2019-07-01。",
+   "expect": [
+    {
+     "text": "1985年3月12日",
+     "type": "BIRTH"
+    }
+   ],
+   "keep": [
+    "2019-07-01"
+   ]
+  },
+  {
+   "id": "v-fp-01",
+   "cat": "核查补充·反例",
+   "text": "每周工作40小时；24小时内响应，48小时内回复。",
+   "expect": [],
+   "keep": [
+    "40小时",
+    "24小时",
+    "48小时"
+   ]
+  },
+  {
+   "id": "v-fp-02",
+   "cat": "核查补充·反例",
+   "text": "由管理层负责，由项目组牵头，由华为负责供货。",
+   "expect": [],
+   "keep": [
+    "管理层",
+    "项目组",
+    "华为"
+   ]
+  },
+  {
+   "id": "v-fp-03",
+   "cat": "核查补充·反例",
+   "text": "联系人：项目组；主任：华东区；记录：时间待定；总监：季度复盘。",
+   "expect": [],
+   "keep": [
+    "项目组",
+    "华东区",
+    "时间待定",
+    "季度复盘"
+   ]
+  },
+  {
+   "id": "v-fp-04",
+   "cat": "核查补充·反例",
+   "text": "版本号 v1.2.3.4，build 1.0.0.1，会议 14:05:12，std::vector。",
+   "expect": [],
+   "keep": [
+    "v1.2.3.4",
+    "1.0.0.1",
+    "14:05:12",
+    "std::vector"
+   ]
+  },
+  {
+   "id": "v-fp-05",
+   "cat": "核查补充·反例",
+   "text": "2020年出生的业务模式正在兴起。",
+   "expect": [],
+   "keep": [
+    "2020年出生的业务模式"
+   ]
+  },
+  {
+   "id": "v-tp-01",
+   "cat": "核查补充·正例",
+   "text": "IPv6 地址 fe80::1、2001:db8::1 和 2001:db8:85a3::8a2e:370:7334。",
+   "expect": [
+    {
+     "text": "fe80::1",
+     "type": "IP"
+    },
+    {
+     "text": "2001:db8::1",
+     "type": "IP"
+    },
+    {
+     "text": "2001:db8:85a3::8a2e:370:7334",
+     "type": "IP"
+    }
+   ],
+   "keep": [
+    "IPv6 地址"
+   ]
+  },
+  {
+   "id": "v-tp-02",
+   "cat": "核查补充·正例",
+   "text": "预计 2025E/2026E 营收分别为 4.8/6.3/8.1 亿元。",
+   "expect": [
+    {
+     "text": "4.8",
+     "type": "MONEY"
+    },
+    {
+     "text": "6.3",
+     "type": "MONEY"
+    },
+    {
+     "text": "8.1",
+     "type": "MONEY"
+    }
+   ],
+   "keep": [
+    "营收"
+   ]
+  }
+ ]
+}

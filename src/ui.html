@@ -2,6 +2,9 @@
 <html lang="zh-CN">
 <head>
 <meta charset="utf-8">
+<!-- 浏览器强制"不联网"：禁止一切网络请求（fetch/XHR/WebSocket/外部脚本/外部图片/表单提交）。
+     页面内联的脚本和样式照常运行；导出文件用 blob: 下载，不受影响。 -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data: blob:; font-src data:; connect-src 'none'; worker-src blob:; form-action 'none'; base-uri 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>脱敏工作台 · 财务与商业数据</title>
 <style>
@@ -1164,7 +1167,7 @@ $('#btnExportFile').onclick = async () => {
   const old = btn.textContent;
   btn.disabled = true; btn.textContent = '处理中…';
   try {
-    const r = await DemaskEngine.maskOfficeFile(state.srcFile.name, state.srcFile.buffer, eng);
+    const r = await (eng.setOpts(state.opts), DemaskEngine.maskOfficeFile)(state.srcFile.name, state.srcFile.buffer, eng);
     const ext = state.srcFile.name.split('.').pop();
     const base = state.srcFile.name.replace(/\.[^.]+$/, '');
     const a = document.createElement('a');
@@ -1410,7 +1413,7 @@ async function batchProcess(files) {
       const ext = (f.name.split('.').pop() || '').toLowerCase();
 
       if (['docx', 'xlsx', 'pptx'].indexOf(ext) >= 0) {
-        const r = await DemaskEngine.maskOfficeFile(f.name, buf, eng);
+        const r = await (eng.setOpts(state.opts), DemaskEngine.maskOfficeFile)(f.name, buf, eng);
         const ab = await r.blob.arrayBuffer();
         out.push({ name: base + '-脱敏.' + ext, data: new Uint8Array(ab) });
         ent += r.stats.entities || 0;
@@ -1418,7 +1421,7 @@ async function batchProcess(files) {
       } else {
         const txt = await extractText(f.name, buf);
         if (txt === null) { log.push(f.name + '：格式不支持，已跳过'); continue; }
-        const m = eng.mask(txt);
+        const m = eng.mask(txt, state.opts);
         out.push({ name: base + '-脱敏.txt', data: new TextEncoder().encode(withNote(m.masked)) });
         ent += m.entities.length;
       }
