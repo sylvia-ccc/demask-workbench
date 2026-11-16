@@ -85,7 +85,7 @@
     '董事长', '总裁', '总监', '经理', '副总', '先生', '女士', '小姐', '老师', '博士', '教授',
     '主任', '院长', '处长', '局长', '部长', '主管', '负责人', '合伙人', '助理',
     '董事', '监事', '法人', '代表', '董秘',
-    '总(?!额|计|体|部|数|量|比|价|成本|收入|支出|资产|负债|股本|市值|费用|利润|经理|裁|监|局|会|公司|的)',
+    '总(?!额|计|体|部|数|量|比|价|账|成本|收入|支出|资产|负债|股本|市值|费用|利润|经理|裁|监|局|会|公司|的)',
     'CEO', 'CFO', 'COO', 'CTO', 'VP', 'MD', 'ED'
   ].sort((a, b) => b.length - a.length).join('|');
 
@@ -219,7 +219,7 @@
 
   // 人名判定的最后一道闸。年报的"公司治理"章全是"任公司董事长""现任董事"
   // 这类表述，光靠姓氏首字会大量误判——必须排除职务/机构词素。
-  const NAME_BAD_PARTS = /^方授|^方代|双方|各方|对方|法定|公司|董事|监事|经理|总裁|职工|现任|任期|担任|兼任|执行|财务|采购|销售|独立|兼职|联席|办公室|委员会|集团|股份|有限|证券|银行|基金|上海|北京|深圳|广州|杭州|南京|成都|武汉|西安|苏州|天津|重庆|宁波|青岛|程序|关联|遴选|考核|评估|治理|结构|调整|运营|生产|研发|技术|质量|安全|环保|人力|行政|任职|副董|司副|^副|副$/;
+  const NAME_BAD_PARTS = /包括|包含|以及|还有|高级|资深|首席|^方授|^方代|双方|各方|对方|法定|公司|董事|监事|经理|总裁|职工|现任|任期|担任|兼任|执行|财务|采购|销售|独立|兼职|联席|办公室|委员会|集团|股份|有限|证券|银行|基金|上海|北京|深圳|广州|杭州|南京|成都|武汉|西安|苏州|天津|重庆|宁波|青岛|程序|关联|遴选|考核|评估|治理|结构|调整|运营|生产|研发|技术|质量|安全|环保|人力|行政|任职|副董|司副|^副|副$/;
   const COMPOUND_SURNAME = /^(?:欧阳|司马|上官|诸葛|东方|皇甫|尉迟|公孙|慕容|长孙|宇文|司徒|司空|夏侯|令狐|端木|独孤|南宫|西门|百里|东郭|呼延|羊舌|微生|梁丘|左丘|东门|南荣)$/;
   const COMPOUND_PAIRS = '欧阳 司马 上官 诸葛 东方 皇甫 尉迟 公孙 慕容 长孙 宇文 司徒 司空 夏侯 令狐 端木 独孤 南宫 西门 百里 东郭 呼延 羊舌 微生 梁丘 左丘 东门 南荣'.split(' ');
 
@@ -240,8 +240,8 @@
       if (/[层组区部队方会处科室局院所司业务期度项线面级量率额]$/.test(s)) return false;
     }
     const BAD = ['高管', '高工', '高级', '方式', '方法', '方案', '成本', '成功', '成果',
-      '金额', '金融', '历史', '周期', '周边', '于是', '余下', '徐缓', '王国', '马上'];
-    if (BAD.indexOf(s) >= 0) return false;
+      '金额', '金融', '历史', '周期', '周边', '于是', '余下', '余额', '余量', '余款', '徐缓', '王国', '马上'];
+    if (BAD.indexOf(s) >= 0 || /^(?:余额|余量|余款)/.test(s)) return false;
     // 组织单元不是人名：华东大区 / 东大区 / 华南区域
     if (/大区|区域|片区|城市|省份|部门|事业部/.test(s)) return false;
     // 职务/机构词素不是人名：任公司 / 董事会 / 司职工 / 董事和
@@ -308,6 +308,10 @@
     add(/(?:Mr\.|Ms\.|Mrs\.|Dr\.|Prof\.|chaired by|attended by|prepared by|reviewed by|presented by|contact(?:ed)?|meeting with|signed by)\s*[:：]?\s+([A-Z][a-z]{1,12}(?:\s+[A-Z][a-z]{1,12}){1,2})/gi,
       'PERSON', 0.85, null, '英文语境');
     // 英文公司名：必须有公司后缀，否则英文大写词组太多
+    add(/\b([A-Z][A-Za-z&.'-]*(?:\s+[A-Z][A-Za-z&.'-]*){0,5}\s+\((?:Hong Kong|HK|Singapore|Cayman|BVI|Shanghai|Beijing|China|Asia|US|UK)\)\s+(?:Ltd\.?|Limited|Inc\.?|LLC|Co\.,?\s*Ltd\.?|Company Limited|Pte\.?\s*Ltd\.?))/g,
+      'ORG', 0.9, null, '英文公司（地区）');
+    add(/\b((?:PT|CV|PT\.)\s+[A-Z]{2,}(?:\s+[A-Z]{2,}){1,5}(?:\s+(?:TBK|Tbk))?|[A-Z]{2,}(?:\s+[A-Z]{2,}){1,4}\s+(?:SDN\.?\s+BHD\.?|BHD|GMBH|GmbH|S\.?A\.?|N\.?V\.?|B\.?V\.?|AG|PLC|LLC|LTD|INC))\b/g,
+      'ORG', 0.9, v => !/\b(?:REPORT|NOTES?|NOTICE|ACCOUNTS|STATEMENTS?|FINANCIAL|IMPORTANT|SHAREHOLDERS|ANNUAL|SUMMARY|APPENDIX|TABLE|CONTENTS|TO|OF|AND|FOR)\b/.test(v), '外国公司');
     add(/\b([A-Z][A-Za-z&.'-]*(?:\s+[A-Z][A-Za-z&.'-]*){0,4}\s+(?:Ltd\.?|Limited|Inc\.?|LLC|LLP|Corp\.?|Corporation|Group|Holdings|Partners|Capital|Fund|Bank|Securities))\b/g,
       'ORG', 0.85, null, '英文公司后缀');
     add(/(?:sk-[A-Za-z0-9_-]{16,}|AKIA[0-9A-Z]{16}|gh[pousr]_[A-Za-z0-9]{20,}|xox[baprs]-[A-Za-z0-9-]{10,}|eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{5,})/g,
@@ -674,9 +678,10 @@
       if (looksLikeName(nm, true)) out.push(Span(st, st + nm.length, 'PERSON', nm, 0.92, '履历'));
     }
     // 10) 履历动词：司马文涛曾任职于 / 现任 / 历任 / 毕业于
-    const r10 = new RegExp('(' + NAME_SRC + ')(?=曾任|现任|历任|曾就职|曾在|毕业于|任职于|获聘|当选|辞去|辞任|兼任|出任|直接持有|间接持有|持有公司)', 'g');
+    const r10 = new RegExp('(' + NAME_SRC + ')(?=曾任|现任|历任|曾就职|曾在|毕业于|任职于|获聘|当选|辞去|辞任|兼任|出任|直接持有|间接持有|持有公司|通过[^。；\n]{2,40}持有)', 'g');
     while ((m = r10.exec(text)) !== null) {
-      const nm = pickName(text, m.index, false);
+      const holdCtx = /^[\u4e00-\u9fa5]{0,4}(?:通过|直接持有|间接持有|持有公司)/.test(text.slice(m.index + 2, m.index + 10));
+      const nm = pickName(text, m.index, holdCtx);   // 只有持股语境才认常用字姓（"访谈对象曾任"不再误认）
       if (nm && !cutInsideCompound(text, m.index, nm)) out.push(Span(m.index, m.index + nm.length, 'PERSON', nm, 0.88, '履历动词'));
     }
     // 11) 姓 + 职务简称：王总、张总监、李总工、刘董、小刘、老陈
@@ -767,7 +772,7 @@
   // 候选：复姓 + 1–2 字，或单字 + 1–2 字；长度由 pickName 按后文判定
   const NAME_SRC = '(?:' + COMPOUND_SRC + ')[\\u4e00-\\u9fa5]{1,2}|[\\u4e00-\\u9fa5]{2,3}';
   // 名字之后通常紧跟的字或词：标点、称谓、动词、连词
-  const NAME_FOLLOW = '[，。、；：:,;！!？?）)（(\\s]|$|先生|女士|小姐|担任|出任|兼任|表示|认为|说|讲|补充|主持|召集|负责|汇报|确认|同意|反对|曾|现任|历任|任|为|是|与|和|及|等|兼|已|于|在|因|的|将|对|也|则|作为|辞|签|提供|反馈|发言|提出|指出|透露|介绍|牵头|对接|跟进|存在|持有|直接|间接|系|之|手机|电话|邮箱|微信|周[一二三四五六日]|今天|明天|下周|上周|这|那|他|她|我|你|们|要|会|还|就|都|又|只|再|去|来|到|把|被|让|给|跟|问|看|做|想|觉得|一起|也是';
+  const NAME_FOLLOW = '[，。、；：:,;！!？?）)（(\\s]|$|先生|女士|小姐|担任|出任|兼任|表示|认为|说|讲|补充|主持|召集|负责|汇报|确认|同意|反对|曾|现任|历任|任|为|是|与|和|及|等|兼|已|于|在|因|的|将|对|也|则|作为|通过|辞|签|提供|反馈|发言|提出|指出|透露|介绍|牵头|对接|跟进|存在|持有|直接|间接|系|之|手机|电话|邮箱|微信|周[一二三四五六日]|今天|明天|下周|上周|这|那|他|她|我|你|们|要|会|还|就|都|又|只|再|去|来|到|把|被|让|给|跟|问|看|做|想|觉得|一起|也是';
   const NAME_FOLLOW_RE = new RegExp('^(?:' + NAME_FOLLOW + ')');
   const SHORT_PREV = '的由与和向给请找跟同及、，。：:（(被让叫问；;对是为把\n ';
   const STRONG_CUE = [
@@ -858,8 +863,8 @@
   }
 
   // "合作方为优鲜科技与百佳供应链" —— 引导词后面常跟一串，逐个提取
-  const ORG_LIST_LEAD = /(?:合作方为|合作方是|供应商为|供应商是|客户为|客户是|对方为|买方为|卖方为|甲方为|乙方为|交易对手为)\s*/g;
-  const ORG_BODY = /([\u4e00-\u9fa5]{2,6}(?:科技|供应链|贸易|实业|控股|电子|材料|机械|食品|医药|网络|数据|软件|物流|传媒|能源|环保|建设|装饰|咨询|服务))/y;
+  const ORG_LIST_LEAD = /(?:合作方为|合作方是|供应商为|供应商是|客户为|客户是|对方为|买方为|卖方为|甲方为|乙方为|交易对手为|对手方为|标的为|标的公司为|投资方为|领投方为|跟投方为|外包给|委托给|卖给|供货给|采购自|代工方为|经销商为|渠道商为)\s*/g;
+  const ORG_BODY = /([\u4e00-\u9fa5]{2,6}(?:科技|供应链|贸易|实业|控股|电子|材料|机械|食品|医药|网络|数据|软件|物流|传媒|能源|环保|建设|装饰|咨询|服务|投资|资本|基金|生物|医疗|光电|新材|化工|资源|集团|股份|半导体|智能|汽车|地产|置业|信息|电气|重工|健康|新能源|金融|租赁|保理|创投|制造|商贸|精密|仪器|装备|化学|制药|药业|器械))/y;
 
   function detectOrgList(text) {
     const out = [];
@@ -871,6 +876,7 @@
         ORG_BODY.lastIndex = pos;
         const g = ORG_BODY.exec(text);
         if (!g) break;
+        if (!orgItemOk(g[1])) break;
         out.push(Span(pos, pos + g[1].length, 'ORG', g[1], 0.78, '列举'));
         pos += g[1].length;
         const sep = text.slice(pos, pos + 3).match(/^\s*(?:与|和|、|及)\s*/);
@@ -973,11 +979,35 @@
       const afterTxt = text.slice(m.index + m[0].length, m.index + m[0].length + 10);
       const tableMoney = (docCurrency && /,\d{3}/.test(num)) ||
         /^\d{1,3}(?:,\d{3})+\.\d{2}$/.test(num) ||                       // 千分位 + 两位小数（26,315.91），几乎只出现在金额里
-        (/,\d{3}/.test(num) && /^\s*\d{1,3}(?:\.\d{1,2})?%/.test(afterTxt));  // 表格的金额加占比：173,906 2.10%
+        (/,\d{3}/.test(num) && /^\s*\d{1,3}(?:\.\d{1,2})?%/.test(afterTxt) &&
+         !/(?:人数|员工|人员|门店|网点|客户数|用户|次数|股本|股数|家数|户数|数量)[^\n\r]*$/.test(text.slice(Math.max(0, ns0 - 60), ns0)));   // 行首标签是人数、门店数时不算  // 表格的金额加占比：173,906 2.10%
       if (!(cur || unit || nearCtx || tableMoney)) continue;
       if (!(cur || unit) && real < 100) continue;
 
       out.push(Span(ns0, ne0, 'MONEY', num, 0.9, unit ? '含单位' : (cur ? '货币' : '语境')));
+    }
+    // 同一表格行：已有"金额 占比"命中的行里，其余千分位数字也是金额（上年同期金额等列）
+    // 行边界一次算好（\n 和 \r 都算），避免每个命中都向前扫描整行导致平方级耗时
+    const lineStarts = [0];
+    for (let i = 0; i < text.length; i++) { const c = text.charCodeAt(i); if (c === 10 || c === 13) lineStarts.push(i + 1); }
+    const lineOf = pos => { let lo = 0, hi = lineStarts.length - 1; while (lo < hi) { const md = (lo + hi + 1) >> 1; if (lineStarts[md] <= pos) lo = md; else hi = md - 1; } return lo; };
+    const rowHit = new Set();
+    for (const sp of out) if (sp.note === '语境' || sp.note === '含单位') {
+      if (/^\s*\d{1,3}(?:\.\d{1,2})?%/.test(text.slice(sp.end, sp.end + 10))) rowHit.add(lineOf(sp.start));
+    }
+    const startSet = new Set(out.map(o => o.start));
+    for (const li of rowHit) {
+      const ls = lineStarts[li], le = (li + 1 < lineStarts.length ? lineStarts[li + 1] - 1 : text.length);
+      if (le - ls > 600) continue;                          // 被压成一行的长表格不做行内扩散
+      const line = text.slice(ls, le);
+      const label = line.slice(0, line.search(/\d/) < 0 ? line.length : line.search(/\d/));
+      if (/人数|员工|人员|门店|网点|客户数|用户|次数|股本|股数|股份数|家数|户数|数量|台数|件数|吨/.test(label)) continue;
+      const re = /(?<![\d.,])\d{1,3}(?:,\d{3})+(?:\.\d+)?(?![\d,%])(?!\s*(?:股|人|家|户|次|台|件|吨|个))/g;
+      let x;
+      while ((x = re.exec(line)) !== null) {
+        const st = ls + x.index;
+        if (!startSet.has(st)) { startSet.add(st); out.push(Span(st, st + x[0].length, 'MONEY', x[0], 0.85, '同行金额')); }
+      }
     }
     // 斜杠系列：4.8/6.3/8.1 亿元——单位只写在最后一个，前面的同样是金额
     const SER = /(?<![\d\/.])(\d{1,12}(?:\.\d{1,6})?(?:\s{0,2}\/\s{0,2}\d{1,12}(?:\.\d{1,6})?){1,8})\s*(?:十亿元|亿元|万元|千万元|百万元|亿|万|元|million|billion|bn|mn)/g;
@@ -1446,14 +1476,22 @@
       if (!hits.length) continue;
 
       const used = new Set();
+      hits.sort((x, y) => x.pos - y.pos);
+      // 二分：第一个 pos >= v 的命中下标
+      const lb = v => { let lo = 0, hi = hits.length; while (lo < hi) { const md = (lo + hi) >> 1; if (hits[md].pos < v) lo = md + 1; else hi = md; } return lo; };
       // 角色词就在实体名里（"金杜律师事务所"）——直接归它，别让邻居抢走
-      for (const h of hits) {
-        const owner = inSent.find(o => h.pos >= o.start && h.pos + h.len <= o.end);
-        if (owner && !owner.role) { owner.role = h.key; used.add(h); }
-      }
       for (const o of inSent) {
+        for (let k = lb(o.start); k < hits.length && hits[k].pos < o.end; k++) {
+          const h = hits[k];
+          if (h.pos + h.len <= o.end && !o.role && !used.has(h)) { o.role = h.key; used.add(h); }
+        }
+      }
+      // 其余机构：找 24 字以内最近的未用角色词（只看附近的命中，避免 机构 × 命中 的平方级）
+      for (const o of inSent) {
+        if (o.role) continue;
         let best = null, bd = 1e9;
-        for (const h of hits) {
+        for (let k = lb(o.start - 64); k < hits.length && hits[k].pos <= o.end + 24; k++) {
+          const h = hits[k];
           if (used.has(h)) continue;
           const d = (h.pos + h.len <= o.start) ? o.start - (h.pos + h.len) : Math.abs(h.pos - o.end);
           if (d < bd) { bd = d; best = h; }
@@ -1542,13 +1580,98 @@
     return out;
   }
 
+  /* ---- 上下文里的机构简称（没有"有限公司"后缀，但语境明确） ---- */
+  const ORG_CAND_BAD = /^(?:公司|本公司|该公司|其|我们|他们|你们|我方|对方|客户|上述|相关|部分|一些|多家|这家|那家|各家|同行|行业|市场|政府|监管|企业|集团|子公司|母公司|股东|公众|个人|员工|团队|管理层|董事会)$|担任|负责|工作|期间|以及|并且|其中|的|了|在|于|和|与|及|或|是|为|将|已|曾|现/;
+  function orgCandOk(x) {
+    if (!x || x.length < 2 || x.length > 16) return false;
+    if (/\d|额/.test(x) || ORG_CAND_BAD.test(x) || ORG_STOP.has(x)) return false;
+    // 会计科目、说明性短语不是机构：采购额 / 销售额占年度销售总额比例 / 单位任职情况 / 具体情况参见本招股说明书
+    if (/(?:额|比例|占比|情况|方式|说明书|说明|账号|账户|号码|任职|费用|成本|收入|利润|负债|率|期间|年度|部分|内容|事项|章节|规定|要求|单位)$/.test(x)) return false;
+    if (/^(?:具体|直接|间接|上述|本次|此|其他|其余|全部|主要|前五名|年度|报告期|期末|期初|账号|单位|应|需|须|可|拟)/.test(x)) return false;
+    if (new RegExp('^(?:' + MONEY_CONTEXT + ')$').test(x)) return false;
+    if (/^[A-Za-z.]+$/.test(x) && x.replace(/[^A-Za-z]/g, '').length < 3) return false;
+    if (LEX.GENERIC && LEX.GENERIC.has(x)) return false;
+    if (/^[\u4e00-\u9fa5]{2,4}$/.test(x) && looksLikeName(x) && x.length === 3 && !/(?:电子|科技|资本|投资|医疗|生物|物流|智|聚|达|通|联|泰|华|源|鑫|盛|恒|远|德|信)/.test(x.slice(1))) return false;  // 看起来是人名的不当机构
+    return true;
+  }
+  // 只保留在封存集上验证过、误伤可控的两类语境（履历、持股路径、上市主体、口语指代、英文+公司 已删除：误伤远大于收益）
+  const ORG_CTX = [
+    // 股权：控股股东双欣化工 / 机构股东还包括A、B、C / 母公司为X。母公司、子公司必须跟"为/包括/是"
+    { re: /(?:控股股东|间接控股股东|法人股东|机构股东|关联方)(?:还包括|包括|为|是|系)?[：:]?\s*|(?:大股东|股东|子公司|孙公司|参股公司|控股子公司|全资子公司|母公司|合营企业|联营企业)(?:还包括|包括|为|是|系)[：:]?\s*/g, list: true, conf: 0.88, note: '股权语境' },
+    // 投资对象：对天泽生物的 C 轮投资（排除 对项目/行业/赛道/人才 的投资）
+    { re: /(?:对|向)\s*([一-龥]{2,10}?)(?=的?(?:[A-E]\+?|Pre-[A-E]|天使|种子|战略)?轮?(?:投资|增资|注资|收购|并购|尽调|估值))/g, conf: 0.88, note: '投资对象' }
+  ];
+  const INVEST_BAD = /^(?:项目|行业|赛道|人才|新能源|消费|医疗|龙头|领域|板块|企业|公司|标的|资产|业务|市场|技术|研发|产能|团队|平台|子公司|母公司|该公司|本公司|其|上述|相关|部分|多个|多家)|(?:行业|赛道|领域|板块|项目|业务|市场|龙头|人才|消费品|企业|公司)$/;
+  const ITEM_BAD = /^(?:董事|监事|高级管理人员|高管|管理层|自然人|法人|全资子公司|控股子公司|子公司|母公司|国有资本|民营资本|外资|外资股东|研发中心|生产基地|销售公司|分公司|事业部|分别|其他|其余|上述|本公司|发行人|公司|员工|员工持股平台|持股平台|实际控制人|控股股东|一致行动人|配偶|家族|个人|机构|基金|信托|银行|证券|保险)$|(?:职务|人员|部门|中心|基地|地区|区域|省|市|县|区|董事|监事|高管|高级管理人员|员工|股东|服务机构)$|^(?:通过|持有|将|已|拟|在|于|对|向|与|和|为|是|的|系|均|及|应|需|可|所|其|自然人|第三方|外部|专业|相关|多家|一家)/;
+  const CITY_RE = /^(?:北京|上海|广州|深圳|杭州|南京|成都|武汉|西安|苏州|天津|重庆|宁波|青岛|长沙|郑州|合肥|福州|厦门|济南|沈阳|大连|无锡|佛山|东莞|珠海|中山|香港|澳门|台北|新加坡|东京|纽约|伦敦|华东|华南|华北|华中|西南|东北|西北|海外|境外|国内)$/;
+  function orgItemOk(x) {
+    if (ITEM_BAD.test(x) || CITY_RE.test(x)) return false;
+    if (/^[一-龥]{2,3}$/.test(x) && looksLikeName(x, true) && !/(?:电子|科技|资本|投资|医疗|生物|物流|基金|信托|资产|集团|股份|控股)$/.test(x)) return false;   // 像人名
+    if (new RegExp('^(?:' + MONEY_CONTEXT + ')').test(x) && x.length <= 6) return false;   // 营收、毛利三项（以科目词开头）
+    return true;
+  }
+  function detectOrgContext(text, spans) {
+    const out = [];
+    for (const rule of ORG_CTX) {
+      rule.re.lastIndex = 0;
+      let m;
+      while ((m = rule.re.exec(text)) !== null) {
+        if (m[0].length === 0) { rule.re.lastIndex++; continue; }
+        if (!rule.list) {
+          const x = m[1], st = m.index + m[0].indexOf(x);
+          if (rule.note === '投资对象' && INVEST_BAD.test(x)) continue;
+          if (orgCandOk(x) && orgItemOk(x)) out.push(Span(st, st + x.length, 'ORG', x, rule.conf, rule.note));
+          continue;
+        }
+        // 名单：顿号 / 和 / 及 分隔，最多 8 项
+        let pos = m.index + m[0].length;
+        for (let k = 0; k < 8; k++) {
+          const g = /^([\u4e00-\u9fa5A-Za-z]{2,12}?)(?=、|，|,|和|及|与|间接|直接|合计|共同|持有|外|之|的|等|。|；|\s|$)/.exec(text.slice(pos, pos + 20));
+          if (!g || !orgCandOk(g[1]) || !orgItemOk(g[1])) break;
+          out.push(Span(pos, pos + g[1].length, 'ORG', g[1], rule.conf, rule.note));
+          pos += g[1].length;
+          const sep = /^\s*(?:、|和|及|与)\s*/.exec(text.slice(pos, pos + 3));
+          if (!sep) break;
+          pos += sep[0].length;
+        }
+      }
+    }
+    // 名单扩散：顿号名单里已确认机构至少占一半时，其余 2–10 字的项也按机构处理（蒙兴基金、中信金融资产、华鑫信托）
+    let mx = text.length + 1;
+    const cov = new Uint8Array(mx);
+    for (const k of spans.concat(out)) if (k.type === 'ORG' && (k.conf || 0) >= 0.85) for (let i = Math.max(0, k.start); i < Math.min(k.end, mx); i++) cov[i] = 1;
+    const LIST = /(?:[一-龥A-Za-z]{2,10}、)+[一-龥A-Za-z]{2,10}/g;   // 只认顿号名单
+    let lm;
+    while ((lm = LIST.exec(text)) !== null) {
+      const items = [];
+      const re = /[一-龥A-Za-z]{2,10}/g;
+      let im;
+      while ((im = re.exec(lm[0])) !== null) items.push({ st: lm.index + im.index, x: im[0] });
+      if (items.length < 2 || items.length > 12) continue;
+      const isHit = it => { for (let i = it.st; i < it.st + it.x.length; i++) if (cov[i]) return true; return false; };
+      const hits = items.filter(isHit);
+      if (!hits.length || hits.length === items.length || hits.length * 2 < items.length) continue;
+      for (const it of items) {
+        if (isHit(it) || !orgCandOk(it.x) || !orgItemOk(it.x)) continue;
+        out.push(Span(it.st, it.st + it.x.length, 'ORG', it.x, 0.86, '名单扩散'));
+      }
+    }
+    return out;
+  }
+
   function resolveOverlaps(spans) {
     // 项目名里如果套着公司名（"华润万佳项目"），公司名优先——
     // 代号类型错了会让 AI 误判，而且公司名泄露风险更高
-    const orgRanges = spans.filter(s => s.type === 'ORG').map(s => [s.start, s.end]);
+    // 用覆盖位图判断"项目是否压着机构"，避免 项目数 × 机构数 的平方级比对
+    let orgCov = null;
+    for (const s of spans) if (s.type === 'ORG') {
+      if (!orgCov) { let mx = 0; for (const t of spans) if (t.end > mx) mx = t.end; orgCov = new Uint8Array(mx + 1); }
+      for (let i = s.start; i < s.end; i++) orgCov[i] = 1;
+    }
     const cleaned = spans.filter(s => {
-      if (s.type !== 'PROJECT' || !orgRanges.length) return true;
-      return !orgRanges.some(r => s.start < r[1] && s.end > r[0]);
+      if (s.type !== 'PROJECT' || !orgCov) return true;
+      for (let i = s.start; i < s.end; i++) if (orgCov[i]) return false;
+      return true;
     });
 
     const arr = cleaned.sort((a, b) => {
@@ -1915,6 +2038,7 @@
         if (text.length <= 40000 && orgSpans.length <= 120) {
           let extra = mergeOrgAliases(text, orgSpans, spans);
           extra = extra.concat(detectHeadAliases(text, orgSpans, spans));
+          extra = extra.concat(detectOrgContext(text, spans));
           extra = extra.concat(detectDeclaredAliases(text, spans));
           if (extra.length) spans = resolveOverlaps(spans.concat(extra));
         }
