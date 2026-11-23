@@ -18,5 +18,7 @@ jobs:
             node eval.js $f | tee /tmp/out.txt | grep -E "Precision|Recall|F1"
             grep -q "F1              100.0%" /tmp/out.txt || { echo "回归失败：$f"; exit 1; }
           done
+      - name: 极端输入性能（每项 20 万字，超过 2 秒即失败）
+        run: cd src && node stress.js 2000
       - name: 真实文体评测（只报告，不卡）
         run: cd src && node eval.js testset-real-holdout.json | grep -E "Precision|Recall|F1"

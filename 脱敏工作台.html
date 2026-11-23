@@ -306,7 +306,7 @@
     脱敏工作台
   </div>
   <span class="tag">离线单文件 · 不联网</span>
-  <span class="ver" id="ver">v2.2</span>
+  <span class="ver" id="ver">v2.2.1</span>
   <div class="spacer"></div>
   <div class="proj">
     <div class="proj-btn" id="projBtn" title="切换项目：每个项目一套独立的映射">
@@ -1229,11 +1229,11 @@
     add(/(?:Mr\.|Ms\.|Mrs\.|Dr\.|Prof\.|chaired by|attended by|prepared by|reviewed by|presented by|contact(?:ed)?|meeting with|signed by)\s*[:：]?\s+([A-Z][a-z]{1,12}(?:\s+[A-Z][a-z]{1,12}){1,2})/gi,
       'PERSON', 0.85, null, '英文语境');
     // 英文公司名：必须有公司后缀，否则英文大写词组太多
-    add(/\b([A-Z][A-Za-z&.'-]*(?:\s+[A-Z][A-Za-z&.'-]*){0,5}\s+\((?:Hong Kong|HK|Singapore|Cayman|BVI|Shanghai|Beijing|China|Asia|US|UK)\)\s+(?:Ltd\.?|Limited|Inc\.?|LLC|Co\.,?\s*Ltd\.?|Company Limited|Pte\.?\s*Ltd\.?))/g,
+    add(/\b([A-Z][A-Za-z&.'-]{0,30}(?:\s+[A-Z][A-Za-z&.'-]{0,30}){0,5}\s+\((?:Hong Kong|HK|Singapore|Cayman|BVI|Shanghai|Beijing|China|Asia|US|UK)\)\s+(?:Ltd\.?|Limited|Inc\.?|LLC|Co\.,?\s*Ltd\.?|Company Limited|Pte\.?\s*Ltd\.?))/g,
       'ORG', 0.9, null, '英文公司（地区）');
-    add(/\b((?:PT|CV|PT\.)\s+[A-Z]{2,}(?:\s+[A-Z]{2,}){1,5}(?:\s+(?:TBK|Tbk))?|[A-Z]{2,}(?:\s+[A-Z]{2,}){1,4}\s+(?:SDN\.?\s+BHD\.?|BHD|GMBH|GmbH|S\.?A\.?|N\.?V\.?|B\.?V\.?|AG|PLC|LLC|LTD|INC))\b/g,
+    add(/\b((?:PT|CV|PT\.)\s+[A-Z]{2,30}(?:\s+[A-Z]{2,30}){1,5}(?:\s+(?:TBK|Tbk))?|[A-Z]{2,30}(?:\s+[A-Z]{2,30}){1,4}\s+(?:SDN\.?\s+BHD\.?|BHD|GMBH|GmbH|S\.?A\.?|N\.?V\.?|B\.?V\.?|AG|PLC|LLC|LTD|INC))\b/g,
       'ORG', 0.9, v => !/\b(?:REPORT|NOTES?|NOTICE|ACCOUNTS|STATEMENTS?|FINANCIAL|IMPORTANT|SHAREHOLDERS|ANNUAL|SUMMARY|APPENDIX|TABLE|CONTENTS|TO|OF|AND|FOR)\b/.test(v), '外国公司');
-    add(/\b([A-Z][A-Za-z&.'-]*(?:\s+[A-Z][A-Za-z&.'-]*){0,4}\s+(?:Ltd\.?|Limited|Inc\.?|LLC|LLP|Corp\.?|Corporation|Group|Holdings|Partners|Capital|Fund|Bank|Securities))\b/g,
+    add(/\b([A-Z][A-Za-z&.'-]{0,30}(?:\s+[A-Z][A-Za-z&.'-]{0,30}){0,4}\s+(?:Ltd\.?|Limited|Inc\.?|LLC|LLP|Corp\.?|Corporation|Group|Holdings|Partners|Capital|Fund|Bank|Securities))\b/g,
       'ORG', 0.85, null, '英文公司后缀');
     add(/(?:sk-[A-Za-z0-9_-]{16,}|AKIA[0-9A-Z]{16}|gh[pousr]_[A-Za-z0-9]{20,}|xox[baprs]-[A-Za-z0-9-]{10,}|eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{5,})/g,
       'SECRET', 1, null, '');
@@ -1249,13 +1249,13 @@
     // 城市 + 知名片区：上海张江 / 深圳南山 / 苏州工业园区
     add(/(?:北京|上海|广州|深圳|杭州|南京|成都|武汉|西安|苏州|天津|重庆|宁波|青岛|长沙|郑州|合肥|福州|厦门|济南|沈阳|大连|无锡|佛山|东莞|珠海|中山)(?:市)?(?:张江|南山|前海|中关村|陆家嘴|亦庄|望京|金融城|科技园|高新区|经开区|自贸区|保税区|工业园区|开发区|软件园|科学城|办公室|办事处|分公司|总部)/g,
       'ADDR', 0.82, null, '城市+片区');
-    add(/(?:[\u4e00-\u9fa5]{2,8}(?:省|市|区|县|镇|乡|街道)){1,4}[\u4e00-\u9fa5A-Za-z0-9]{2,20}(?:路|街|道|巷|弄|大厦|大楼|广场|园区)(?:\s*[A-Za-z0-9\-]{1,8}\s*号)?(?:\s*[\u4e00-\u9fa5A-Za-z0-9]{1,10}(?:号|层|楼|室|单元))*/g,
+    add(/(?:(?:(?![省市区县镇乡街])[\u4e00-\u9fa5]){2,8}(?:省|市|区|县|镇|乡|街道)){1,4}[\u4e00-\u9fa5A-Za-z0-9]{2,20}(?:路|街|道|巷|弄|大厦|大楼|广场|园区)(?:\s*[A-Za-z0-9\-]{1,8}\s*号)?(?:\s*(?:(?![省市区县路街道])[\u4e00-\u9fa5A-Za-z0-9]){1,10}(?:\s{0,2}\d{1,4})?\s{0,2}(?:号|层|楼|室|单元))*/g,
       'ADDR', 0.85, null, '含路名');
     // 只有"数字+号"才算门牌，"招银叁号"这类不算
     // 城市 + 知名片区：上海张江 / 深圳南山 / 苏州工业园区
     add(/(?:北京|上海|广州|深圳|杭州|南京|成都|武汉|西安|苏州|天津|重庆|宁波|青岛|长沙|郑州|合肥|福州|厦门|济南|沈阳|大连|无锡|佛山|东莞|珠海|中山)(?:市)?(?:张江|南山|前海|中关村|陆家嘴|亦庄|望京|金融城|科技园|高新区|经开区|自贸区|保税区|工业园区|开发区|软件园|科学城|办公室|办事处|分公司|总部)/g,
       'ADDR', 0.82, null, '城市+片区');
-    add(/(?:[\u4e00-\u9fa5]{2,8}(?:省|市|区|县|镇|乡|街道)){1,4}[\u4e00-\u9fa5A-Za-z0-9]{2,20}\d+\s*号(?:[\u4e00-\u9fa5A-Za-z0-9]{1,10}(?:层|楼|室|单元))*/g,
+    add(/(?:(?:(?![省市区县镇乡街])[\u4e00-\u9fa5]){2,8}(?:省|市|区|县|镇|乡|街道)){1,4}[\u4e00-\u9fa5A-Za-z0-9]{2,20}\d+\s*号(?:[\u4e00-\u9fa5A-Za-z0-9]{1,10}(?:层|楼|室|单元))*/g,
       'ADDR', 0.85, null, '含门牌号');
 
     /* ---- v2.0 格式类补充 ---- */
@@ -1619,14 +1619,14 @@
       const st = m.index + m[0].length - m[1].length;
       if (!NAME_BAD_PARTS.test(m[1])) out.push(Span(st, st + m[1].length, 'PERSON', m[1], 0.88, '称呼'));
     }
-    const r13 = /\b(?:(?:(?:Hi|Hello|Dear|Hey)\s+(?:(?:Mr|Ms|Mrs|Dr|Prof)\.?\s+)?|(?:Mr|Ms|Mrs|Dr|Prof)\.?\s+)((?:Mc|O')?[A-Z][a-z]+(?:[-'][A-Z]?[a-z]+)?(?:\s+(?:Mc|O')?[A-Z][a-z]+(?:[-'][A-Z]?[a-z]+)?){0,2})|(?:CEO|CFO|COO|CTO|CIO|VP|MD|SVP|EVP|Partner|Director|Analyst|Associate|Principal)\s+((?:Mc|O')?[A-Z][a-z]+(?:\s+(?:Mc|O')?[A-Z][a-z']+){1,2}))/g;
+    const r13 = /\b(?:(?:(?:Hi|Hello|Dear|Hey)\s+(?:(?:Mr|Ms|Mrs|Dr|Prof)\.?\s+)?|(?:Mr|Ms|Mrs|Dr|Prof)\.?\s+)((?:Mc|O')?[A-Z][a-z]{1,20}(?:[-'][A-Z]?[a-z]{1,20})?(?:\s+(?:Mc|O')?[A-Z][a-z]{1,20}(?:[-'][A-Z]?[a-z]{1,20})?){0,2})|(?:CEO|CFO|COO|CTO|CIO|VP|MD|SVP|EVP|Partner|Director|Analyst|Associate|Principal)\s+((?:Mc|O')?[A-Z][a-z]{1,20}(?:\s+(?:Mc|O')?[A-Z][a-z']{1,20}){1,2}))/g;
     while ((m = r13.exec(text)) !== null) {
       const nm = m[1] || m[2];
       if (EN_NOT_NAME.test(nm)) continue;
       const st = m.index + m[0].lastIndexOf(nm);
       out.push(Span(st, st + nm.length, 'PERSON', nm, 0.88, '英文称呼'));
     }
-    const r14 = /(?:^|\n|[.。!！]\s*)(?:Best(?: regards)?|Regards|Kind regards|Thanks|Thank you|Cheers|Sincerely|BR)\s*[,，]?\s*\n?\s*((?:Mc|O')?[A-Z][a-z]+(?:\s+(?:Mc|O')?[A-Z][a-z']+){0,2})(?![a-z])/g;
+    const r14 = /(?:^|\n|[.。!！]\s*)(?:Best(?: regards)?|Regards|Kind regards|Thanks|Thank you|Cheers|Sincerely|BR)\s*[,，]?\s*\n?\s*((?:Mc|O')?[A-Z][a-z]{1,20}(?:\s+(?:Mc|O')?[A-Z][a-z']{1,20}){0,2})(?![a-z])/g;
     while ((m = r14.exec(text)) !== null) {
       if (EN_NOT_NAME.test(m[1])) continue;
       const st = m.index + m[0].length - m[1].length;
@@ -1644,7 +1644,7 @@
     const r16 = /(?:^|\n)[ \t]*(?:From|To|Cc|Bcc|发件人|收件人|抄送)[ \t]*[:：][ \t]*([^\n<]{2,60})/gi;
     while ((m = r16.exec(text)) !== null) {
       const seg = m[1], base = m.index + m[0].length - seg.length;
-      const re2 = /[A-Z][a-z]+(?:\s+[A-Z][a-z']+){0,2}|[\u4e00-\u9fa5]{2,4}/g;
+      const re2 = /[A-Z][a-z]{1,20}(?:\s+[A-Z][a-z']{1,20}){0,2}|[\u4e00-\u9fa5]{2,4}/g;
       let mm;
       while ((mm = re2.exec(seg)) !== null) {
         const w = mm[0];
@@ -1666,7 +1666,7 @@
       if (nm && nm.length >= 3) out.push(Span(m.index, m.index + nm.length, 'PERSON', nm, 0.9, '复姓'));
     }
     // 19) 中文引导 + 英文名：反对人：Susan Liu / 联系人: Kevin Zhang / 与 Linda 和 Mark 对齐
-    const r19 = /(?:人|代表|对接|联系)\s*[:：]\s*([A-Z][a-z]+(?:\s+[A-Z][a-z']+){0,2})/g;
+    const r19 = /(?:人|代表|对接|联系)\s*[:：]\s*([A-Z][a-z]{1,20}(?:\s+[A-Z][a-z']{1,20}){0,2})/g;
     while ((m = r19.exec(text)) !== null) {
       if (EN_NOT_NAME.test(m[1])) continue;
       const st = m.index + m[0].length - m[1].length;
@@ -1736,8 +1736,8 @@
 
   /* ---------------- 检测器：金额 ---------------- */
   const MONEY_RE = new RegExp(
-    '(?<cur>人民币|RMB|CNY|USD|美元|美金|港币|HKD|欧元|EUR|¥|￥|\\$|€)?\\s*' +
-    '(?<num>\\d{1,3}(?:,\\d{3})+(?:\\.\\d+)?|\\d+(?:\\.\\d+)?)\\s*' +
+    '(?<cur>人民币|RMB|CNY|USD|美元|美金|港币|HKD|欧元|EUR|¥|￥|\\$|€)?\\s{0,3}' +
+    '(?<num>\\d{1,3}(?:,\\d{3})+(?:\\.\\d+)?|\\d+(?:\\.\\d+)?)\\s{0,3}' +
     '(?<unit>十亿元|十亿|亿元|万元|千万元|百万元|百万|千万|亿|万|千元|元|块|million|billion|mn|bn|M|B|K|k)?',
     'g'
   );
@@ -2587,7 +2587,7 @@
     { type: 'ORG', why: '持股路径', re: /通过\s*([\u4e00-\u9fa5]{2,10}?(?:[、和及与][\u4e00-\u9fa5]{2,10}?){0,6})(?=\s*(?:间接|直接|合计|共同|分别|合并)?\s*持有)/g, list: true },
     { type: 'ORG', why: '上市主体', re: /([\u4e00-\u9fa5]{2,10}?)(?=(?:拟|计划|正在|已)?(?:在|于|赴)?(?:上交所|深交所|北交所|港交所|联交所|科创板|创业板|主板|纳斯达克|纽交所)(?:科创板|创业板|主板)?(?:上市|IPO|递表|挂牌|申报))/g },
     { type: 'ORG', weak: true, why: '口语指代', re: /(?:跟|和|与|找|问|对接)\s*([\u4e00-\u9fa5]{2,6}?)(?=那边|这边|那家|这家)/g },
-    { type: 'ORG', why: '英文名 + 公司', re: /\b([A-Z][A-Za-z&.'-]+(?:\s+[A-Z][A-Za-z&.'-]+){0,4})\s*(?=公司|集团|基金|银行|资本)/g },
+    { type: 'ORG', why: '英文名 + 公司', re: /\b([A-Z][A-Za-z&.'-]{1,30}(?:\s+[A-Z][A-Za-z&.'-]{1,30}){0,4})\s*(?=公司|集团|基金|银行|资本)/g },
     { type: 'ORG', weak: true, why: '集团关系', re: /(?:子公司|孙公司|母公司|参股公司|关联方|旗下)([\u4e00-\u9fa5]{2,8}?)(?=的|之|，|。|、|；)/g },
     { type: 'ORG', why: '行业词尾', re: /(?<![一-龥])([一-龥]{2,4}(?:电子|化工|医疗|光电|新材|物流|生物|资本|投资|科技|医药|控股|集团|股份|实业|半导体|新能源|药业|制药|器械|精密|租赁|保理|创投|置业|地产|重工|电气|智能|汽车))(?![一-龥])/g },
     { type: 'ORG', weak: true, why: '引号名称', re: /(?:叫|名为|简称|代号|品牌|项目)[“"「『]([\u4e00-\u9fa5A-Za-z0-9]{2,8})[”"」』]/g },
