@@ -1659,6 +1659,98 @@
     return out;
   }
 
+  /* ---- v2.2 疑似实体：高召回、需要用户确认的候选（不自动脱敏） ---- */
+  // 这些写法在真实文档里很常见，但直接替换误伤太多，所以只列出来让用户一键确认
+  const SUSPECT_RULES = [
+    { type: 'ORG', why: '履历语境', re: /(?:于|在|加入|就职于|任职于|供职于|入职|离开|创办|创立|联合创立)\s*([\u4e00-\u9fa5]{2,12}?)(?=担任|任职|工作|就职|任|期间|实习|从事)/g },
+    { type: 'ORG', why: '持股路径', re: /通过\s*([\u4e00-\u9fa5]{2,10}?(?:[、和及与][\u4e00-\u9fa5]{2,10}?){0,6})(?=\s*(?:间接|直接|合计|共同|分别|合并)?\s*持有)/g, list: true },
+    { type: 'ORG', why: '上市主体', re: /([\u4e00-\u9fa5]{2,10}?)(?=(?:拟|计划|正在|已)?(?:在|于|赴)?(?:上交所|深交所|北交所|港交所|联交所|科创板|创业板|主板|纳斯达克|纽交所)(?:科创板|创业板|主板)?(?:上市|IPO|递表|挂牌|申报))/g },
+    { type: 'ORG', weak: true, why: '口语指代', re: /(?:跟|和|与|找|问|对接)\s*([\u4e00-\u9fa5]{2,6}?)(?=那边|这边|那家|这家)/g },
+    { type: 'ORG', why: '英文名 + 公司', re: /\b([A-Z][A-Za-z&.'-]+(?:\s+[A-Z][A-Za-z&.'-]+){0,4})\s*(?=公司|集团|基金|银行|资本)/g },
+    { type: 'ORG', weak: true, why: '集团关系', re: /(?:子公司|孙公司|母公司|参股公司|关联方|旗下)([\u4e00-\u9fa5]{2,8}?)(?=的|之|，|。|、|；)/g },
+    { type: 'ORG', why: '行业词尾', re: /(?<![一-龥])([一-龥]{2,4}(?:电子|化工|医疗|光电|新材|物流|生物|资本|投资|科技|医药|控股|集团|股份|实业|半导体|新能源|药业|制药|器械|精密|租赁|保理|创投|置业|地产|重工|电气|智能|汽车))(?![一-龥])/g },
+    { type: 'ORG', weak: true, why: '引号名称', re: /(?:叫|名为|简称|代号|品牌|项目)[“"「『]([\u4e00-\u9fa5A-Za-z0-9]{2,8})[”"」』]/g },
+    { type: 'PERSON', weak: true, why: '只有名的称呼', re: /(?:^|[，。；\n]|Hi |致)([\u4e00-\u9fa5]{2})(?=补充|建议|表示|说|提到|认为|负责|确认|反馈|汇报)/g },
+    { type: 'PERSON', weak: true, why: '英文名', re: /(?<=[与和跟找问让请@、]\s?)([A-Z][a-z]{2,12})(?=\s*[\u4e00-\u9fa5])/g }
+  ];
+  const SUSPECT_BAD = /^(?:旗下|较多|较少|众多|多个|高端|中端|低端|头部|一期|二期|三期|四期|首期|渠道|研发|监管|运营|技术|风控|合规|生产|质量|品牌|客服|行政|采购|投行|律所|券商|交易所|四大|本行|本所|头部|大厂|创业公司|初创公司|销售|市场部|美国|日本|欧洲|英国|德国|韩国|正在|标的企业|标的公司|银行借款|甲方|乙方|丙方|要先|包括|间接|直接|持有|提前|谈|将|已|拟|在|于|对|向|把|被|让|给|一下|上交所|深交所|北交所|港交所|联交所|科创板|创业板|主板|纳斯达克|纽交所|今年|去年|明年|同年|当年|此前|之后|期间|报告期|本届|疫情|总部|海外|国内|境外|一线|二线|行业|行业内|公司|本公司|我们|他们|你们|对方|客户|老板|领导|财务|法务|律师|审计|人事|团队|项目|项目组|管理层|董事会|邮件|协议|配偶|家族|信托|二级市场|自有资金|大宗交易|定向增发|持股平台|一致行动|下属企业|多家|很多|部分|其他|本次|计划|发行人|该公司)/;
+  const EN_SUSPECT_BAD = /^(?:Mac|Agent|Office|Skill|Code|Claude|Chrome|Safari|Windows|Linux|Docker|GitHub|Pro|Max|Plus|Ultra|Apple|Google|Microsoft|Tesla|Amazon|Meta|Nvidia|OpenAI|The|This|That|These|Our|We|Your|SaaS|CRO|IPO|ESG|TMT|FOF|REITs?|VIE|SPV|NewCo|Excel|PPT|Word|Wind|Bloomberg|Choice|Python|AI|API|App|Big|New|Hong|Action|Items|Update|Draft|Final|Model|Memo|Deck|Email|Note|Notes|Data|Team|All|Best|Regards|Thanks|Hi|Dear)$/;
+
+  // 两字常用词：不是"只有名的称呼"
+  const COMMON_2 = new Set('专家 机构 券商 业内 监管 买方 卖方 我方 多数 普遍 基金 媒体 投资 央行 政府 国家 同行 研发 运营 技术 风控 合规 员工 用户 分析 研究 市场 管理 销售 采购 投行 律所 审计 股东 董事 高管 创始 合伙 顾问 专业 业界 外界 舆论 主流 少数 部分 有人 对此 此前 随后 最终 整个 主要 上次 同时 其中 另外 此外 目前 最后 首先 其次 然后 后来 因此 所以 但是 不过 而且 并且 如果 虽然 总体 整体 大家 我们 他们 你们 对方 客户 老板 领导 财务 法务 会上 会后 会议 本周 上周 下周 今天 明天 昨天 现在 当时 之前 之后 最近 已经 还是 可能 应该 需要 建议 具体 关于 对于 根据 按照 通过 经过 结果 情况 问题 方面 部分 全部 双方 各方 公司 项目 团队 业务 市场 行业 产品 渠道 门店 数据 模型 方案 计划 预算 合同 协议 报告 材料 文件 邮件 附件 内容 时间 节点 进度 风险 机会 重点 难点 核心 关键'.split(' '));
+  // 行业通用词不是公司名
+  const INDUSTRY_GENERIC = new Set('医疗器械 生物医药 新能源汽车 半导体 光伏 储能 人工智能 智能制造 工业互联网 消费电子 汽车电子 金融科技 高端制造 精密制造 新材料 化工新材 创新药 医药生物 智能汽车 互联网大厂 科技大厂 地产开发 产业资本 风险投资 股权投资 私募股权 天使投资 战略投资 财务投资 国有资本 民营资本 外资控股'.split(' '));
+  // "投资建议 / 投资者 / 对外投资"：同一个词在文中还作为别的词的前半截出现，就不是名字
+  const SPEAK_NEXT = /^(?:补充|建议|表示|说|提到|认为|负责|确认|反馈|汇报|指出|强调|透露|介绍|回应|提出|发言|主持)/;
+  let usedAsStem = () => false;
+  function suspectCandidates(text, spans, known, ignore) {
+    usedAsStem = w => {
+      let i = -1, n = 0;
+      while ((i = text.indexOf(w, i + 1)) >= 0) {
+        const nx = text.slice(i + w.length, i + w.length + 3);
+        if (/^[\u4e00-\u9fa5]/.test(nx) && !SPEAK_NEXT.test(nx)) { if (++n >= 1) return true; }
+      }
+      return false;
+    };
+    let mx = text.length + 1;
+    const cov = new Uint8Array(mx);
+    for (const sp of spans) for (let i = Math.max(0, sp.start); i < Math.min(sp.end, mx); i++) cov[i] = 1;
+    const covered = (st, en) => { for (let i = st; i < en; i++) if (cov[i]) return true; return false; };
+    const found = new Map();
+    const add = (x, type, why, weak) => {
+      x = x.trim();
+      if (!x || x.length < 2 || x.length > 20) return;
+      if (/^\d+$/.test(x) || SUSPECT_BAD.test(x) || (type === 'ORG' && (ORG_STOP.has(x) || CITY_RE.test(x) || ITEM_BAD.test(x)))) return;
+      if (/^[A-Za-z]/.test(x) && (EN_SUSPECT_BAD.test(x.split(/\s+/)[0]) || x.replace(/[^A-Za-z]/g, '').length < 3)) return;
+      if (type === 'ORG' && /(?:额|比例|占比|情况|方式|说明|账号|任职|费用|成本|收入|利润|率|期间|年度|部分|内容|事项|单位|人员|部门)$/.test(x)) return;
+      if (type === 'PERSON' && /^[\u4e00-\u9fa5]{2}$/.test(x) && COMMON_2.has(x)) return;
+      if (/[于在将拟年月日的了着]$/.test(x)) return;
+      if (/^(?:万|亿|股|份|元|千|百|余|约|共|每|该|本|其)/.test(x)) return;   // 万股股份 这类数量短语
+      if (known.has(type + ':' + x) || ignore.has(x)) return;
+      const k = type + ':' + x;
+      if (type === 'ORG' && INDUSTRY_GENERIC.has(x)) return;
+      if (type === 'PERSON' && /^[\u4e00-\u9fa5]{2}$/.test(x) && usedAsStem(x)) return;
+      if (!found.has(k)) found.set(k, { alias: x, type, why, weak: !!weak, count: 0 });
+    };
+    for (const r of SUSPECT_RULES) {
+      if (r.list) {
+        // 名单规则：逐个"通过"取 80 字小窗口，窗口里有"持有"才匹配，避免长文本上的回溯爆炸
+        let p = -1;
+        const one = new RegExp(r.re.source);
+        while ((p = text.indexOf('通过', p + 1)) >= 0) {
+          const win = text.slice(p, p + 80);
+          if (win.indexOf('持有') < 0) continue;
+          const m = one.exec(win);
+          if (!m || m.index !== 0) continue;
+          const grp = m[1], base = p + m[0].indexOf(grp);
+          let off = 0;
+          for (const part of grp.split(/[、和及与]/)) {
+            if (!part) continue;
+            const st = base + grp.indexOf(part, off); off = st - base + part.length;
+            if (!covered(st, st + part.length)) add(part, r.type, r.why, r.weak);
+          }
+        }
+        continue;
+      }
+      r.re.lastIndex = 0;
+      let m;
+      while ((m = r.re.exec(text)) !== null) {
+        if (m[0].length === 0) { r.re.lastIndex++; continue; }
+        const grp = m[1];
+        const base = m.index + m[0].indexOf(grp);
+        if (!covered(base, base + grp.length)) add(grp, r.type, r.why, r.weak);
+      }
+    }
+    // 出现次数：只数没被脱敏的位置
+    const out = [];
+    for (const c of found.values()) {
+      let i = -1, n = 0;
+      while ((i = text.indexOf(c.alias, i + 1)) >= 0) if (!covered(i, i + c.alias.length)) n++;
+      if (n) { c.count = n; out.push(c); }
+    }
+    return out.sort((a, b) => b.count - a.count).slice(0, 30);
+  }
+
   function resolveOverlaps(spans) {
     // 项目名里如果套着公司名（"华润万佳项目"），公司名优先——
     // 代号类型错了会让 AI 误判，而且公司名泄露风险更高
@@ -2100,7 +2192,16 @@
       if (o.mask_org && text.length <= 200000) {
         const dictOrg = dict.ORG || [];
         suggestions = aliasCandidates(text, spans.filter(s => s.type === 'ORG').slice(0, 150))
-          .filter(x => dictOrg.indexOf(x.alias) < 0);
+          .filter(x => dictOrg.indexOf(x.alias) < 0)
+          .map(x => Object.assign(x, { type: 'ORG', why: '全称的简称' }));
+      }
+      if (text.length <= 200000 && o.suspects !== false) {
+        const known = new Set();
+        for (const t of Object.keys(dict)) for (const w of dict[t] || []) known.add(t + ':' + w);
+        for (const x of suggestions) known.add('ORG:' + x.alias);
+        const ignore = new Set(o.ignore_suspects || []);
+        for (const ex of o.exclude || []) ignore.add(String(ex).replace(/^[A-Z]+:/, ''));
+        suggestions = suggestions.concat(suspectCandidates(text, spans, known, ignore));
       }
 
       // 人名别称归并：张总 → 张伟
@@ -2390,10 +2491,11 @@
       return warn;
     }
 
-    function addWord(type, word) {
+    function addWord(type, word, noSave) {
       if (!dict[type]) dict[type] = [];
-      if (word && dict[type].indexOf(word) < 0) { dict[type].push(word); save(); }
+      if (word && dict[type].indexOf(word) < 0) { dict[type].push(word); if (!noSave) save(); }
     }
+    function flushSave() { save(); }
     function removeWord(type, word) {
       if (!dict[type]) return;
       const i = dict[type].indexOf(word);
@@ -2422,7 +2524,7 @@
     }
 
     return {
-      mask, restore, riskScan, setOpts,
+      mask, restore, riskScan, setOpts, flushSave,
       addWord, removeWord, reset, exportVault, importVault, listVault,
       getDict: () => dict,
       getFactor: () => sessionFactor(),

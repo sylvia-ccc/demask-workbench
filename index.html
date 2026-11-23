@@ -266,6 +266,9 @@
   .sug.on{display:flex}
   .sug .chip{background:#fff;border-color:#c9dcf2;color:#2f5d8a;padding:3px 9px;font-size:12px}
   .sug .chip:hover{background:#eaf2fb}
+  .sug .sug-weak{border-style:dashed;opacity:.85}
+  .sug .sug-no{margin-left:4px;padding:0 3px;border-radius:3px;color:#8a99ad}
+  .sug .sug-no:hover{background:#fde8e8;color:var(--danger)}
 
   .pseudo{display:none;background:#fff8ed;border:1px solid #fcd9a8;border-radius:8px;
     padding:10px 12px;margin-bottom:12px;font-size:12.5px;color:#92400e;line-height:1.65}
@@ -303,7 +306,7 @@
     脱敏工作台
   </div>
   <span class="tag">离线单文件 · 不联网</span>
-  <span class="ver" id="ver">v2.1</span>
+  <span class="ver" id="ver">v2.2</span>
   <div class="spacer"></div>
   <div class="proj">
     <div class="proj-btn" id="projBtn" title="切换项目：每个项目一套独立的映射">
@@ -495,6 +498,16 @@
             <input type="text" id="dictInput" placeholder="输入后回车添加">
           </div>
           <div class="dict-list" id="dictList"></div>
+          <details style="margin-top:8px;font-size:12px">
+            <summary style="cursor:pointer;color:var(--accent-2)">批量导入客户名单</summary>
+            <textarea id="dictBulk" style="min-height:90px;border:1px solid var(--line);border-radius:6px;margin-top:6px;padding:8px;font-size:12.5px"
+              placeholder="每行一个，也可用逗号、顿号分隔。&#10;默认按企业导入；人名或项目加前缀：&#10;人：张伟、李娜&#10;项目：凤凰、青松"></textarea>
+            <div style="display:flex;gap:6px;margin-top:6px;align-items:center">
+              <button class="btn" id="dictBulkGo">导入</button>
+              <label class="btn" style="cursor:pointer">从文件导入<input type="file" id="dictFile" accept=".txt,.csv,.xlsx" style="display:none"></label>
+              <span style="color:var(--faint)">txt / csv / xlsx，自动跳过数字和表头</span>
+            </div>
+          </details>
         </div>
       </div>
     </div>
@@ -664,7 +677,7 @@
 
 <div class="toast" id="toast"></div>
 
-<script>/* 引擎内联于 2026-11-16 */
+<script>/* 引擎内联于 2026-11-23 */
 /* ==========================================================================
    内置行业词库（金融 / 咨询）
    --------------------------------------------------------------------------
@@ -2567,6 +2580,98 @@
     return out;
   }
 
+  /* ---- v2.2 疑似实体：高召回、需要用户确认的候选（不自动脱敏） ---- */
+  // 这些写法在真实文档里很常见，但直接替换误伤太多，所以只列出来让用户一键确认
+  const SUSPECT_RULES = [
+    { type: 'ORG', why: '履历语境', re: /(?:于|在|加入|就职于|任职于|供职于|入职|离开|创办|创立|联合创立)\s*([\u4e00-\u9fa5]{2,12}?)(?=担任|任职|工作|就职|任|期间|实习|从事)/g },
+    { type: 'ORG', why: '持股路径', re: /通过\s*([\u4e00-\u9fa5]{2,10}?(?:[、和及与][\u4e00-\u9fa5]{2,10}?){0,6})(?=\s*(?:间接|直接|合计|共同|分别|合并)?\s*持有)/g, list: true },
+    { type: 'ORG', why: '上市主体', re: /([\u4e00-\u9fa5]{2,10}?)(?=(?:拟|计划|正在|已)?(?:在|于|赴)?(?:上交所|深交所|北交所|港交所|联交所|科创板|创业板|主板|纳斯达克|纽交所)(?:科创板|创业板|主板)?(?:上市|IPO|递表|挂牌|申报))/g },
+    { type: 'ORG', weak: true, why: '口语指代', re: /(?:跟|和|与|找|问|对接)\s*([\u4e00-\u9fa5]{2,6}?)(?=那边|这边|那家|这家)/g },
+    { type: 'ORG', why: '英文名 + 公司', re: /\b([A-Z][A-Za-z&.'-]+(?:\s+[A-Z][A-Za-z&.'-]+){0,4})\s*(?=公司|集团|基金|银行|资本)/g },
+    { type: 'ORG', weak: true, why: '集团关系', re: /(?:子公司|孙公司|母公司|参股公司|关联方|旗下)([\u4e00-\u9fa5]{2,8}?)(?=的|之|，|。|、|；)/g },
+    { type: 'ORG', why: '行业词尾', re: /(?<![一-龥])([一-龥]{2,4}(?:电子|化工|医疗|光电|新材|物流|生物|资本|投资|科技|医药|控股|集团|股份|实业|半导体|新能源|药业|制药|器械|精密|租赁|保理|创投|置业|地产|重工|电气|智能|汽车))(?![一-龥])/g },
+    { type: 'ORG', weak: true, why: '引号名称', re: /(?:叫|名为|简称|代号|品牌|项目)[“"「『]([\u4e00-\u9fa5A-Za-z0-9]{2,8})[”"」』]/g },
+    { type: 'PERSON', weak: true, why: '只有名的称呼', re: /(?:^|[，。；\n]|Hi |致)([\u4e00-\u9fa5]{2})(?=补充|建议|表示|说|提到|认为|负责|确认|反馈|汇报)/g },
+    { type: 'PERSON', weak: true, why: '英文名', re: /(?<=[与和跟找问让请@、]\s?)([A-Z][a-z]{2,12})(?=\s*[\u4e00-\u9fa5])/g }
+  ];
+  const SUSPECT_BAD = /^(?:旗下|较多|较少|众多|多个|高端|中端|低端|头部|一期|二期|三期|四期|首期|渠道|研发|监管|运营|技术|风控|合规|生产|质量|品牌|客服|行政|采购|投行|律所|券商|交易所|四大|本行|本所|头部|大厂|创业公司|初创公司|销售|市场部|美国|日本|欧洲|英国|德国|韩国|正在|标的企业|标的公司|银行借款|甲方|乙方|丙方|要先|包括|间接|直接|持有|提前|谈|将|已|拟|在|于|对|向|把|被|让|给|一下|上交所|深交所|北交所|港交所|联交所|科创板|创业板|主板|纳斯达克|纽交所|今年|去年|明年|同年|当年|此前|之后|期间|报告期|本届|疫情|总部|海外|国内|境外|一线|二线|行业|行业内|公司|本公司|我们|他们|你们|对方|客户|老板|领导|财务|法务|律师|审计|人事|团队|项目|项目组|管理层|董事会|邮件|协议|配偶|家族|信托|二级市场|自有资金|大宗交易|定向增发|持股平台|一致行动|下属企业|多家|很多|部分|其他|本次|计划|发行人|该公司)/;
+  const EN_SUSPECT_BAD = /^(?:Mac|Agent|Office|Skill|Code|Claude|Chrome|Safari|Windows|Linux|Docker|GitHub|Pro|Max|Plus|Ultra|Apple|Google|Microsoft|Tesla|Amazon|Meta|Nvidia|OpenAI|The|This|That|These|Our|We|Your|SaaS|CRO|IPO|ESG|TMT|FOF|REITs?|VIE|SPV|NewCo|Excel|PPT|Word|Wind|Bloomberg|Choice|Python|AI|API|App|Big|New|Hong|Action|Items|Update|Draft|Final|Model|Memo|Deck|Email|Note|Notes|Data|Team|All|Best|Regards|Thanks|Hi|Dear)$/;
+
+  // 两字常用词：不是"只有名的称呼"
+  const COMMON_2 = new Set('专家 机构 券商 业内 监管 买方 卖方 我方 多数 普遍 基金 媒体 投资 央行 政府 国家 同行 研发 运营 技术 风控 合规 员工 用户 分析 研究 市场 管理 销售 采购 投行 律所 审计 股东 董事 高管 创始 合伙 顾问 专业 业界 外界 舆论 主流 少数 部分 有人 对此 此前 随后 最终 整个 主要 上次 同时 其中 另外 此外 目前 最后 首先 其次 然后 后来 因此 所以 但是 不过 而且 并且 如果 虽然 总体 整体 大家 我们 他们 你们 对方 客户 老板 领导 财务 法务 会上 会后 会议 本周 上周 下周 今天 明天 昨天 现在 当时 之前 之后 最近 已经 还是 可能 应该 需要 建议 具体 关于 对于 根据 按照 通过 经过 结果 情况 问题 方面 部分 全部 双方 各方 公司 项目 团队 业务 市场 行业 产品 渠道 门店 数据 模型 方案 计划 预算 合同 协议 报告 材料 文件 邮件 附件 内容 时间 节点 进度 风险 机会 重点 难点 核心 关键'.split(' '));
+  // 行业通用词不是公司名
+  const INDUSTRY_GENERIC = new Set('医疗器械 生物医药 新能源汽车 半导体 光伏 储能 人工智能 智能制造 工业互联网 消费电子 汽车电子 金融科技 高端制造 精密制造 新材料 化工新材 创新药 医药生物 智能汽车 互联网大厂 科技大厂 地产开发 产业资本 风险投资 股权投资 私募股权 天使投资 战略投资 财务投资 国有资本 民营资本 外资控股'.split(' '));
+  // "投资建议 / 投资者 / 对外投资"：同一个词在文中还作为别的词的前半截出现，就不是名字
+  const SPEAK_NEXT = /^(?:补充|建议|表示|说|提到|认为|负责|确认|反馈|汇报|指出|强调|透露|介绍|回应|提出|发言|主持)/;
+  let usedAsStem = () => false;
+  function suspectCandidates(text, spans, known, ignore) {
+    usedAsStem = w => {
+      let i = -1, n = 0;
+      while ((i = text.indexOf(w, i + 1)) >= 0) {
+        const nx = text.slice(i + w.length, i + w.length + 3);
+        if (/^[\u4e00-\u9fa5]/.test(nx) && !SPEAK_NEXT.test(nx)) { if (++n >= 1) return true; }
+      }
+      return false;
+    };
+    let mx = text.length + 1;
+    const cov = new Uint8Array(mx);
+    for (const sp of spans) for (let i = Math.max(0, sp.start); i < Math.min(sp.end, mx); i++) cov[i] = 1;
+    const covered = (st, en) => { for (let i = st; i < en; i++) if (cov[i]) return true; return false; };
+    const found = new Map();
+    const add = (x, type, why, weak) => {
+      x = x.trim();
+      if (!x || x.length < 2 || x.length > 20) return;
+      if (/^\d+$/.test(x) || SUSPECT_BAD.test(x) || (type === 'ORG' && (ORG_STOP.has(x) || CITY_RE.test(x) || ITEM_BAD.test(x)))) return;
+      if (/^[A-Za-z]/.test(x) && (EN_SUSPECT_BAD.test(x.split(/\s+/)[0]) || x.replace(/[^A-Za-z]/g, '').length < 3)) return;
+      if (type === 'ORG' && /(?:额|比例|占比|情况|方式|说明|账号|任职|费用|成本|收入|利润|率|期间|年度|部分|内容|事项|单位|人员|部门)$/.test(x)) return;
+      if (type === 'PERSON' && /^[\u4e00-\u9fa5]{2}$/.test(x) && COMMON_2.has(x)) return;
+      if (/[于在将拟年月日的了着]$/.test(x)) return;
+      if (/^(?:万|亿|股|份|元|千|百|余|约|共|每|该|本|其)/.test(x)) return;   // 万股股份 这类数量短语
+      if (known.has(type + ':' + x) || ignore.has(x)) return;
+      const k = type + ':' + x;
+      if (type === 'ORG' && INDUSTRY_GENERIC.has(x)) return;
+      if (type === 'PERSON' && /^[\u4e00-\u9fa5]{2}$/.test(x) && usedAsStem(x)) return;
+      if (!found.has(k)) found.set(k, { alias: x, type, why, weak: !!weak, count: 0 });
+    };
+    for (const r of SUSPECT_RULES) {
+      if (r.list) {
+        // 名单规则：逐个"通过"取 80 字小窗口，窗口里有"持有"才匹配，避免长文本上的回溯爆炸
+        let p = -1;
+        const one = new RegExp(r.re.source);
+        while ((p = text.indexOf('通过', p + 1)) >= 0) {
+          const win = text.slice(p, p + 80);
+          if (win.indexOf('持有') < 0) continue;
+          const m = one.exec(win);
+          if (!m || m.index !== 0) continue;
+          const grp = m[1], base = p + m[0].indexOf(grp);
+          let off = 0;
+          for (const part of grp.split(/[、和及与]/)) {
+            if (!part) continue;
+            const st = base + grp.indexOf(part, off); off = st - base + part.length;
+            if (!covered(st, st + part.length)) add(part, r.type, r.why, r.weak);
+          }
+        }
+        continue;
+      }
+      r.re.lastIndex = 0;
+      let m;
+      while ((m = r.re.exec(text)) !== null) {
+        if (m[0].length === 0) { r.re.lastIndex++; continue; }
+        const grp = m[1];
+        const base = m.index + m[0].indexOf(grp);
+        if (!covered(base, base + grp.length)) add(grp, r.type, r.why, r.weak);
+      }
+    }
+    // 出现次数：只数没被脱敏的位置
+    const out = [];
+    for (const c of found.values()) {
+      let i = -1, n = 0;
+      while ((i = text.indexOf(c.alias, i + 1)) >= 0) if (!covered(i, i + c.alias.length)) n++;
+      if (n) { c.count = n; out.push(c); }
+    }
+    return out.sort((a, b) => b.count - a.count).slice(0, 30);
+  }
+
   function resolveOverlaps(spans) {
     // 项目名里如果套着公司名（"华润万佳项目"），公司名优先——
     // 代号类型错了会让 AI 误判，而且公司名泄露风险更高
@@ -3008,7 +3113,16 @@
       if (o.mask_org && text.length <= 200000) {
         const dictOrg = dict.ORG || [];
         suggestions = aliasCandidates(text, spans.filter(s => s.type === 'ORG').slice(0, 150))
-          .filter(x => dictOrg.indexOf(x.alias) < 0);
+          .filter(x => dictOrg.indexOf(x.alias) < 0)
+          .map(x => Object.assign(x, { type: 'ORG', why: '全称的简称' }));
+      }
+      if (text.length <= 200000 && o.suspects !== false) {
+        const known = new Set();
+        for (const t of Object.keys(dict)) for (const w of dict[t] || []) known.add(t + ':' + w);
+        for (const x of suggestions) known.add('ORG:' + x.alias);
+        const ignore = new Set(o.ignore_suspects || []);
+        for (const ex of o.exclude || []) ignore.add(String(ex).replace(/^[A-Z]+:/, ''));
+        suggestions = suggestions.concat(suspectCandidates(text, spans, known, ignore));
       }
 
       // 人名别称归并：张总 → 张伟
@@ -3298,10 +3412,11 @@
       return warn;
     }
 
-    function addWord(type, word) {
+    function addWord(type, word, noSave) {
       if (!dict[type]) dict[type] = [];
-      if (word && dict[type].indexOf(word) < 0) { dict[type].push(word); save(); }
+      if (word && dict[type].indexOf(word) < 0) { dict[type].push(word); if (!noSave) save(); }
     }
+    function flushSave() { save(); }
     function removeWord(type, word) {
       if (!dict[type]) return;
       const i = dict[type].indexOf(word);
@@ -3330,7 +3445,7 @@
     }
 
     return {
-      mask, restore, riskScan, setOpts,
+      mask, restore, riskScan, setOpts, flushSave,
       addWord, removeWord, reset, exportVault, importVault, listVault,
       getDict: () => dict,
       getFactor: () => sessionFactor(),
@@ -4042,6 +4157,7 @@ function loadLocalPrefs() {
     const p = all[pid];
     if (p) {
       state.opts.exclude = Array.isArray(p.exclude) ? p.exclude : [];
+      state.opts.ignore_suspects = Array.isArray(p.ignoreSuspects) ? p.ignoreSuspects : [];
       if (Array.isArray(p.lexGroups) && p.lexGroups.length) {
         state.lexOn = new Set(p.lexGroups);
         state.opts.lex_groups = p.lexGroups;
@@ -4053,8 +4169,10 @@ function loadLocalPrefs() {
       }
     } else {
       state.opts.exclude = [];
+      state.opts.ignore_suspects = [];
     }
   } catch (e) {}
+  if (typeof renderDict === 'function') setTimeout(renderDict, 0);   // 设置加载完再画词库区，"已忽略"列表才完整
 }
 function saveLocalPrefs() {
   if (!STORE) return;
@@ -4062,6 +4180,7 @@ function saveLocalPrefs() {
     const all = JSON.parse(STORE.getItem(PREF_KEY) || '{}');
     all[eng.currentProject().id] = {
       exclude: state.opts.exclude || [],
+      ignoreSuspects: state.opts.ignore_suspects || [],
       lexGroups: state.lexOn ? [...state.lexOn] : null,
       dict: eng.getDict()
     };
@@ -4157,10 +4276,10 @@ function updateStats(chars, ent, uniq, residual, sug, reid) {
   const nSug = (sug && sug.length) || 0;
   if (residual && residual.length) {
     rs.style.color = 'var(--warn)';
-    rs.textContent = residual.length + ' 处待复核' + (nSug ? ' · ' + nSug + ' 个简称待确认' : '');
+    rs.textContent = residual.length + ' 处待复核' + (nSug ? ' · ' + nSug + ' 处疑似实体待确认' : '');
   } else if (nSug) {
     rs.style.color = 'var(--warn)';
-    rs.textContent = nSug + ' 个简称待确认';
+    rs.textContent = nSug + ' 处疑似实体待确认';
   } else if (reid && reid.level === 'high') {
     rs.style.color = 'var(--warn)';
     rs.textContent = '名字已脱 · 描述仍可反推';
@@ -4209,19 +4328,43 @@ function renderEntities() {
   });
 }
 
+// 复制、导出 .txt、分段前：还有没确认的疑似实体就提醒一次
+function confirmPending() {
+  const pend = state.suggestions || [];
+  if (!pend.length) return true;
+  return confirm('还有 ' + pend.length + (pend.length >= 30 ? '+' : '') + ' 处疑似客户名 / 人名没确认：\n\n' +
+    pend.slice(0, 6).map(x => '· ' + x.alias + '（' + (x.why || '') + '）').join('\n') + (pend.length > 6 ? '\n…' : '') +
+    '\n\n它们目前没有被替换。确定继续吗？（取消后可在实体清单上方逐个确认）');
+}
 function renderSuggestions(list) {
+  state.suggestions = list || [];
   const box = $('#sugBox');
   if (!list || !list.length) { box.classList.remove('on'); box.innerHTML = ''; return; }
   box.classList.add('on');
-  box.innerHTML = '<b>检测到可能的简称</b><span style="color:var(--muted)">点一下即一并脱敏：</span>' +
-    list.map(x => `<span class="chip" data-alias="${esc(x.alias)}" title="全称：${esc(x.full)}">${esc(x.alias)} <span style="opacity:.55">×${x.count}</span></span>`).join('');
-  box.querySelectorAll('[data-alias]').forEach(el => {
-    el.onclick = () => {
-      eng.addWord('ORG', el.dataset.alias);
-      renderDict(); state.lastInput = ''; runMask();
-      toast('已加入词库：' + el.dataset.alias);
+  const TL = { ORG: '企业', PERSON: '人名', PROJECT: '项目' };
+  box.innerHTML = `<b>待确认 ${list.length} 处</b><span style="color:var(--muted)">疑似客户名 / 人名，点名字即脱敏，点 × 表示不是：</span>` +
+    list.map((x, i) => `<span class="chip sug-item${x.weak ? ' sug-weak' : ''}" data-i="${i}" title="${esc((x.why || '') + (x.full ? '；全称：' + x.full : '') + (x.weak ? '；把握较低，请逐个确认' : ''))}">` +
+      `<span style="opacity:.6">${TL[x.type] || '企业'}</span> ${esc(x.alias)} <span style="opacity:.55">×${x.count}</span>` +
+      `<span class="sug-no" data-no="${i}" title="不是，以后不再提示">×</span></span>`).join('') +
+    (list.some(x => !x.weak) ? `<button class="btn" id="sugAll" style="padding:3px 10px;font-size:12px">确认实线的 ${list.filter(x => !x.weak).length} 处</button>` : '') +
+    (list.some(x => x.weak) ? `<span style="color:var(--faint);font-size:11.5px">虚线的把握较低，请逐个确认</span>` : '');
+  const take = arr => {
+    for (const x of arr) eng.addWord(x.type || 'ORG', x.alias);
+    saveLocalPrefs(); renderDict(); state.lastInput = ''; runMask();
+  };
+  box.querySelectorAll('.sug-item').forEach(el => {
+    el.onclick = e => {
+      const x = list[+el.dataset.i];
+      if (e.target.dataset.no !== undefined) {
+        state.opts.ignore_suspects = (state.opts.ignore_suspects || []).concat(x.alias);
+        saveLocalPrefs(); renderDict(); state.lastInput = ''; runMask();
+        toast('已忽略：' + x.alias + '（可在"自定义词库"下方恢复）');
+        return;
+      }
+      take([x]); toast('已加入项目词库并脱敏：' + x.alias);
     };
   });
+  if ($('#sugAll')) $('#sugAll').onclick = () => { const st = list.filter(x => !x.weak); take(st); toast('已确认 ' + st.length + ' 处'); };
 }
 
 function renderUtility(masked, reid) {
@@ -4445,15 +4588,21 @@ function renderLexChips() {
 /* ---------------- 词库 ---------------- */
 function renderDict() {
   const el = $('#dictList');
+  const ign = state.opts.ignore_suspects || [];
+  const ignHtml = ign.length ? `<div style="margin-top:6px;font-size:11.5px;color:var(--faint)">已标记"不是"的候选（点 × 恢复提示）：` +
+    ign.map((w, i) => `<span class="dict-item" style="opacity:.7">${esc(w)}<button data-ign="${i}">×</button></span>`).join('') + '</div>' : '';
+  setTimeout(() => el.querySelectorAll('[data-ign]').forEach(b => {
+    b.onclick = () => { ign.splice(+b.dataset.ign, 1); state.opts.ignore_suspects = ign.slice(); saveLocalPrefs(); renderDict(); state.lastInput = ''; runMask(); };
+  }), 0);
   const d = eng.getDict();
   const all = [];
   for (const k in d) for (const w of d[k]) all.push([k, w]);
   if (!all.length) {
-    el.innerHTML = '<span style="font-size:12px;color:var(--faint)">还没有自定义词。加上客户简称、内部代号，识别率会明显提升。</span>';
+    el.innerHTML = '<span style="font-size:12px;color:var(--faint)">还没有自定义词。加上客户简称、内部代号，识别率会明显提升。</span>' + ignHtml;
     return;
   }
-  el.innerHTML = all.map(([k, w]) => `<span class="dict-item">${esc(w)}<button data-t="${k}" data-w="${esc(w)}">×</button></span>`).join('');
-  el.querySelectorAll('button').forEach(b => {
+  el.innerHTML = all.map(([k, w]) => `<span class="dict-item">${esc(w)}<button data-t="${k}" data-w="${esc(w)}">×</button></span>`).join('') + ignHtml;
+  el.querySelectorAll('button[data-t]').forEach(b => {
     b.onclick = () => { eng.removeWord(b.dataset.t, b.dataset.w); renderDict(); state.lastInput = ''; runMask(); };
   });
 }
@@ -4463,6 +4612,62 @@ $('#dictInput').onkeydown = e => {
   if (!w) return;
   eng.addWord($('#dictType').value, w);
   e.target.value = ''; renderDict(); state.lastInput = ''; runMask();
+};
+
+/* 批量导入
+   - 粘贴：每行一个或用逗号、顿号分隔；"人：/项目："前缀只作用于这一行
+   - 表格（xlsx / csv / 带制表符的粘贴）：按表头选列——名称类列按企业、联系人类列按人名；
+     没有可识别的表头时只取第一列。金额、备注、电话等列一律不导入 */
+const HEADER_WORD = /^(?:序号|编号|客户|客户名称|公司|公司名称|企业|企业名称|名称|简称|全称|单位|机构|标的|交易对手|供应商|姓名|联系人|负责人|人员|项目|项目名称|代号|金额|备注|电话|手机|邮箱|地址|日期|时间|状态|重点|级别|类型|行业|城市|地区|职务|说明|name|company|client|contact|amount|note|phone|email)$/i;
+const ORG_COL = /客户|公司|企业|名称|简称|全称|单位|机构|标的|交易对手|供应商|company|client/i;
+const PER_COL = /姓名|联系人|负责人|人员|contact/i;
+const PRJ_COL = /项目|代号/;
+function okWord(w) {
+  w = w.trim().replace(/^["'“”「」]+|["'“”「」]+$/g, '');
+  if (w.length < 2 || w.length > 40) return '';
+  if (!/[一-龥]{2}|[A-Za-z]{2}/.test(w)) return '';           // 至少两个汉字或两个字母
+  if (/^[¥$€£]|^[\d.,%\s\-+e]+$|^[：:；;—_.]+$/i.test(w) || HEADER_WORD.test(w)) return '';
+  return w;
+}
+function bulkImport(txt, tabular) {
+  let n = 0;
+  const lines = String(txt).split(/\r?\n/).filter(l => l.trim());
+  const isTable = tabular || lines.some(l => l.indexOf('\t') >= 0);
+  if (isTable) {
+    const rows = lines.map(l => l.split(l.indexOf('\t') >= 0 ? '\t' : ','));
+    const hi = rows.findIndex(r => r.some(c => HEADER_WORD.test(c.trim())));
+    let cols = [];
+    if (hi >= 0) rows[hi].forEach((c, i) => {
+      c = c.trim();
+      if (PRJ_COL.test(c)) cols.push([i, 'PROJECT']);
+      else if (PER_COL.test(c)) cols.push([i, 'PERSON']);
+      else if (ORG_COL.test(c)) cols.push([i, 'ORG']);
+    });
+    if (!cols.length) cols = [[0, 'ORG']];
+    rows.forEach((r, ri) => {
+      if (ri === hi) return;
+      for (const [ci, t] of cols) { const w = okWord(r[ci] || ''); if (w) { eng.addWord(t, w, true); n++; } }
+    });
+  } else {
+    for (let line of lines) {
+      let type = 'ORG';
+      const mm = /^\s*(人名?|人物|项目|企业|公司|机构)[：:]\s*/.exec(line);
+      if (mm) { type = /人/.test(mm[1]) ? 'PERSON' : (/项目/.test(mm[1]) ? 'PROJECT' : 'ORG'); line = line.slice(mm[0].length); }
+      for (const raw of line.split(/[,，、;；|]+/)) { const w = okWord(raw); if (w) { eng.addWord(type, w, true); n++; } }
+    }
+  }
+  eng.flushSave(); saveLocalPrefs(); renderDict(); state.lastInput = ''; runMask();
+  toast(n ? '已导入 ' + n + ' 个词到当前项目' : '没有识别到可导入的词');
+  return n;
+}
+$('#dictBulkGo').onclick = () => { if (bulkImport($('#dictBulk').value)) $('#dictBulk').value = ''; };
+$('#dictFile').onchange = async e => {
+  const f = e.target.files[0]; if (!f) return;
+  const buf = await f.arrayBuffer();
+  const txt = await DemaskEngine.extractText(f.name, buf);
+  if (txt == null) return toast('不支持这个文件格式');
+  bulkImport(txt.replace(/^—— 工作表 \d+ ——$/gm, ''), /\.(csv|xlsx)$/i.test(f.name));
+  e.target.value = '';
 };
 
 /* ---------------- 工具栏 ---------------- */
@@ -4481,6 +4686,11 @@ function withNote(text) {
 
 $('#btnCopy').onclick = async () => {
   if (!state.masked) return toast('还没有可复制的内容');
+  if (!confirmPending()) return;
+  const pend = [];
+  if (pend.length && !confirm('还有 ' + pend.length + ' 处疑似客户名 / 人名没确认：\n\n' +
+      pend.slice(0, 6).map(x => '· ' + x.alias + '（' + (x.why || '') + '）').join('\n') + (pend.length > 6 ? '\n…' : '') +
+      '\n\n它们目前没有被替换。确定直接复制吗？（取消后可在实体清单上方逐个确认）')) return;
   const risk = state.residual || [];
   if (risk.length) {
     const list = risk.slice(0, 5).map(r => '· ' + r.msg + '：' + r.text).join('\n');
@@ -4520,6 +4730,7 @@ $('#btnExportFile').onclick = async () => {
 };
 
 $('#btnDownload').onclick = () => {
+  if (state.masked && !confirmPending()) return;
   if (!state.masked) return toast('还没有可导出的内容');
   const risk = state.residual || [];
   if (risk.length && !confirm('还有 ' + risk.length + ' 处可能没处理，仍要导出吗？')) return;
@@ -4640,6 +4851,7 @@ function splitChunks(text, limit) {
 
 $('#btnChunk').onclick = () => {
   if (!state.masked) return toast('还没有可分段的内容');
+  if (!confirmPending()) return;
   const chunks = splitChunks(state.masked, CHUNK_LIMIT);
   $('#chunkHint').textContent = `共 ${state.masked.length.toLocaleString()} 字，切成 ${chunks.length} 段（每段 ≤ ${CHUNK_LIMIT} 字）`;
   $('#chunkList').innerHTML = chunks.map((c, i) => `
