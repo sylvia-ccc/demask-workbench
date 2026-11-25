@@ -10,9 +10,10 @@
 <img alt="license" src="https://img.shields.io/badge/license-MIT-2f5d8a">
 <img alt="offline" src="https://img.shields.io/badge/network-none-b45309">
 <a href="https://sylvia-ccc.github.io/demask-workbench/"><img alt="demo" src="https://img.shields.io/badge/%E5%9C%A8%E7%BA%BF%E8%AF%95%E7%94%A8-%E7%82%B9%E8%BF%99%E9%87%8C-2f5d8a"></a>
+<a href="https://huggingface.co/spaces/sylviacccyu/demask-workbench"><img alt="Hugging Face" src="https://img.shields.io/badge/%F0%9F%A4%97%20Hugging%20Face-Space-ffcc4d"></a>
 </p>
 
-**[→ 在线试用](https://sylvia-ccc.github.io/demask-workbench/)**（建议只用于试，正式用请下载本地文件）· [English](README.en.md)
+**[→ 在线试用](https://sylvia-ccc.github.io/demask-workbench/)** · [Hugging Face 镜像](https://huggingface.co/spaces/sylviacccyu/demask-workbench)（建议只用于试，正式用请下载本地文件）· [English](README.en.md)
 
 
 ---

@@ -11,9 +11,10 @@
 <img alt="license" src="https://img.shields.io/badge/license-MIT-2f5d8a">
 <img alt="offline" src="https://img.shields.io/badge/network-none-b45309">
 <a href="https://sylvia-ccc.github.io/demask-workbench/"><img alt="demo" src="https://img.shields.io/badge/live%20demo-try%20it-2f5d8a"></a>
+<a href="https://huggingface.co/spaces/sylviacccyu/demask-workbench"><img alt="Hugging Face" src="https://img.shields.io/badge/%F0%9F%A4%97%20Hugging%20Face-Space-ffcc4d"></a>
 </p>
 
-**[→ Live demo](https://sylvia-ccc.github.io/demask-workbench/)** · [中文说明](README.md)
+**[→ Live demo](https://sylvia-ccc.github.io/demask-workbench/)** · [Hugging Face Space](https://huggingface.co/spaces/sylviacccyu/demask-workbench) · [中文说明](README.md)
 
 ![Main UI](assets/main.png)
 
