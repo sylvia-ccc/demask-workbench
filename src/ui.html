@@ -332,7 +332,7 @@
 
     <h4>四步用法</h4>
     <ul>
-      <li><b>粘贴或拖入</b>：支持 .docx / .xlsx / .pptx / .txt / .md / .csv，也可以直接复制 Excel 的表格区域（保留制表符）。</li>
+      <li><b>粘贴或拖入</b>：支持 .docx / .xlsx / .pptx / .pdf / .txt / .md / .csv（PDF 只读文字层，扫描件不支持），也可以直接复制 Excel 的表格区域（保留制表符）。</li>
       <li><b>扫一眼清单</b>：误伤的按「放行」，漏掉的加进自定义词库。</li>
       <li><b>复制</b>：把右侧脱敏稿粘给 ChatGPT / Claude / 豆包 / Kimi，网页版或 App 都行。</li>
       <li><b>还原</b>：把 AI 的回复贴到「还原 AI 回复」页，一键换回真实名称与原始金额。</li>
@@ -369,7 +369,7 @@
         <button class="btn ghost" id="btnClear">清空</button>
       </div>
       <div class="card-body">
-        <textarea id="input" placeholder="粘贴需要处理的内容：调研笔记、访谈记录、财务模型、交易文件……&#10;&#10;也可以把 .docx / .xlsx / .pptx 直接拖进来，或从 Excel 复制表格区域粘贴。"></textarea>
+        <textarea id="input" placeholder="粘贴需要处理的内容：调研笔记、访谈记录、财务模型、交易文件……&#10;&#10;也可以把 .docx / .xlsx / .pptx / .pdf 直接拖进来，或从 Excel 复制表格区域粘贴。"></textarea>
         <div class="drop" id="drop">松开即导入</div>
       </div>
       <div class="bar">
@@ -760,9 +760,9 @@ const TLABEL = t => (TYPES[t] ? TYPES[t].label : t);
 function esc(s) {
   return String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 }
-function toast(msg) {
+function toast(msg, ms) {
   const t = $('#toast'); t.textContent = msg; t.classList.add('show');
-  clearTimeout(t._t); t._t = setTimeout(() => t.classList.remove('show'), 1800);
+  clearTimeout(t._t); t._t = setTimeout(() => t.classList.remove('show'), ms || 1800);
 }
 
 /* ---------------- 主流程 ---------------- */
@@ -907,19 +907,25 @@ function renderSuggestions(list) {
   if (!list || !list.length) { box.classList.remove('on'); box.innerHTML = ''; return; }
   box.classList.add('on');
   const TL = { ORG: '企业', PERSON: '人名', PROJECT: '项目' };
+  // 候选很多时（比如整份年报）先显示 30 条；"确认实线的"只作用于看得见的那些
+  const LIMIT = 30;
+  const shown = state.sugAll ? list : list.slice(0, LIMIT);
+  const strong = shown.filter(x => !x.weak);
   box.innerHTML = `<b>待确认 ${list.length} 处</b><span style="color:var(--muted)">疑似客户名 / 人名，点名字即脱敏，点 × 表示不是：</span>` +
-    list.map((x, i) => `<span class="chip sug-item${x.weak ? ' sug-weak' : ''}" data-i="${i}" title="${esc((x.why || '') + (x.full ? '；全称：' + x.full : '') + (x.weak ? '；把握较低，请逐个确认' : ''))}">` +
+    shown.map((x, i) => `<span class="chip sug-item${x.weak ? ' sug-weak' : ''}" data-i="${i}" title="${esc((x.why || '') + (x.full ? '；全称：' + x.full : '') + (x.weak ? '；把握较低，请逐个确认' : ''))}">` +
       `<span style="opacity:.6">${TL[x.type] || '企业'}</span> ${esc(x.alias)} <span style="opacity:.55">×${x.count}</span>` +
       `<span class="sug-no" data-no="${i}" title="不是，以后不再提示">×</span></span>`).join('') +
-    (list.some(x => !x.weak) ? `<button class="btn" id="sugAll" style="padding:3px 10px;font-size:12px">确认实线的 ${list.filter(x => !x.weak).length} 处</button>` : '') +
-    (list.some(x => x.weak) ? `<span style="color:var(--faint);font-size:11.5px">虚线的把握较低，请逐个确认</span>` : '');
+    (list.length > LIMIT ? `<button class="btn ghost" id="sugMore" style="padding:3px 10px;font-size:12px">${state.sugAll ? '收起' : '再显示 ' + (list.length - LIMIT) + ' 条'}</button>` : '') +
+    (strong.length ? `<button class="btn" id="sugAll" style="padding:3px 10px;font-size:12px">确认实线的 ${strong.length} 处</button>` : '') +
+    (shown.some(x => x.weak) ? `<span style="color:var(--faint);font-size:11.5px">虚线的把握较低，请逐个确认</span>` : '');
+  if ($('#sugMore')) $('#sugMore').onclick = () => { state.sugAll = !state.sugAll; renderSuggestions(list); };
   const take = arr => {
     for (const x of arr) eng.addWord(x.type || 'ORG', x.alias);
     saveLocalPrefs(); renderDict(); state.lastInput = ''; runMask();
   };
   box.querySelectorAll('.sug-item').forEach(el => {
     el.onclick = e => {
-      const x = list[+el.dataset.i];
+      const x = shown[+el.dataset.i];
       if (e.target.dataset.no !== undefined) {
         state.opts.ignore_suspects = (state.opts.ignore_suspects || []).concat(x.alias);
         saveLocalPrefs(); renderDict(); state.lastInput = ''; runMask();
@@ -929,7 +935,7 @@ function renderSuggestions(list) {
       take([x]); toast('已加入项目词库并脱敏：' + x.alias);
     };
   });
-  if ($('#sugAll')) $('#sugAll').onclick = () => { const st = list.filter(x => !x.weak); take(st); toast('已确认 ' + st.length + ' 处'); };
+  if ($('#sugAll')) $('#sugAll').onclick = () => { take(strong); toast('已确认 ' + strong.length + ' 处'); };
 }
 
 function renderUtility(masked, reid) {
@@ -1450,7 +1456,14 @@ async function readFile(file) {
   toast('正在读取 ' + file.name);
   try {
     const buf = await file.arrayBuffer();
-    const txt = await extractText(file.name, buf);
+    let txt, pdfWarn = [];
+    if (/\.pdf$/i.test(file.name) && typeof DemaskPDF !== 'undefined') {
+      const r = await DemaskPDF.extract(buf);
+      txt = r.text; pdfWarn = r.warnings || [];
+    } else {
+      txt = await extractText(file.name, buf);
+    }
+    state.sugAll = false;
     if (txt === null) return toast('暂不支持该格式，请复制粘贴正文');
     // 记住原文件，脱敏后可以导出"保持原格式"的版本
     if (/\.(docx|xlsx|pptx)$/i.test(file.name)) {
@@ -1463,9 +1476,11 @@ async function readFile(file) {
     // PDF 转出来的文本经常在句中硬断行，公司名会被切碎
     const broken = detectBrokenLines(txt);
     if (broken > 3) {
-      toast(`检测到 ${broken} 处疑似断行，建议先点「整理断行」`);
+      toast(`检测到 ${broken} 处疑似断行，建议先点「整理断行」` + (pdfWarn.length ? '。另外：' + pdfWarn.join('；') : ''), pdfWarn.length ? 9000 : 0);
       $('#btnTidy').classList.add('attn');
       setTimeout(() => $('#btnTidy').classList.remove('attn'), 6000);
+    } else if (pdfWarn.length) {
+      toast('已导入 ' + file.name + '。注意：' + pdfWarn.join('；'), 9000);
     } else {
       toast('已导入 ' + file.name);
     }
@@ -1477,7 +1492,7 @@ $('#btnUpload').onclick = () => {
   const f = document.createElement('input');
   f.type = 'file';
   f.multiple = true;
-  f.accept = '.docx,.xlsx,.pptx,.txt,.md,.csv';
+  f.accept = '.docx,.xlsx,.pptx,.pdf,.txt,.md,.csv';
   f.onchange = () => {
     if (!f.files.length) return;
     if (f.files.length > 1) batchProcess([...f.files]);
@@ -1529,7 +1544,14 @@ async function batchProcess(files) {
         ent += r.stats.entities || 0;
         cells += r.stats.cells || 0;
       } else {
-        const txt = await extractText(f.name, buf);
+        let txt;
+        if (ext === 'pdf' && typeof DemaskPDF !== 'undefined') {
+          const r = await DemaskPDF.extract(buf);
+          txt = r.text;
+          for (const w of (r.warnings || [])) log.push(f.name + '：' + w);
+        } else {
+          txt = await extractText(f.name, buf);
+        }
         if (txt === null) { log.push(f.name + '：格式不支持，已跳过'); continue; }
         const m = eng.mask(txt, state.opts);
         out.push({ name: base + '-脱敏.txt', data: new TextEncoder().encode(withNote(m.masked)) });
@@ -1546,14 +1568,16 @@ async function batchProcess(files) {
 
   if (!out.length) return toast('没有成功处理的文件');
 
+  if (log.length) out.push({ name: '处理说明.txt', data: new TextEncoder().encode(log.join('\r\n')) });
   const zip = await DemaskEngine.writeZip(out);
   const a = document.createElement('a');
   a.href = URL.createObjectURL(zip);
   a.download = '脱敏结果-' + new Date().toISOString().slice(0, 10) + '.zip';
   a.click(); URL.revokeObjectURL(a.href);
 
-  toast(`已打包 ${out.length} 个文件（${ent} 处实体${cells ? '，' + cells + ' 个表格数字' : ''}）`);
-  if (log.length) console.warn('批量处理跳过：', log);
+  toast(`已打包 ${out.length} 个文件（${ent} 处实体${cells ? '，' + cells + ' 个表格数字' : ''}）` +
+    (log.length ? '。注意：' + log.slice(0, 3).join('；') + (log.length > 3 ? '……共 ' + log.length + ' 条，详见压缩包里的"处理说明.txt"' : '') : ''), log.length ? 10000 : 0);
+  if (log.length) console.warn('批量处理提示：', log);
 }
 
 const dropEl = $('#drop');
@@ -1568,7 +1592,6 @@ document.addEventListener('drop', e => {
   const fs = e.dataTransfer && e.dataTransfer.files;
   if (!fs || !fs.length) return;
   if (fs.length > 1) batchProcess([...fs]); else readFile(fs[0]);
-  if (f) readFile(f);
 });
 
 /* ---------------- 标签页 ---------------- */

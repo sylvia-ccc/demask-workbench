@@ -10,6 +10,8 @@ jobs:
           node-version: 20
       - name: 端到端
         run: cd src && node test.js
+      - name: PDF 文字层提取
+        run: cd src && node test-pdf.js && node test-suspects.js
       - name: 回归测试集（必须 100%）
         run: |
           cd src
@@ -19,6 +21,6 @@ jobs:
             grep -q "F1              100.0%" /tmp/out.txt || { echo "回归失败：$f"; exit 1; }
           done
       - name: 极端输入性能（每项 20 万字，超过 2 秒即失败）
-        run: cd src && node stress.js 2000
+        run: cd src && node stress.js 2000 && node stress.js 6000 600000
       - name: 真实文体评测（只报告，不卡）
         run: cd src && node eval.js testset-real-holdout.json | grep -E "Precision|Recall|F1"

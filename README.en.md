@@ -20,6 +20,11 @@
 
 ---
 
+
+## New in v2.3: drop in a PDF
+
+Annual reports, prospectuses and broker research are mostly PDFs. Drop one in and the text layer is extracted locally (zero dependencies, no network). Table columns are kept as tab-separated cells, wrapped lines are re-joined, and company names broken across lines are still recognised as one entity. Copy-protected PDFs (owner password only) are supported; PDFs with an open password and fully scanned PDFs are rejected with a clear message, and scanned pages inside a text PDF are reported by page number. Tested on 8 annual reports and prospectuses (143–510 pages): under 1 second each, at most 0.01% missing characters compared with pdftotext. Output is masked plain text (.txt).
+
 ## The problem
 
 A consultant's daily reality: you have interview notes, a financial model, a draft deal structure.

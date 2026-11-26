@@ -8,13 +8,14 @@
 import os
 import time
 
-VERSION = "v2.2.1"
+VERSION = "v2.3"
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 SRC_UI = os.path.join(HERE, "ui.html")
 SRC_ENGINE = os.path.join(HERE, "engine.js")
 SRC_LEXICON = os.path.join(HERE, "lexicon.js")
+SRC_PDF = os.path.join(HERE, "pdf.js")
 OUT = os.path.join(ROOT, "脱敏工作台.html")
 OUT_INDEX = os.path.join(ROOT, "index.html")
 
@@ -26,17 +27,19 @@ def main():
         engine = f.read()
     with open(SRC_LEXICON, encoding="utf-8") as f:
         lexicon = f.read()
+    with open(SRC_PDF, encoding="utf-8") as f:
+        pdfjs = f.read()
 
     if "/*__ENGINE__*/" not in ui:
         raise SystemExit("ui.html 里找不到 /*__ENGINE__*/ 占位符")
 
     stamp = time.strftime("%Y-%m-%d")
     # 词库必须在引擎之前求值（引擎启动时会读取全局 DemaskLexicon）
-    out = ui.replace("/*__ENGINE__*/", "/* 引擎内联于 " + stamp + " */\n" + lexicon + "\n" + engine)
+    out = ui.replace("/*__ENGINE__*/", "/* 引擎内联于 " + stamp + " */\n" + lexicon + "\n" + pdfjs + "\n" + engine)
     out = out.replace("__VERSION__", VERSION)
 
     # 防御：内联后不能出现会提前闭合脚本的字符串
-    if "</script" in (engine + lexicon).lower():
+    if "</script" in (engine + lexicon + pdfjs).lower():
         raise SystemExit("engine.js 中含有 </script 字样，需转义后再内联")
 
     with open(OUT, "w", encoding="utf-8") as f:
