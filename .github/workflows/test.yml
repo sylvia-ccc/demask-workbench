@@ -11,11 +11,11 @@ jobs:
       - name: 端到端
         run: cd src && node test.js
       - name: PDF 文字层提取
-        run: cd src && node test-pdf.js && node test-suspects.js
+        run: cd src && node test-pdf.js && node test-suspects.js && node test-office.js
       - name: 回归测试集（必须 100%）
         run: |
           cd src
-          for f in testset.json testset-holdout.json testset-blind.json testset-rules-v2.json; do
+          for f in testset.json testset-holdout.json testset-blind.json testset-rules-v2.json testset-scenarios.json; do
             echo "== $f"
             node eval.js $f | tee /tmp/out.txt | grep -E "Precision|Recall|F1"
             grep -q "F1              100.0%" /tmp/out.txt || { echo "回归失败：$f"; exit 1; }

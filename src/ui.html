@@ -1283,6 +1283,20 @@ $('#btnCopy').onclick = async () => {
   }
   catch (e) { toast('复制失败，请手动选中'); }
 };
+// 文件名里常有客户名（"华润尽调报告.docx"）：导出的文件名也要脱敏，否则一上传就暴露了
+function maskFileName(base) {
+  const m = eng.mask(base, state.opts).masked;
+  return m.replace(/[\\/:*?"<>|]/g, '_').slice(0, 120) || '文件';
+}
+// 正文以外清理了什么：给用户一个看得懂的清单
+function cleanSummary(c) {
+  if (!c) return '';
+  const L = { meta: '文档属性（作者、公司、标题）', authors: '批注人 / 修订人', comments: '批注', revisions: '修订痕迹里删掉的原文',
+    headers: '页眉页脚', charts: '图表数据', embedded: '内嵌文件', thumbnail: '缩略图', links: '链接地址', alt: '图片说明文字',
+    sheets: '工作表名', names: '定义名称', pivot: '透视表缓存', formulaCache: '公式缓存值' };
+  return Object.keys(L).filter(k => c[k]).map(k => L[k] + ' ' + c[k] + ' 处').join('、');
+}
+
 $('#btnExportFile').onclick = async () => {
   if (!state.srcFile) return toast('请先上传 docx / xlsx / pptx');
   const btn = $('#btnExportFile');
@@ -1294,13 +1308,15 @@ $('#btnExportFile').onclick = async () => {
     const base = state.srcFile.name.replace(/\.[^.]+$/, '');
     const a = document.createElement('a');
     a.href = URL.createObjectURL(r.blob);
-    a.download = base + '-脱敏.' + ext;
+    a.download = (r.stats.maskedName || maskFileName(base)) + '-脱敏.' + ext;
     a.click(); URL.revokeObjectURL(a.href);
 
     const st = r.stats;
-    let msg = '已导出：' + st.entities + ' 处实体、' + (st.cells || 0) + ' 个表格数字';
-    if (st.formulas) msg += '；' + st.formulas + ' 个公式单元格未处理，Excel 打开会重算回真实值';
-    toast(msg);
+    let msg = '已导出 ' + a.download + '：' + st.entities + ' 处实体、' + (st.cells || 0) + ' 个表格数字';
+    const extra = cleanSummary(st.clean);
+    if (extra) msg += '；另外清理了' + extra;
+    if (st.warnings && st.warnings.length) msg += '。注意：' + st.warnings.join('；');
+    toast(msg, 9000);
   } catch (e) {
     toast('导出失败：' + e.message);
   } finally {
@@ -1548,7 +1564,8 @@ async function batchProcess(files) {
       if (['docx', 'xlsx', 'pptx'].indexOf(ext) >= 0) {
         const r = await (eng.setOpts(state.opts), DemaskEngine.maskOfficeFile)(f.name, buf, eng);
         const ab = await r.blob.arrayBuffer();
-        out.push({ name: base + '-脱敏.' + ext, data: new Uint8Array(ab) });
+        out.push({ name: (r.stats.maskedName || maskFileName(base)) + '-脱敏.' + ext, data: new Uint8Array(ab) });
+        for (const w of (r.stats.warnings || [])) log.push(f.name + '：' + w);
         ent += r.stats.entities || 0;
         cells += r.stats.cells || 0;
       } else {
@@ -1562,7 +1579,7 @@ async function batchProcess(files) {
         }
         if (txt === null) { log.push(f.name + '：格式不支持，已跳过'); continue; }
         const m = eng.mask(txt, state.opts);
-        out.push({ name: base + '-脱敏.txt', data: new TextEncoder().encode(withNote(m.masked)) });
+        out.push({ name: maskFileName(base) + '-脱敏.txt', data: new TextEncoder().encode(withNote(m.masked)) });
         ent += m.entities.length;
       }
     } catch (e) {

@@ -142,6 +142,59 @@
   function isCJK(c) { return c >= '\u4e00' && c <= '\u9fa5'; }
   function isAsciiAlpha(c) { return /[A-Za-z]/.test(c); }
 
+  /* ---- 中文数字金额："一亿二千万元""三千五百万""壹亿贰仟万元整" ----
+     以前大写金额只换成代号（AI 看不到数），小写中文数字金额干脆漏掉。
+     现在一律换算成阿拉伯数字后按同一系数缩放，单位保留，AI 照样能算。 */
+  const CN_D = { 零: 0, 〇: 0, 一: 1, 二: 2, 两: 2, 三: 3, 四: 4, 五: 5, 六: 6, 七: 7, 八: 8, 九: 9, 壹: 1, 贰: 2, 貳: 2, 叁: 3, 參: 3, 肆: 4, 伍: 5, 陆: 6, 陸: 6, 柒: 7, 捌: 8, 玖: 9 };
+  const CN_U = { 十: 10, 拾: 10, 百: 100, 佰: 100, 千: 1000, 仟: 1000 };
+  function cnToNumber(str) {
+    let total = 0, section = 0, num = 0, any = false;
+    for (const ch of str) {
+      if (ch in CN_D) { num = CN_D[ch]; any = true; }
+      else if (ch in CN_U) { section += (num || 1) * CN_U[ch]; num = 0; any = true; }
+      else if (ch === '万' || ch === '萬') { total += (section + num) * 1e4; section = 0; num = 0; }
+      else if (ch === '亿' || ch === '億') { total = (total + section + num) * 1e8; section = 0; num = 0; }
+      else return null;
+    }
+    return any ? total + section + num : null;
+  }
+  const CN_MONEY_RE = /((?:人民币|RMB|港币|美元)?\s?)([零〇一二两三四五六七八九十百千万亿壹贰貳叁參肆伍陆陸柒捌玖拾佰仟萬億]{1,16})(亿元|万元|元|圆|亿美元|万美元|美元|亿港元|万港元|港元|亿|万)(整|正)?/g;
+  const CN_MONEY_CTX = /金额|对价|估值|营收|收入|利润|融资|投资|价格|价款|成本|费用|预算|规模|市值|资金|资本|出资|借款|贷款|授信|担保|罚款|赔偿|合同|标的|交易|支付|总价|总额|余额|注册资本|募资|募集/;
+  function detectCnMoney(text) {
+    const out = [];
+    CN_MONEY_RE.lastIndex = 0;
+    let m;
+    while ((m = CN_MONEY_RE.exec(text)) !== null) {
+      const digits = m[2], unit = m[3];
+      if (!/[零〇一二两三四五六七八九壹贰貳叁參肆伍陆陸柒捌玖]/.test(digits)) continue;     // 至少有一个数字
+      if (!/[十百千万亿拾佰仟萬億]/.test(digits + unit)) continue;                          // "一二元"这种不是金额
+      const hasYuan = /元|圆|美元|港元/.test(unit);
+      // 只有一个字的数（"三亿""五万元"）：必须有金额语境，"三元""一万"太容易是别的意思
+      if (digits.length === 1 && !CN_MONEY_CTX.test(text.slice(Math.max(0, m.index - 12), m.index) + text.slice(m.index - 3, m.index))) {
+        if (!/亿|万/.test(unit)) continue;
+        if (!/[，,；;、。]/.test(text.slice(Math.max(0, m.index - 6), m.index)) || !CN_MONEY_CTX.test(text.slice(Math.max(0, m.index - 30), m.index))) continue;
+      }
+      // 只有"亿 / 万"、没有"元"时，要求前面不远处有金额语境（"十万火急""三千万用户"不算）
+      if (!hasYuan && !CN_MONEY_CTX.test(text.slice(Math.max(0, m.index - 12), m.index))) continue;
+      if (!hasYuan && /^[一-龥]/.test(text[m.index + m[0].length] || '') && !/^(?:的|左右|上下|以上|以下|以内|多|余)/.test(text.slice(m.index + m[0].length))) continue;
+      // "三万多人""五千万户"：后面跟着量词的是数量，不是金额
+      if (!hasYuan && /^(?:多|余)?(?:人|户|家|台|个|名|位|辆|套|间|件|吨|股|份|张|次|笔)/.test(text.slice(m.index + m[0].length))) continue;
+      let v = cnToNumber(digits + (/^亿/.test(unit) ? '亿' : /^万/.test(unit) ? '万' : ''));
+      if (v === null || v <= 0) continue;
+      // 用原文的数量级做单位：有"亿"按亿，有"万"按万，否则按元
+      const big = /亿|億/.test(digits + unit) ? '亿' : /万|萬/.test(digits + unit) ? '万' : '';
+      const cur = unit.replace(/^[亿万]/, '') || (hasYuan ? '' : '');
+      const n = big === '亿' ? v / 1e8 : big === '万' ? v / 1e4 : v;
+      const numStr = String(Math.round(n * 1e6) / 1e6);
+      const st = m.index + m[1].length;
+      const sp = Span(st, m.index + m[0].length, 'MONEY', text.slice(st, m.index + m[0].length), 0.95, '中文数字金额');
+      sp.cn = { num: numStr, unit: big + (cur || (big ? '' : '元')), tail: cur || (big ? '' : '元') };
+      sp.cn.unitWord = big ? big + (cur || '') : (cur || '元');
+      out.push(sp);
+    }
+    return out;
+  }
+
   function Span(start, end, type, text, conf, note) {
     return { start, end, type, text, conf: conf == null ? 1 : conf, note: note || '' };
   }
@@ -249,6 +302,60 @@
     // 复姓单独出现（"欧阳"后面还有名）不当作完整人名
     if (COMPOUND_SURNAME.test(s)) return false;
     return true;
+  }
+
+  /* ---- 会议纪要、聊天记录里的发言人 ----
+     "张伟：我认为……""张伟 10:32""Kevin Liu 2025-03-01 10:32:11"——
+     行首的人名后面紧跟冒号或时间，是最常见、也最不该漏的格式。 */
+  const SPEAKER_LABEL = /^(?:周[一二三四五六日天末]|星期[一二三四五六日天]|上午|中午|下午|晚上|早上|傍晚|今天|明天|昨天|后天|本周|下周|上周|本月|下月|上月|今年|明年|去年|本季|全年|上半年|下半年|主持人?|参会人?员?|与会人?员?|出席|列席|记录人?|时间|地点|议题|主题|结论|备注|问|答|提问|回答|总结|会议|纪要|附件|日期|事项|决议|待办|行动项|下一步|背景|目的|说明|发言|嘉宾|专家|客户|我方|对方|甲方|乙方|公司|项目|标的|来源|摘要|要点|问题|风险|建议|结果|状态|负责人|联系人|电话|邮箱|地址|网址|注|按|即|其中|合计|小计|总计|单位|金额)$/;
+  function detectSpeakers(text) {
+    const found = new Map();      // 名字 -> 出现为发言人的次数
+    const lineRe = /(^|\n)[ \t]*([一-龥]{2,4}|[A-Z][a-z]+(?: [A-Z][a-z]+){1,2})[ \t]*(?:[（(][^）)\n]{1,30}[）)])?[ \t]*(?:([:：])|(?:\d{4}[-/年.]\d{1,2}[-/月.]\d{1,2}日?[ \t]+)?\d{1,2}:\d{2}(?::\d{2})?[ \t]*(?=\n|$))/g;
+    let m;
+    while ((m = lineRe.exec(text)) !== null) {
+      const name = m[2];
+      if (SPEAKER_LABEL.test(name)) continue;
+      if (/^[一-龥]/.test(name)) {
+        // 冒号式：要求是像样的人名；歧义姓（"华东：""时间："）只有反复出现才算
+        if (!looksLikeName(name, true)) continue;
+        if (COMMON_2.has(name) || AMBIG_WORDS.has(name.slice(0, 2))) continue;
+        if (/[店区路街市县镇厅馆园场部组线]$/.test(name)) continue;          // 王府井店：/ 高新区：/ 华东线：
+      } else if (EN_SUSPECT_BAD.test(name.split(' ')[0])) continue;
+      // 带时间戳的更可信；英文"Xxx Yyy："常是小标题（Term Sheet：/ Next Steps：），要出现两次才算
+      found.set(name, (found.get(name) || 0) + (m[3] ? (/^[A-Z]/.test(name) ? 0.5 : 1) : 2));
+    }
+    // 参会名单里的英文名："参会人：张伟、李明、Kevin Liu"
+    const listRe = /(?:参会|与会|出席|列席|参加|嘉宾|attendees?|participants?)[人员者]*[：:]([^\n]{2,200})/gi;
+    while ((m = listRe.exec(text)) !== null) {
+      for (const part of m[1].split(/[、，,;；\/]/)) {
+        const x = part.trim();
+        if (/^[A-Z][a-z]+(?: [A-Z][a-z]+){1,2}$/.test(x) && !EN_SUSPECT_BAD.test(x.split(' ')[0])) found.set(x, (found.get(x) || 0) + 2);
+      }
+    }
+    // 只有冒号、没有时间戳的中文发言人：要有两个以上不同的人在说话，才像纪要或对话（"周一：""李宁："单独出现不算）
+    const cjkColon = [...found].filter(([n, sc]) => /^[一-龥]/.test(n) && sc < 2);
+    const cjkTimed = [...found].filter(([n, sc]) => /^[一-龥]/.test(n) && sc >= 2);
+    if (cjkColon.length + cjkTimed.length < 2) for (const [n] of cjkColon) found.set(n, 0);
+    // 对话里已经确认有英文发言人：同样格式的其他英文名也算（"Kevin Liu: …⏎Anna Chen: …"）
+    const EN_HEAD = /^(?:Term Sheet|Next Steps?|Action Items?|Key (?:Takeaways?|Points?|Terms?)|Due Diligence|Executive Summary|Deal Terms?|Use Of Proceeds|Investment Thesis|Risk Factors?)$/i;
+    const enOk = [...found].some(([n, sc]) => /^[A-Z]/.test(n) && sc >= 1 && !EN_HEAD.test(n));
+    for (const [n, sc] of found) {
+      if (!/^[A-Z]/.test(n)) continue;
+      if (EN_HEAD.test(n)) found.set(n, 0);
+      else if (enOk && sc < 1) found.set(n, 1);
+    }
+    const out = [];
+    for (const [name, score] of found) {
+      const amb = /^[一-龥]/.test(name) && SURNAMES.indexOf(name[0]) < 0;
+      if (score < (amb ? 3 : 1)) continue;
+      let i = -1;
+      while ((i = text.indexOf(name, i + 1)) >= 0) {
+        // 中文名：前后不能紧贴别的汉字（"张伟明"里的"张伟"不算）
+        if (/^[一-龥]/.test(name) && (/[一-龥]/.test(text[i - 1] || '') && !/[：:，,、\s]/.test(text[i - 1] || '') && !/[请和与跟让给向找问]/.test(text[i - 1] || '')) ) continue;
+        out.push(Span(i, i + name.length, 'PERSON', name, 0.9, '发言人'));
+      }
+    }
+    return out;
   }
 
   /* ---------------- 检测器：规则类 ---------------- */
@@ -653,17 +760,41 @@
     return out;
   }
 
+  /* 词库匹配：按首字分桶，一遍扫完（词库上千、单元格上万时，逐词 indexOf 太慢） */
+  const dictIdx = new WeakMap();
+  function dictFind(list, text, type, note, minLen) {
+    const out = [];
+    if (!list || !list.length || !text) return out;
+    let ix = dictIdx.get(list);
+    if (!ix || ix.n !== list.length) {
+      const b = new Map();
+      for (const w of list) {
+        if (!w || w.length < (minLen || 1)) continue;
+        if (!b.has(w[0])) b.set(w[0], []);
+        b.get(w[0]).push(w);
+      }
+      ix = { n: list.length, b: b };
+      dictIdx.set(list, ix);
+    }
+    if (list.length < 8) {                // 词少时直接 indexOf 更快
+      for (const w of list) {
+        if (!w || w.length < (minLen || 1)) continue;
+        let i = -1;
+        while ((i = text.indexOf(w, i + 1)) >= 0) out.push(Span(i, i + w.length, type, w, 1, note));
+      }
+      return out;
+    }
+    for (let i = 0; i < text.length; i++) {
+      const ws = ix.b.get(text[i]);
+      if (!ws) continue;
+      for (const w of ws) if (text.startsWith(w, i)) out.push(Span(i, i + w.length, type, w, 1, note));
+    }
+    return out;
+  }
+
   /* ---------------- 检测器：人名 ---------------- */
   function detectPersons(text, dict) {
-    const out = [];
-    const re = (dict && dict.PERSON) || [];
-    for (const name of re) {
-      if (name.length < 2) continue;
-      let i = -1;
-      while ((i = text.indexOf(name, i + 1)) >= 0) {
-        out.push(Span(i, i + name.length, 'PERSON', name, 1, '词库'));
-      }
-    }
+    const out = dictFind((dict && dict.PERSON) || [], text, 'PERSON', '词库', 2);
 
     let m;
     // 1) 角色引导
@@ -835,6 +966,14 @@
       const st = m.index + m[0].length - m[1].length;
       out.push(Span(st, st + m[1].length, 'PERSON', m[1], 0.8, '英文单名'));
     }
+    // 三字名的第三个字和后面连成常用动词（"张伟负责""李明表示"）：其实是两字名
+    for (const sp of out) {
+      if (sp.end - sp.start !== 3 || !/^[\u4e00-\u9fa5]{3}$/.test(sp.text)) continue;
+      if (/^(?:负责|表示|认为|提出|说明|带领|要求|指出|介绍|确认|同意|反馈|汇报|主持|参加|出席|签署|担任|分管|协助|牵头|对接|联系|告知|回复|补充|强调|透露|建议)/.test(text.slice(sp.end - 1, sp.end + 1)) &&
+        looksLikeName(sp.text.slice(0, 2), true)) {
+        sp.end -= 1; sp.text = sp.text.slice(0, 2);
+      }
+    }
     return out;
   }
 
@@ -878,6 +1017,8 @@
     for (const L of lens) {
       const c = text.slice(pos, pos + L);
       if (c.length < L || !/^[\u4e00-\u9fa5]+$/.test(c)) continue;
+      // 第三个字和后面的字连成常用动词（"张伟负责""李明表示"）：名字只有两个字
+      if (L === 3 && !comp && /^(?:负责|表示|认为|提出|说明|带领|要求|指出|介绍|确认|同意|反馈|汇报|主持|参加|出席|签署|担任|分管|协助|牵头|对接|联系|告知|回复|补充|强调|透露|建议)/.test(text.slice(pos + 2, pos + 4))) continue;
       if (!comp && !looksLikeName(c, strong)) continue;
       if (comp && (NAME_BAD_PARTS.test(c) || c.length < 3)) continue;
       if (!NAME_FOLLOW_RE.test(text.slice(pos + L, pos + L + 4))) continue;
@@ -2140,6 +2281,16 @@
       return { v: 3, current: curId, projects: projects, dict: dict };
     }
 
+    let lazySaveTimer = null;
+    function scheduleSave() {
+      if (!store) return;
+      clearTimeout(lazySaveTimer);
+      lazySaveTimer = setTimeout(save, 300);
+      if (typeof addEventListener === 'function' && !scheduleSave.hooked) {
+        scheduleSave.hooked = true;
+        addEventListener('pagehide', () => { clearTimeout(lazySaveTimer); save(); });
+      }
+    }
     function save() {
       if (!store) return;
       // 加密但没解锁：绝不能把明文写回去覆盖密文
@@ -2166,14 +2317,24 @@
       }, 300);
     }
 
+    // 每类代号的计数：第一次用时数一遍，之后递增（以前每分配一个新代号都遍历整个映射表，代号上万时按平方变慢）
+    // 映射表只在下面"分配代号"处新增条目；导入/切换项目会换成新的 map 对象，计数自然作废
+    const idxCache = new WeakMap();
     function nextIndex(type, role) {
       const prefix = role || (TYPES[type] ? TYPES[type].prefix : '');
-      let n = 0;
-      for (const k in vault.map) {
-        const v = vault.map[k];
-        if (v.type === type && v.token.indexOf('【' + prefix) === 0) n++;
+      let c = idxCache.get(vault.map);
+      if (!c) { c = new Map(); idxCache.set(vault.map, c); }
+      const key = type + '|' + prefix;
+      if (!c.has(key)) {
+        let n = 0;
+        for (const k in vault.map) {
+          const v = vault.map[k];
+          if (v.type === type && v.token.indexOf('【' + prefix) === 0) n++;
+        }
+        c.set(key, n);
       }
-      return n + 1;
+      c.set(key, c.get(key) + 1);
+      return c.get(key);
     }
 
     function numToken(numstr, o, unit) {
@@ -2223,21 +2384,16 @@
       if (o.mask_org) {
         spans = spans.concat(detectOrgs(text));
         spans = spans.concat(detectLexicon(text, o.lex_groups));
-        for (const w of dict.ORG || []) {
-          let i = -1;
-          while ((i = text.indexOf(w, i + 1)) >= 0) spans.push(Span(i, i + w.length, 'ORG', w, 1, '词库'));
-        }
+        spans = spans.concat(dictFind(dict.ORG, text, 'ORG', '词库'));
       }
       if (o.mask_project) {
         spans = spans.concat(detectProjects(text));
-        for (const w of dict.PROJECT || []) {
-          let i = -1;
-          while ((i = text.indexOf(w, i + 1)) >= 0) spans.push(Span(i, i + w.length, 'PROJECT', w, 1, '词库'));
-        }
+        spans = spans.concat(dictFind(dict.PROJECT, text, 'PROJECT', '词库'));
       }
-      if (o.mask_person) spans = spans.concat(detectPersons(text, dict));
+      if (o.mask_person) spans = spans.concat(detectPersons(text, dict), detectSpeakers(text));
       if (o.mask_money) {
         spans = spans.concat(detectMoney(text));
+        spans = spans.concat(detectCnMoney(text));
         spans = spans.concat(detectFinRows(text));
         spans = spans.concat(detectTables(text));
       }
@@ -2313,13 +2469,13 @@
 
       // 简称候选（不自动脱敏，交给用户一键确认）
       let suggestions = [];
-      if (o.mask_org && text.length <= 1000000) {
+      if (o.mask_org && text.length <= 1000000 && !o.fast) {
         const dictOrg = dict.ORG || [];
         suggestions = aliasCandidates(text, spans.filter(s => s.type === 'ORG').slice(0, 150))
           .filter(x => dictOrg.indexOf(x.alias) < 0)
           .map(x => Object.assign(x, { type: 'ORG', why: '全称的简称' }));
       }
-      if (text.length <= 1000000 && o.suspects !== false) {
+      if (text.length <= 1000000 && o.suspects !== false && !o.fast) {
         const known = new Set();
         for (const t of Object.keys(dict)) for (const w of dict[t] || []) known.add(t + ':' + w);
         for (const x of suggestions) known.add('ORG:' + x.alias);
@@ -2374,7 +2530,11 @@
         const ent = vault.map[sp.type + ':' + sp.text];
         let shown = ent.token;
         if (o.token_style === 'mask') shown = maskToken(sp.text, sp.type);
-        if (sp.type === 'MONEY' && o.num_mode !== 'keep' && /\d/.test(sp.text)) {
+        if (sp.type === 'MONEY' && sp.cn && o.num_mode !== 'keep') {
+          shown = numToken(sp.cn.num, o, sp.cn.unitWord.replace(/(美元|港元)$/, '') + (/(美元|港元)$/.test(sp.cn.unitWord) ? '' : '')) + sp.cn.unitWord;
+          if (!vault.unit) vault.unit = {};
+          if (!(shown in vault.unit)) vault.unit[shown] = sp.cn.unitWord;
+        } else if (sp.type === 'MONEY' && o.num_mode !== 'keep' && /\d/.test(sp.text)) {
           const mu = text.slice(sp.end, sp.end + 8).match(/^\s*(十亿元|亿元|万元|千万元|百万元|十亿|百万|千万|亿|万|千元|元|million|billion|mn|bn)/i);
           const u = mu ? mu[1] : '';
           shown = numToken(sp.text, o, u);
@@ -2389,15 +2549,16 @@
       parts.push(text.slice(last));
       const masked = parts.join('');
 
-      save();
+      // 导出 Office 时每个单元格都会调一次：不要每次都把整个映射表写一遍存储（会按平方变慢），攒一下再写
+      if (o.fast) scheduleSave(); else save();
       return {
         masked, entities,
         stats: { chars: text.length, entities: entities.length, unique: new Set(entities.map(e => e.token)).size },
-        residual: riskScan(masked),
-        reid: text.length <= 1000000 ? reidRisk(text) : { level: 'low', dims: [], note: '文本过长，未做再识别分析' },
+        residual: o.fast ? [] : riskScan(masked),
+        reid: o.fast ? { level: 'low', dims: [] } : text.length <= 1000000 ? reidRisk(text) : { level: 'low', dims: [], note: '文本过长，未做再识别分析' },
         suggestions: suggestions,
-        pseudo: detectPseudo(text),
-        vaultSize: Object.keys(vault.map).length
+        pseudo: o.fast ? [] : detectPseudo(text),
+        vaultSize: o.fast ? -1 : Object.keys(vault.map).length
       };
     }
 
@@ -2676,6 +2837,18 @@
       },
 
       // 表格单元格里的裸数字：没有单位、没有语境，由调用方判定"这一列是金额"后再缩放
+      // 临时加入一批词（不保存），执行完再拿掉：Office 文件先通读全文学到的名字，用来保证各个部件里同名同代号
+      async withTempWords(words, fn) {
+        const added = [];
+        for (const [t, w] of words) {
+          if (!w) continue;
+          if (!dict[t]) dict[t] = [];
+          if (dict[t].indexOf(w) < 0) { dict[t].push(w); added.push([t, w]); }
+        }
+        try { return await fn(); }
+        finally { for (const [t, w] of added) { const i = dict[t].indexOf(w); if (i >= 0) dict[t].splice(i, 1); } }
+      },
+
       scaleNumber(numstr) {
         const o = Object.assign({}, DEFAULT_OPTS, { num_factor: sessionFactor() });
         return numToken(numstr, o, '');
@@ -3032,6 +3205,22 @@
   // 所以先把整段文字拼起来脱敏，再写回第一个节点（其余清空）。
   // 代价是段内局部格式（加粗、颜色）会丢，段落结构、表格、样式都保留。
   function maskXmlParagraphs(xml, eng, stats) {
+    // 文本框（w:txbxContent）嵌在段落里面，里面还有自己的段落：先单独处理再放回，
+    // 否则外层段落会提前在文本框的 </w:p> 处截断，把文本框的字拼进正文
+    if (xml.indexOf('<w:txbxContent') >= 0) {
+      const boxes = [];
+      let x = xml.replace(/<w:txbxContent\b[^>]*>[\s\S]*?<\/w:txbxContent>/g, b => {
+        const open = b.match(/^<w:txbxContent\b[^>]*>/)[0];
+        const inner = b.slice(open.length, -'</w:txbxContent>'.length);
+        boxes.push(open + maskXmlParagraphsFlat(inner, eng, stats) + '</w:txbxContent>');
+        return '\u0000TXBX' + (boxes.length - 1) + '\u0000';
+      });
+      x = maskXmlParagraphsFlat(x, eng, stats);
+      return x.replace(/\u0000TXBX(\d+)\u0000/g, (m, i) => boxes[+i]);
+    }
+    return maskXmlParagraphsFlat(xml, eng, stats);
+  }
+  function maskXmlParagraphsFlat(xml, eng, stats) {
     return xml.replace(/<(w|a):p\b[^>]*>[\s\S]*?<\/\1:p>/g, para => {
       const inner = /<((?:w|a):t)\b[^>]*>([\s\S]*?)<\/\1>/g;
       const nodes = [];
@@ -3063,7 +3252,7 @@
   // 表格里的数字没有单位、没有语境，只靠文本规则一个都抓不到。
   function cellTextOf(xml) {
     let out = '';
-    const re = /<w:t\b[^>]*>([\s\S]*?)<\/w:t>/g;
+    const re = /<(?:w|a):t\b[^>]*>([\s\S]*?)<\/(?:w|a):t>/g;
     let m;
     while ((m = re.exec(xml)) !== null) out += unescapeHtml(m[1]);
     return out;
@@ -3071,8 +3260,9 @@
 
   function replaceCellText(cellXml, newText) {
     let first = true;
-    return cellXml.replace(/<w:t\b[^>]*>[\s\S]*?<\/w:t>/g, () => {
-      const t = '<w:t xml:space="preserve">' + (first ? escapeXml(newText) : '') + '</w:t>';
+    return cellXml.replace(/<(w|a):t\b[^>]*>[\s\S]*?<\/\1:t>/g, (m, ns) => {
+      const t = ns === 'w' ? '<w:t xml:space="preserve">' + (first ? escapeXml(newText) : '') + '</w:t>'
+        : '<a:t>' + (first ? escapeXml(newText) : '') + '</a:t>';
       first = false;
       return t;
     });
@@ -3086,14 +3276,15 @@
   }
 
   function maskXmlTables(xml, eng, stats) {
-    return xml.replace(/<w:tbl\b[\s\S]*?<\/w:tbl>/g, tbl => {
+    // Word 的 w:tbl 和 PPT 的 a:tbl 结构相同，一起处理
+    return xml.replace(/<(w|a):tbl\b[\s\S]*?<\/\1:tbl>/g, tbl => {
       const rows = [];
-      const trRe = /<w:tr\b[^>]*>[\s\S]*?<\/w:tr>/g;
+      const trRe = /<(?:w|a):tr\b[^>]*>[\s\S]*?<\/(?:w|a):tr>/g;
       let tm;
       while ((tm = trRe.exec(tbl)) !== null) rows.push({ start: tm.index, end: tm.index + tm[0].length, xml: tm[0] });
 
       const cells = [];
-      const tcRe = /<w:tc\b[^>]*>[\s\S]*?<\/w:tc>/g;
+      const tcRe = /<(?:w|a):tc\b[^>]*>[\s\S]*?<\/(?:w|a):tc>/g;
       let cm;
       while ((cm = tcRe.exec(tbl)) !== null) {
         const pos = cm.index;
@@ -3193,6 +3384,21 @@
     return arr;
   }
 
+  // 单元格里的文字：共享字符串、内联字符串（t="inlineStr"）、公式字符串都要认
+  function xlsxCellText(attrs, body, shared) {
+    const tm = attrs.match(/\bt="(\w+)"/);
+    const t = tm ? tm[1] : '';
+    if (t === 'inlineStr') {
+      let out = ''; const re = /<t\b[^>]*>([\s\S]*?)<\/t>/g; let m;
+      while ((m = re.exec(body)) !== null) out += unescapeHtml(m[1]);
+      return out;
+    }
+    const vm = body.match(/<v>([\s\S]*?)<\/v>/);
+    if (!vm) return '';
+    if (t === 's') return shared[parseInt(vm[1], 10)] || '';
+    return unescapeHtml(vm[1]);
+  }
+
   function sheetHeadCols(xml, shared) {
     const money = new Set(), name = new Set();
     const hm = xml.match(/<row\b[^>]*\br="1"[^>]*>([\s\S]*?)<\/row>/);
@@ -3204,11 +3410,7 @@
       const rm = attrs.match(/\br="([A-Z]+)\d+"/);
       if (!rm) continue;
       const col = colIndex(rm[1]);
-      const tm = attrs.match(/\bt="(\w+)"/);
-      const vm = body.match(/<v>([\s\S]*?)<\/v>/);
-      let text = '';
-      if (tm && tm[1] === 's' && vm) text = shared[parseInt(vm[1], 10)] || '';
-      else if (vm) text = vm[1];
+      const text = xlsxCellText(attrs, body, shared);
       if (HEAD_MONEY.test(text)) money.add(col);
       if (HEAD_NAME.test(text)) name.add(col);
     }
@@ -3227,10 +3429,7 @@
       const attrs = sm[1], body = sm[2] || '';
       const rm = attrs.match(/\br="([A-Z]+)(\d+)"/);
       if (!rm || rm[1] !== 'A') continue;
-      const tm = attrs.match(/\bt="(\w+)"/);
-      const vm = body.match(/<v>([\s\S]*?)<\/v>/);
-      if (tm && tm[1] === 's' && vm) rowLabel[rm[2]] = shared[parseInt(vm[1], 10)] || '';
-      else if (vm) rowLabel[rm[2]] = vm[1];
+      rowLabel[rm[2]] = xlsxCellText(attrs, body, shared);
     }
 
     return xml.replace(/<c\b([^>]*?)(?:\/>|>([\s\S]*?)<\/c>)/g, (whole, attrs, body) => {
@@ -3238,22 +3437,56 @@
       const rm = attrs.match(/\br="([A-Z]+)(\d+)"/);
       if (!rm) return whole;
       const col = colIndex(rm[1]), row = parseInt(rm[2], 10);
-      if (row === 1) return whole;
+      if (row === 1 && !/<f\b/.test(body)) return whole;
 
       // 公式单元格：改了缓存值，Excel 一打开就会重算回真实数，改了等于没改
+      // 公式单元格：公式本身不动（输入已经缩放，Excel 重算后自然是缩放后的结果）；
+      // 但文件里存着上次计算的"缓存值"，不少工具（包括 AI 读表）直接读它——金额类的缓存值同样缩放
       if (/<f\b/.test(body)) {
+        // 字符串公式的缓存结果（t="str"）：同样脱敏
+        // 文字型公式的缓存结果（t="str"）：可能由单元格内容拼出客户名，又对不上缩放后的数——直接去掉，打开时重算
+        if (/\bt="str"/.test(attrs)) {
+          const sv = body.match(/<v>[\s\S]*?<\/v>/);
+          if (sv) { stats.clean.formulaCache = (stats.clean.formulaCache || 0) + 1; return whole.replace(sv[0], ''); }
+          return whole;
+        }
         if (cols.money.has(col) || (col > 0 && isFinLabel(rowLabel[row] || ''))) {
           stats.formulas = (stats.formulas || 0) + 1;
+          const fv = body.match(/<v>(-?\d+(?:\.\d+)?(?:[eE][-+]?\d+)?)<\/v>/);
+          if (fv) {
+            const sc = eng.scaleNumber(String(+fv[1])).replace(/,/g, '');
+            return whole.replace('<v>' + fv[1] + '</v>', '<v>' + sc + '</v>');
+          }
+          return whole;
+        }
+        // 看不出是不是金额的公式：大于 100 的缓存值去掉（打开时 Excel 会重算），小的比率保留
+        const fv = body.match(/<v>(-?\d+(?:\.\d+)?(?:[eE][-+]?\d+)?)<\/v>/);
+        if (fv && Math.abs(+fv[1]) >= 100 && !/^(?:19|20)\d{2}$/.test(fv[1])) {
+          stats.clean.formulaCache = (stats.clean.formulaCache || 0) + 1;
+          return whole.replace('<v>' + fv[1] + '</v>', '');
         }
         return whole;
       }
       const tm = attrs.match(/\bt="(\w+)"/);
       if (tm && tm[1] === 's') return whole;   // 字符串走 sharedStrings
+      if (tm && tm[1] === 'inlineStr') {       // 内联字符串：就地脱敏
+        const plain = xlsxCellText(attrs, body, []);
+        if (!plain.trim()) return whole;
+        const r = eng.mask(plain);
+        if (!r.entities.length) return whole;
+        stats.paragraphs++; stats.entities += r.entities.length;
+        return '<c' + attrs + '><is><t xml:space="preserve">' + escapeXml(r.masked) + '</t></is></c>';
+      }
 
       const vm = body.match(/<v>([\s\S]*?)<\/v>/);
       if (!vm) return whole;
       const val = vm[1];
       if (!/^-?\d+(?:\.\d+)?$/.test(val)) return whole;
+      // 图表里已经缩放过的数（内嵌在 PPT/Word 图表背后的表格）：按同一对照表替换，图和表保持一致
+      if (stats.numMap && stats.numMap.has(String(+val)) && stats.fromChart) {
+        stats.cells = (stats.cells || 0) + 1;
+        return whole.replace('<v>' + val + '</v>', '<v>' + stats.numMap.get(String(+val)) + '</v>');
+      }
       // 年份列 / 表头里的 2024、2025 不动
       if (/^(?:19|20)\d{2}$/.test(val)) return whole;
       const finRow = col > 0 && isFinLabel(rowLabel[row] || '');
@@ -3262,58 +3495,470 @@
       const scaled = eng.scaleNumber(val);
       if (scaled === val) return whole;
       stats.cells = (stats.cells || 0) + 1;
+      if (stats.numMap) stats.numMap.set(String(+val), scaled.replace(/,/g, ''));
       return whole.replace('<v>' + val + '</v>', '<v>' + scaled.replace(/,/g, '') + '</v>');
     });
   }
 
-  async function maskOfficeFile(name, buf, eng) {
-    const low = String(name).toLowerCase();
-    const files = await unzip(buf);
-    const stats = { paragraphs: 0, entities: 0, sheets: 0 };
-    const targets = [];
+  /* ---------------- Office 深度清理：正文以外的角落 ----------------
+     元数据（作者、公司、标题）、批注与批注人、修订（含删除的原文）、页眉页脚、
+     图表缓存、内嵌的 Excel/Word/PPT、超链接、图片替代文字、缩略图、工作表名、
+     数据透视表缓存——这些地方都会把客户名带出去，正文脱敏了也白搭。 */
+  const OFFICE_EXT = /\.(docx|xlsx|pptx|docm|xlsm|pptm)$/i;
 
-    if (low.endsWith('.docx')) {
-      for (const n of Object.keys(files)) {
-        if (/^word\/(document|header\d*|footer\d*|footnotes|endnotes|comments)\.xml$/.test(n)) targets.push(n);
-      }
-    } else if (low.endsWith('.pptx')) {
-      for (const n of Object.keys(files)) {
-        if (/^ppt\/(slides\/slide|notesSlides\/notesSlide)\d+\.xml$/.test(n)) targets.push(n);
-      }
-    } else if (low.endsWith('.xlsx')) {
-      if (files['xl/sharedStrings.xml']) targets.push('xl/sharedStrings.xml');
-      stats.sheets = Object.keys(files).filter(n => /^xl\/worksheets\/sheet\d+\.xml$/.test(n)).length;
-    } else {
-      throw new Error('只支持 .docx / .xlsx / .pptx');
+  function maskPlain(eng, text, stats, key) {
+    if (!text || !text.trim()) return text;
+    const r = eng.mask(text);
+    if (r.entities.length) { stats.entities += r.entities.length; if (key) stats.clean[key] = (stats.clean[key] || 0) + 1; }
+    return r.masked;
+  }
+  // 把某个标签里的文字整体替换为脱敏结果（不做段落合并）
+  function maskTagText(xml, tagRe, eng, stats, key) {
+    return xml.replace(tagRe, (whole, open, inner, close) => {
+      const plain = unescapeHtml(inner);
+      const m = maskPlain(eng, plain, stats, key);
+      return m === plain ? whole : open + escapeXml(m) + close;
+    });
+  }
+  function maskAttr(xml, attrNames, eng, stats, key) {
+    const re = new RegExp('\\b(' + attrNames.join('|') + ')="([^"]*)"', 'g');
+    return xml.replace(re, (whole, an, val) => {
+      const plain = unescapeHtml(val);
+      const m = maskPlain(eng, plain, stats, key);
+      return m === plain ? whole : an + '="' + escapeXml(m) + '"';
+    });
+  }
+  // 批注人、修订人：统一换成"审阅人A/B…"，同一个人同一个代号
+  function replaceAuthors(xml, authorMap, stats, attrs) {
+    attrs = attrs || ['w:author', 'w:initials'];
+    const pick = name => {
+      if (!authorMap.has(name)) authorMap.set(name, '审阅人' + String.fromCharCode(65 + (authorMap.size % 26)) + (authorMap.size >= 26 ? Math.floor(authorMap.size / 26) : ''));
+      return authorMap.get(name);
+    };
+    const re = new RegExp('(?<![\\w:])(' + attrs.join('|') + ')="([^"]*)"', 'g');
+    xml = xml.replace(re, (whole, an, val) => {
+      if (!val.trim()) return whole;
+      stats.clean.authors = (stats.clean.authors || 0) + 1;
+      if (/initials/i.test(an)) return an + '="R"';
+      if (an === 'userId') return an + '=""';
+      return an + '="' + escapeXml(pick(unescapeHtml(val))) + '"';
+    });
+    // xlsx 旧式批注：<authors><author>张伟</author></authors>
+    xml = xml.replace(/<author>([\s\S]*?)<\/author>/g, (whole, val) => {
+      stats.clean.authors = (stats.clean.authors || 0) + 1;
+      return '<author>' + escapeXml(pick(unescapeHtml(val))) + '</author>';
+    });
+    return xml;
+  }
+  // 文档属性：作者、最后修改人清空；标题、主题、关键词、备注脱敏
+  function cleanCoreProps(xml, eng, stats) {
+    xml = xml.replace(/<(dc:creator|cp:lastModifiedBy)(\b[^>]*)>[\s\S]*?<\/\1>/g, (w, tag, at) => { stats.clean.meta = (stats.clean.meta || 0) + 1; return '<' + tag + at + '></' + tag + '>'; });
+    return maskTagText(xml, /(<(?:dc:title|dc:subject|cp:keywords|dc:description|cp:category|cp:contentStatus)\b[^>]*>)([\s\S]*?)(<\/(?:dc:title|dc:subject|cp:keywords|dc:description|cp:category|cp:contentStatus)>)/g, eng, stats, 'meta');
+  }
+  function cleanAppProps(xml, eng, stats, sheetMap) {
+    xml = xml.replace(/<(Company|Manager|HyperlinkBase)>[\s\S]*?<\/\1>/g, (w, tag) => { stats.clean.meta = (stats.clean.meta || 0) + 1; return '<' + tag + '></' + tag + '>'; });
+    // 目录里列着工作表名 / 幻灯片标题
+    return xml.replace(/(<vt:lpstr>)([\s\S]*?)(<\/vt:lpstr>)/g, (whole, o, inner, c) => {
+      const plain = unescapeHtml(inner);
+      if (sheetMap && sheetMap.has(plain)) return o + escapeXml(sheetMap.get(plain)) + c;
+      const m = maskPlain(eng, plain, stats, 'meta');
+      return m === plain ? whole : o + escapeXml(m) + c;
+    });
+  }
+  // 图表缓存：文字脱敏；数字按"原值 → 缩放值"对照表替换（对照表来自同一文件里被缩放的单元格和金额）
+  function maskChart(xml, eng, stats, numMap) {
+    // 系列名是"营业收入 / 净利润"这类金额科目：整列数字按同一系数缩放，并记进对照表（内嵌表格随后按表替换）
+    xml = xml.replace(/<c:ser>[\s\S]*?<\/c:ser>/g, ser => {
+      const tx = (ser.match(/<c:tx>[\s\S]*?<\/c:tx>/) || [''])[0];
+      const name = unescapeHtml(tx.replace(/<[^>]+>/g, ''));
+      if (!(HEAD_MONEY.test(name) || isFinLabel(name)) || /率|占比|比例|增速|增长|%|％/.test(name)) return ser;
+      return ser.replace(/(<c:val>[\s\S]*?<c:numCache>)([\s\S]*?)(<\/c:numCache>)/, (w, o, inner, c) =>
+        o + inner.replace(/<c:v>([^<]*)<\/c:v>/g, (vw, v) => {
+          if (!/^-?\d+(?:\.\d+)?$/.test(v)) return vw;
+          const k = String(+v);
+          if (!numMap.has(k)) numMap.set(k, eng.scaleNumber(v).replace(/,/g, ''));
+          stats.clean.charts = (stats.clean.charts || 0) + 1;
+          return '<c:v>' + numMap.get(k) + '</c:v>';
+        }) + c);
+    });
+    xml = xml.replace(/(<c:strCache>)([\s\S]*?)(<\/c:strCache>)/g, (whole, o, inner, c) =>
+      o + maskTagText(inner, /(<c:v>)([\s\S]*?)(<\/c:v>)/g, eng, stats, 'charts') + c);
+    xml = maskTagText(xml, /(<a:t>)([\s\S]*?)(<\/a:t>)/g, eng, stats, 'charts');           // 图表标题、坐标轴标题
+    xml = xml.replace(/(<c:numCache>)([\s\S]*?)(<\/c:numCache>)/g, (whole, o, inner, c) =>
+      o + inner.replace(/<c:v>([^<]*)<\/c:v>/g, (w, v) => {
+        const k = String(+v);
+        if (numMap.has(k)) { stats.clean.charts = (stats.clean.charts || 0) + 1; return '<c:v>' + numMap.get(k) + '</c:v>'; }
+        return w;
+      }) + c);
+    return xml;
+  }
+  // 数据透视表缓存里有一整份原始数据
+  function maskPivot(xml, eng, stats, numMap) {
+    xml = xml.replace(/<s v="([^"]*)"/g, (whole, val) => {
+      const plain = unescapeHtml(val); const m = maskPlain(eng, plain, stats, 'pivot');
+      return m === plain ? whole : '<s v="' + escapeXml(m) + '"';
+    });
+    return xml.replace(/<n v="([^"]*)"/g, (whole, v) => {
+      const k = String(+v);
+      return numMap.has(k) ? '<n v="' + numMap.get(k) + '"' : whole;
+    });
+  }
+  // 超链接、外部链接：地址里常有邮箱、客户域名、带人名的文件路径
+  function maskRels(xml, eng, stats) {
+    return xml.replace(/<Relationship\b[^>]*>/g, rel => {
+      if (!/TargetMode="External"/.test(rel) && !/externalLinkPath|hyperlink|attachedTemplate/.test(rel)) return rel;
+      return rel.replace(/\bTarget="([^"]*)"/, (whole, val) => {
+        const plain = decodeURIComponentSafe(unescapeHtml(val));
+        // 本地路径里的用户名（C:/Users/zhangwei/…、/Users/zhangwei/…）
+        let p2 = plain.replace(/((?:^|[\\/])(?:Users|home|Documents and Settings)[\\/])[^\\/]+/gi, '$1user');
+        const m = maskPlain(eng, p2, stats, 'links');
+        if (m === plain) return whole;
+        stats.clean.links = (stats.clean.links || 0) + (m === p2 ? 1 : 0);
+        // 换成合法的占位地址，避免严格的软件报"链接无效"
+        let safe;
+        if (/^mailto:/i.test(plain)) safe = 'mailto:redacted@example.invalid';
+        else if (/^https?:/i.test(plain)) safe = 'https://example.invalid/' + encodeURIComponent(m.replace(/^https?:\/\//i, '')).slice(0, 120);
+        else safe = m;
+        return 'Target="' + escapeXml(safe) + '"';
+      });
+    });
+  }
+  function decodeURIComponentSafe(x) { try { return decodeURIComponent(x); } catch (e) { return x; } }
+  // Word 修订里被删掉的原文（w:delText）不在正文里显示，但文件里还在
+  function maskDelText(xml, eng, stats) {
+    return xml.replace(/(<w:delText\b[^>]*>)([\s\S]*?)(<\/w:delText>)/g, (whole, o, inner, c) => {
+      const plain = unescapeHtml(inner);
+      const m = maskPlain(eng, plain, stats, 'revisions');
+      return m === plain ? whole : '<w:delText xml:space="preserve">' + escapeXml(m) + c;
+    });
+  }
+  // 工作表名、定义名称改名：名字里有客户名时整体换掉。
+  // 改名后的名字必须唯一（两个表都叫"【企业A】"会让公式静默算错），引用它们的每个地方一起改。
+  const NAME_CH = '[\\w.\\u4e00-\\u9fa5]';
+  function uniqueName(base, used, maxLen) {
+    let n = base.slice(0, maxLen), i = 2;
+    while (used.has(n.toLowerCase())) { const suf = '_' + i++; n = base.slice(0, maxLen - suf.length) + suf; }
+    used.add(n.toLowerCase());
+    return n;
+  }
+  function buildRenames(wbXml, eng, stats) {
+    const sheets = new Map(), names = new Map();
+    const sheetList = [], nameList = [];
+    wbXml.replace(/<sheet\b[^>]*\bname="([^"]*)"/g, (w, v) => { sheetList.push(unescapeHtml(v)); return w; });
+    wbXml.replace(/<definedName\b[^>]*\bname="([^"]*)"/g, (w, v) => { nameList.push(unescapeHtml(v)); return w; });
+    const usedS = new Set(), usedN = new Set();
+    const plan = sheetList.map(o => { const m = eng.mask(o).masked; return [o, m]; });
+    for (const [o, m] of plan) if (m === o) usedS.add(o.toLowerCase());          // 不改名的先占位
+    for (const [o, m] of plan) {
+      if (m === o) continue;
+      const clean = m.replace(/[\\/?*\[\]:']/g, '').trim() || 'Sheet';
+      sheets.set(o, uniqueName(clean, usedS, 31));
+      stats.clean.sheets = (stats.clean.sheets || 0) + 1;
     }
-
-    // xlsx 的数字列判定要用"脱敏前"的表头文字
-    let rawShared = [];
-    if (low.endsWith('.xlsx') && files['xl/sharedStrings.xml']) {
-      rawShared = parseShared(await entryText(files, 'xl/sharedStrings.xml'));
+    for (const o of nameList) if (!names.has(o)) {
+      const m = eng.mask(o).masked;
+      if (m === o) { usedN.add(o.toLowerCase()); continue; }
+      names.set(o, null);
     }
+    for (const o of names.keys()) {
+      let m = eng.mask(o).masked.replace(/[^\w.一-龥]/g, '_').replace(/^([^A-Za-z_一-龥])/, '_$1').replace(/_+/g, '_');
+      names.set(o, uniqueName(m, usedN, 255));
+      stats.clean.names = (stats.clean.names || 0) + 1;
+    }
+    return { sheets, names };
+  }
+  // 改写一段公式（纯文本）：字符串字面量脱敏、表名引用（含 'A:B'! 三维引用）改名、定义名称按整词改名
+  function rewriteFormula(text, R, eng, stats) {
+    if (!text) return text;
+    const mapSheet = s => R.sheets.has(s) ? R.sheets.get(s) : s;
+    const refQuoted = inner => {          // 'X'! 或 'X:Y'!
+      const parts = inner.replace(/''/g, "'").split(':');
+      const mapped = parts.map(mapSheet);
+      return mapped.some((p, i) => p !== parts[i]) ? "'" + mapped.join(':').replace(/'/g, "''") + "'!" : null;
+    };
+    // 按引号切段：双引号字符串、单引号表名、其余
+    const segs = text.split(/("(?:[^"]|"")*"|'(?:[^']|'')*'!)/);
+    for (let i = 0; i < segs.length; i++) {
+      const sg = segs[i];
+      if (!sg) continue;
+      if (sg[0] === '"') {
+        let inner = sg.slice(1, -1).replace(/""/g, '"');
+        // 字符串里写着表名引用（INDIRECT("'华润'!A1")）：只改名，不再脱敏，免得和表名对不上
+        const re2 = inner.replace(/'((?:[^']|'')*)'!/g, (m, x) => refQuoted(x) || m)
+          .replace(new RegExp('(^|[^' + NAME_CH.slice(1, -1) + "'])(" + NAME_CH + '+(?::' + NAME_CH + '+)?)!', 'g'), (m, pre, x) => { const r = refQuoted(x); return r ? pre + r : m; });
+        if (re2 !== inner) inner = re2;
+        else if (inner.trim() && !/^[一-龥]{0,4}(?:集团|公司|控股|股份|有限公司|股份有限公司|商业集团)$/.test(inner.trim())) { const mm = eng.mask(inner).masked; if (mm !== inner) { inner = mm; stats.clean.formulaText = (stats.clean.formulaText || 0) + 1; } }
+        segs[i] = '"' + inner.replace(/"/g, '""') + '"';
+      } else if (sg[0] === "'" && /'!$/.test(sg)) {
+        const r = refQuoted(sg.slice(1, -2));
+        if (r) segs[i] = r;
+      } else {
+        let x = sg.replace(new RegExp('(^|[^' + NAME_CH.slice(1, -1) + "])(" + NAME_CH + '+(?::' + NAME_CH + '+)?)!', 'g'), (m, pre, y) => { const r = refQuoted(y); return r ? pre + r : m; });
+        if (R.names.size) {
+          x = x.replace(new RegExp('(^|[^' + NAME_CH.slice(1, -1) + '])(' + NAME_CH + '+)(?![\\w.\\u4e00-\\u9fa5(!])', 'g'), (m, pre, id) => R.names.has(id) ? pre + R.names.get(id) : m);
+        }
+        segs[i] = x;
+      }
+    }
+    return segs.join('');
+  }
+  function applyRenames(xmlText, R, eng, stats) {
+    // 所有可能写公式或引用的地方
+    let x = xmlText.replace(/(<(f|c:f|definedName|formula|formula1|formula2|xm:f|cfRule)\b[^>]*>)([^<]*)(<\/\2>)/g, (w, o, tag, inner, c) => {
+      const plain = unescapeHtml(inner), r = rewriteFormula(plain, R, eng, stats);
+      return r === plain ? w : o + escapeXml(r) + c;
+    });
+    x = x.replace(/\blocation="([^"]*)"/g, (w, v) => {         // 工作簿内部超链接
+      const plain = unescapeHtml(v), r = rewriteFormula(plain, R, eng, stats);
+      return r === plain ? w : 'location="' + escapeXml(r) + '"';
+    });
+    x = x.replace(/(<(?:sheet|definedName)\b[^>]*?\bname=")([^"]*)(")/g, (w, o, v, c) => {
+      const plain = unescapeHtml(v);
+      if (/^<sheet\b/.test(o) && R.sheets.has(plain)) return o + escapeXml(R.sheets.get(plain)) + c;
+      if (/^<definedName\b/.test(o) && R.names.has(plain)) return o + escapeXml(R.names.get(plain)) + c;
+      return w;
+    });
+    x = x.replace(/\bsheet="([^"]*)"/g, (w, v) => { const p = unescapeHtml(v); return R.sheets.has(p) ? 'sheet="' + escapeXml(R.sheets.get(p)) + '"' : w; });
+    return x;
+  }
+  // 改完以后核对：旧名字在任何部件里都不能再出现（出现就说明有没覆盖到的引用，宁可不改名）
+  function renamesLeft(outXmls, R) {
+    for (const t of outXmls) {
+      const d = unescapeHtml(t);
+      for (const o of R.sheets.keys()) if (d.indexOf(o + '!') >= 0 || d.indexOf("'" + o.replace(/'/g, "''")) >= 0 || d.indexOf('"' + o + '"') >= 0) return o;
+      for (const o of R.names.keys()) if (new RegExp('(^|[^\\w.\\u4e00-\\u9fa5])' + o.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '(?![\\w.\\u4e00-\\u9fa5(])').test(d.replace(/<[^>]+>/g, ' '))) return o;
+    }
+    return null;
+  }
 
-    const out = [];
+  async function partText(files, n) { return files[n] ? entryText(files, n) : null; }
+
+  // 通读全文：先学到这个文件里所有的名字，再逐个部件替换，保证页眉里的"华润万佳"和正文里的全称拿同一个代号
+  async function learnNames(files, eng) {
+    let text = '';
     for (const n of Object.keys(files)) {
-      const f = files[n];
-      let data = f.raw;
-      if (targets.indexOf(n) >= 0) {
-        const xml = await entryText(files, n);
-        const maskedXml = n === 'xl/sharedStrings.xml'
-          ? maskXlsxShared(xml, eng, stats)
-          : maskXmlParagraphs(maskXmlTables(xml, eng, stats), eng, stats);
-        data = new TextEncoder().encode(maskedXml);
-      } else if (/^xl\/worksheets\/sheet\d+\.xml$/.test(n)) {
-        const xml = await entryText(files, n);
-        data = new TextEncoder().encode(maskXlsxSheet(xml, rawShared, eng, stats));
-      } else if (f.method !== 0) {
-        data = await inflateRaw(f.raw);
-      }
-      out.push({ name: n, data: data });
+      if (!/\.xml$/.test(n) || /^\[Content_Types\]|_rels\//.test(n)) continue;
+      if (/(theme|styles|settings|fontTable|webSettings|numbering|presProps|viewProps|tableStyles|calcChain)\d*\.xml$/.test(n)) continue;
+      const xml = await entryText(files, n);
+      if (!xml) continue;
+      text += '\n' + unescapeHtml(xml.replace(/<\/(?:w:p|a:p|si|row|c:pt|comment)>/g, '\n').replace(/<[^>]+>/g, ' ').replace(/[ \t]+/g, ' '));
+      if (text.length > 600000) break;
     }
+    const r = eng.mask(text);
+    const words = [];
+    // 作者、修改人、批注人的名字：正文里往往也会出现（"编制：张伟"），先记下来
+    for (const n of Object.keys(files)) {
+      if (!/^(docProps\/core|word\/comments|word\/people|ppt\/commentAuthors|ppt\/authors|xl\/comments\d*|xl\/persons\/person)/.test(n)) continue;
+      const xml = await entryText(files, n);
+      if (!xml) continue;
+      const re = /(?:<dc:creator[^>]*>|<cp:lastModifiedBy[^>]*>|<author>|\b(?:w:author|name|displayName)=")([^<"]{2,30})/g;
+      let m;
+      while ((m = re.exec(xml)) !== null) {
+        const v = unescapeHtml(m[1]).trim();
+        if (/^[\u4e00-\u9fa5]{2,4}$/.test(v) || /^[A-Z][a-z]+(?: [A-Z][a-z]+){1,2}$/.test(v)) words.push(['PERSON', v]);
+      }
+    }
+    for (const e of r.entities) {
+      if (!/^(?:ORG|PERSON|PROJECT)$/.test(e.type)) continue;
+      const t = e.text.replace(/\s+/g, '');
+      if (t.length >= 2 && t.length <= 40) words.push([e.type, t]);
+    }
+    // Excel 里"联系人 / 负责人 / 经办人"这类列的单元格：像人名就记下来
+    if (files['xl/workbook.xml']) {
+      const shared = files['xl/sharedStrings.xml'] ? parseShared(await entryText(files, 'xl/sharedStrings.xml')) : [];
+      for (const n of Object.keys(files)) {
+        if (!/^xl\/worksheets\/sheet\d+\.xml$/.test(n)) continue;
+        const xml = await entryText(files, n);
+        const cols = sheetHeadCols(xml, shared);
+        if (!cols.name.size) continue;
+        xml.replace(/<c\b([^>]*?)(?:\/>|>([\s\S]*?)<\/c>)/g, (w, attrs, body) => {
+          const rm = attrs.match(/\br="([A-Z]+)(\d+)"/);
+          if (!rm || rm[2] === '1' || !cols.name.has(colIndex(rm[1]))) return w;
+          const v = xlsxCellText(attrs, body || '', shared).trim();
+          if (/^[\u4e00-\u9fa5]{2,4}$/.test(v) && looksLikeName(v, true) || /^[A-Z][a-z]+(?: [A-Z][a-z]+){1,2}$/.test(v)) words.push(['PERSON', v]);
+          return w;
+        });
+      }
+    }
+    // 简称候选（"华润万佳"是"华润万佳商业集团"的简称）：只收"全称的简称"这一类，最稳
+    for (const x of (r.suggestions || [])) if (x.why === '全称的简称' && x.alias && x.alias.length >= 2) words.push(['ORG', x.alias]);
+    return words;
+  }
 
-    const blob = await writeZip(out);
-    return { blob: blob, stats: stats };
+  async function maskOfficeFile(name, buf, engIn, ctx) {
+    const low = String(name).toLowerCase();
+    const eng = fastEngine(engIn);
+    const files = await unzip(buf);
+    const top = !ctx;
+    ctx = ctx || { authorMap: new Map(), numMap: new Map(), depth: 0 };
+    const stats = { paragraphs: 0, entities: 0, sheets: 0, clean: {}, warnings: [], numMap: ctx.numMap, fromChart: !!ctx.fromChart };
+    const kind = /\.docx|\.docm/.test(low) ? 'docx' : /\.xlsx|\.xlsm/.test(low) ? 'xlsx' : /\.pptx|\.pptm/.test(low) ? 'pptx' : '';
+    if (!kind) throw new Error('只支持 .docx / .xlsx / .pptx');
+
+    const run = async (allowRename, skipNames) => {
+      Object.assign(stats, { paragraphs: 0, entities: 0, clean: {}, warnings: [], cells: 0, formulas: 0 });
+      const out = new Map();
+      const put = (n, str) => out.set(n, new TextEncoder().encode(str));
+
+      // xlsx：先缩放单元格（得到数字对照表），再处理图表和透视表
+      let rawShared = [];
+      let R = { sheets: new Map(), names: new Map() };
+      const sheetMap = R.sheets;
+      if (kind === 'xlsx') {
+        if (files['xl/sharedStrings.xml']) rawShared = parseShared(await entryText(files, 'xl/sharedStrings.xml'));
+        const wb = await partText(files, 'xl/workbook.xml');
+        if (wb && allowRename !== false) {
+          R = buildRenames(wb, eng, stats);
+          for (const k of (skipNames || [])) { R.sheets.delete(k); R.names.delete(k); }
+          sheetMap.clear(); for (const [k, v] of R.sheets) sheetMap.set(k, v); R.sheets = sheetMap;
+          stats.clean.sheets = R.sheets.size || undefined; stats.clean.names = R.names.size || undefined;
+        }
+        stats.sheets = Object.keys(files).filter(n => /^xl\/worksheets\/sheet\d+\.xml$/.test(n)).length;
+        for (const n of Object.keys(files)) {
+          if (!/^xl\/worksheets\/sheet\d+\.xml$/.test(n)) continue;
+          let xml = maskXlsxSheet(await entryText(files, n), rawShared, eng, stats);
+          xml = maskTagText(xml, /(<(?:oddHeader|oddFooter|evenHeader|evenFooter|firstHeader|firstFooter)\b[^>]*>)([\s\S]*?)(<\/(?:oddHeader|oddFooter|evenHeader|evenFooter|firstHeader|firstFooter)>)/g, eng, stats, 'headers');
+          xml = applyRenames(xml, R, eng, stats);
+          put(n, xml);
+        }
+        if (files['xl/sharedStrings.xml']) put('xl/sharedStrings.xml', maskXlsxShared(await entryText(files, 'xl/sharedStrings.xml'), eng, stats));
+        if (wb) {
+          let x = applyRenames(wb, R, eng, stats);
+          // 打开时强制重算，保证显示的都是用缩放后的输入算出来的结果
+          if (/<calcPr\b/.test(x)) x = x.replace(/<calcPr\b([^>]*?)(\/?)>/, (w, a, sl) => '<calcPr' + a.replace(/\s*fullCalcOnLoad="[^"]*"/, '') + ' fullCalcOnLoad="1"' + sl + '>');
+          else x = x.replace(/<\/workbook>/, '<calcPr fullCalcOnLoad="1"/></workbook>');
+          put('xl/workbook.xml', x);
+        }
+      }
+
+      const order = Object.keys(files).sort((a, b) => (/\/charts\//.test(b) - /\/charts\//.test(a)) || (/\/embeddings\//.test(a) - /\/embeddings\//.test(b)));
+      for (const n of order) {
+        if (out.has(n)) continue;
+        const f = files[n];
+        // 缩略图：第一页的截图，直接删掉
+        if (/^docProps\/thumbnail\.\w+$/.test(n)) { stats.clean.thumbnail = (stats.clean.thumbnail || 0) + 1; out.set(n, null); continue; }
+        // 内嵌的 Office 文件：递归处理
+        if (/\/embeddings\//.test(n) && OFFICE_EXT.test(n) && ctx.depth < 3) {
+          const raw = f.method === 0 ? f.raw : await inflateRaw(f.raw);
+          try {
+            const sub = await maskOfficeFile(n, raw.buffer.slice(raw.byteOffset, raw.byteOffset + raw.length), eng, Object.assign({}, ctx, { depth: ctx.depth + 1, fromChart: true }));
+            out.set(n, new Uint8Array(await sub.blob.arrayBuffer()));
+            stats.entities += sub.stats.entities;
+            stats.clean.embedded = (stats.clean.embedded || 0) + 1;
+            for (const k of Object.keys(sub.stats.clean)) stats.clean[k] = (stats.clean[k] || 0) + sub.stats.clean[k];
+          } catch (e) { stats.warnings.push('内嵌文件 ' + n.split('/').pop() + ' 无法处理'); }
+          continue;
+        }
+        if (/\/embeddings\//.test(n)) { stats.warnings.push('有内嵌对象（' + n.split('/').pop() + '）无法检查，建议删除后再发'); }
+        if (/\/media\/.*\.(png|jpe?g|gif|bmp|tiff?|emf|wmf|svg)$/i.test(n)) stats.clean.images = (stats.clean.images || 0) + 1;
+        if (!/\.(xml|rels)$/.test(n)) continue;
+        let xml = await entryText(files, n);
+        if (xml === null) continue;
+        const orig = xml;
+
+        if (n === 'docProps/core.xml') xml = cleanCoreProps(xml, eng, stats);
+        else if (n === 'docProps/app.xml') xml = cleanAppProps(xml, eng, stats, sheetMap);
+        else if (n === 'docProps/custom.xml') xml = maskTagText(xml, /(<vt:lpwstr>)([\s\S]*?)(<\/vt:lpwstr>)/g, eng, stats, 'meta');
+        else if (/^customXml\/item\d+\.xml$/.test(n)) xml = maskTagText(xml, /(>)([^<>]+)(<)/g, eng, stats, 'meta');   // 业务系统写进文档的数据（客户、负责人……）
+        else if (/\.rels$/.test(n)) {
+          if (n === '_rels/.rels') xml = xml.replace(/<Relationship\b[^>]*Target="docProps\/thumbnail\.\w+"[^>]*\/>/g, '');
+          xml = maskRels(xml, eng, stats);
+        }
+        else if (/\/charts\/chart\d+\.xml$/.test(n)) xml = applyRenames(maskChart(xml, eng, stats, ctx.numMap), R, eng, stats);
+        else if (/pivotCache(Definition|Records)\d+\.xml$/.test(n)) xml = applyRenames(maskPivot(xml, eng, stats, ctx.numMap), R, eng, stats);
+        else if (kind === 'docx' && /^word\/(document|header\d*|footer\d*|footnotes|endnotes|comments|glossary\/document)\.xml$/.test(n)) {
+          xml = maskXmlParagraphs(maskXmlTables(xml, eng, stats), eng, stats);
+          xml = maskDelText(xml, eng, stats);
+          // 域代码：HYPERLINK "mailto:…"、AUTHOR 张伟 这类藏在 instrText / fldSimple 里
+          xml = maskTagText(xml, /(<w:instrText\b[^>]*>)([\s\S]*?)(<\/w:instrText>)/g, eng, stats, 'fields');
+          xml = maskAttr(xml, ['w:instr'], eng, stats, 'fields');
+          xml = maskAttr(xml, ['descr', 'title'], eng, stats, 'alt');
+          xml = replaceAuthors(xml, ctx.authorMap, stats);
+          if (/comments/.test(n)) stats.clean.comments = (stats.clean.comments || 0) + 1;
+          if (/header|footer/.test(n)) stats.clean.headers = (stats.clean.headers || 0) + 1;
+        }
+        else if (kind === 'docx' && /^word\/(people|commentsExtended|commentsIds|commentsExtensible)\.xml$/.test(n)) xml = replaceAuthors(xml, ctx.authorMap, stats, ['w15:author', 'w15:userId', 'w:author']);
+        else if (kind === 'pptx' && /^ppt\/(slides\/slide|notesSlides\/notesSlide|slideLayouts\/slideLayout|slideMasters\/slideMaster|notesMasters\/notesMaster|handoutMasters\/handoutMaster)\d+\.xml$/.test(n)) {
+          xml = maskXmlParagraphs(maskXmlTables(xml, eng, stats), eng, stats);
+          xml = maskAttr(xml, ['descr', 'title'], eng, stats, 'alt');
+        }
+        else if (kind === 'pptx' && /^ppt\/comments\/.*\.xml$/.test(n)) {
+          xml = maskTagText(xml, /(<p:text>)([\s\S]*?)(<\/p:text>)/g, eng, stats, 'comments');
+          xml = maskXmlParagraphs(xml, eng, stats);
+          stats.clean.comments = (stats.clean.comments || 0) + 1;
+        }
+        else if (kind === 'pptx' && /^ppt\/(commentAuthors|authors)\.xml$/.test(n)) xml = replaceAuthors(xml, ctx.authorMap, stats, ['name', 'initials', 'userId']);
+        else if (kind === 'xlsx' && /^xl\/comments\d*\.xml$|^xl\/comments\/.*\.xml$/.test(n)) {
+          xml = maskTagText(xml, /(<t\b[^>]*>)([\s\S]*?)(<\/t>)/g, eng, stats, 'comments');
+          xml = replaceAuthors(xml, ctx.authorMap, stats);
+          stats.clean.comments = (stats.clean.comments || 0) + 1;
+        }
+        else if (kind === 'xlsx' && /^xl\/threadedComments\/.*\.xml$/.test(n)) {
+          xml = maskTagText(xml, /(<text>)([\s\S]*?)(<\/text>)/g, eng, stats, 'comments');
+          stats.clean.comments = (stats.clean.comments || 0) + 1;
+        }
+        else if (kind === 'xlsx' && /^xl\/persons\/.*\.xml$/.test(n)) xml = replaceAuthors(xml, ctx.authorMap, stats, ['displayName', 'userId']);
+        else if (kind === 'xlsx' && /^xl\/(tables\/table|pivotTables\/pivotTable)\d+\.xml$/.test(n)) xml = applyRenames(xml, R, eng, stats);
+        else if (kind === 'xlsx' && /^xl\/drawings\/drawing\d+\.xml$/.test(n)) {
+          xml = maskXmlParagraphs(xml, eng, stats);           // 文本框、形状里的字
+          xml = maskAttr(xml, ['descr', 'title'], eng, stats, 'alt');
+        }
+        if (xml !== orig) put(n, xml);
+      }
+
+      // 改名核对：还有旧名字残留，说明有没覆盖到的引用——放弃改名重做，保证文件不坏
+      if (kind === 'xlsx' && (R.sheets.size || R.names.size)) {
+        const texts = [];
+        for (const n of Object.keys(files)) {
+          if (!/\.(xml|rels)$/.test(n)) continue;
+          if (out.has(n)) { const d = out.get(n); if (d) texts.push(new TextDecoder().decode(d)); }
+          else texts.push(await entryText(files, n));
+        }
+        const left = renamesLeft(texts, R);
+        if (left) {
+          // 只放弃这一个名字，其余照常改名；放弃的名字一并提示
+          const skip = (skipNames || []).concat(left);
+          const r2 = skip.length > 12 ? await run(false) : await run(true, skip);
+          if (!(skipNames || []).length) r2.stats.warnings.push('这些工作表名或定义名称里有客户名，但被较复杂的引用用到，为保证公式不出错没有改名，请在 Excel 里手动改名：' + (r2.stats.skipped || skip).join('、'));
+          r2.stats.skipped = r2.stats.skipped || skip;
+          return r2;
+        }
+      }
+      // 写回：没改过的部件原样保留
+      const entries = [];
+      for (const n of Object.keys(files)) {
+        if (out.has(n)) { const d = out.get(n); if (d) entries.push({ name: n, data: d }); continue; }
+        const f = files[n];
+        entries.push({ name: n, data: f.method === 0 ? f.raw : await inflateRaw(f.raw) });
+      }
+      // 文件名也在"学到的名字"范围内脱敏（"华润万佳尽调报告_v3" → "【企业A】尽调报告_v3"）
+      if (top) {
+        const base = String(name).split(/[\\/]/).pop().replace(/\.[^.]+$/, '');
+        stats.maskedName = eng.mask(base).masked.replace(/[\\/:*?"<>|]/g, '_').slice(0, 120) || '文件';
+      }
+      if (top && stats.clean.images) stats.warnings.push('文件里有 ' + stats.clean.images + ' 张图片，图片里的文字（截图、扫描件、logo）无法处理，请自己检查');
+      return { blob: await writeZip(entries), stats: stats };
+    };
+
+    if (!top) return run(true);
+    // 顶层：先通读全文学名字，再在"临时词库"下逐个部件替换
+    const words = await learnNames(files, engIn);
+    return engIn.withTempWords ? engIn.withTempWords(words, () => run(true)) : run(true);
+  }
+  // 部件、单元格往往成千上万：同一段文字只算一次，并跳过候选、再识别等分析（导出文件用不到）
+  function fastEngine(eng) {
+    if (eng.__fast) return eng;
+    const cache = new Map();
+    const f = Object.create(eng);
+    f.__fast = true;
+    f.mask = (t, o) => {
+      if (o) return eng.mask(t, Object.assign({ fast: true }, o));
+      if (cache.has(t)) return cache.get(t);
+      const r = eng.mask(t, { fast: true });
+      if (cache.size < 200000) cache.set(t, r);
+      return r;
+    };
+    return f;
   }
 
   return {

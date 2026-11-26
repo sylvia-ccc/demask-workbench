@@ -4,7 +4,7 @@
 
 <p align="center">
 <a href="https://sylvia-ccc.github.io/demask-workbench/?demo=1"><b>▶ Try the demo (10 s)</b></a> ·
-<a href="https://github.com/sylvia-ccc/demask-workbench/releases/latest"><b>⬇ Download the single file (344 KB)</b></a> ·
+<a href="https://github.com/sylvia-ccc/demask-workbench/releases/latest"><b>⬇ Download the single file (< 400 KB)</b></a> ·
 <a href="https://huggingface.co/spaces/sylviacccyu/demask-workbench">🤗 Hugging Face</a> ·
 <a href="README.md">中文</a>
 </p>
@@ -21,7 +21,7 @@
 > **For consultants, bankers, PE/VC, equity research and corporate finance.**
 > You want ChatGPT / Claude to analyse interview notes, a financial model or an annual report — but you can't send client names and real figures.
 > Drop the file in: **companies, people and project codes become `【企业A】`-style tokens, amounts are scaled by one hidden factor (ratios and growth rates are unchanged, so the AI can still do the math)**, and the AI's answer restores to real names and numbers in one click.
-> Everything runs in your own browser. **No server, no network, no install** — one 344 KB HTML file. Chinese-first (Chinese entity recognition), English entities supported.
+> Everything runs in your own browser. **No server, no network, no install** — one HTML file under 400 KB. Chinese-first (Chinese entity recognition), English entities supported.
 
 | | |
 |---|---|
@@ -34,6 +34,10 @@
 ![Main UI: original on the left, what the AI sees on the right](assets/main.png)
 
 ---
+
+## New in v2.4: nothing left in the corners of Office files
+
+Masking the body text is not enough: Word stores the author, reviewers and deleted revisions; PowerPoint charts carry an embedded Excel with the raw numbers; Excel sheets are named after the client; the file name itself says "ClientX DD report.docx". v2.4 cleans document properties, comments and reviewer names, tracked deletions, headers/footers, alt text, chart caches and embedded workbooks (scaled consistently), sheet names (formulas updated), formula caches, pivot caches, hyperlinks, thumbnails and the exported file name — and lists what it cleaned. It also recognises speakers in meeting minutes and chat logs, and scales amounts written in Chinese numerals.
 
 ## New in v2.3: drop in a PDF
 
