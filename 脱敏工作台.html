@@ -6,7 +6,15 @@
      页面内联的脚本和样式照常运行；导出文件用 blob: 下载，不受影响。 -->
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data: blob:; font-src data:; connect-src 'none'; worker-src blob:; form-action 'none'; base-uri 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>脱敏工作台 · 财务与商业数据</title>
+<title>脱敏工作台 · 把客户材料粘给 AI 前先本地脱敏（离线 · 可还原 · 支持 PDF）</title>
+<meta name="description" content="给咨询、投行、PE/VC、财务人员用的本地脱敏工具：客户名、人名、金额在浏览器里替换后再发给 ChatGPT / Claude / 豆包，回答一键还原。支持 PDF、Word、Excel、PPT，单文件离线，开源免费。">
+<meta name="keywords" content="脱敏,数据脱敏,ChatGPT 脱敏,AI 隐私,客户数据保护,尽调,财务模型,年报 PDF,离线,开源,data masking,PII redaction">
+<meta property="og:type" content="website">
+<meta property="og:title" content="脱敏工作台：把客户材料粘给 AI 前，先本地脱敏">
+<meta property="og:description" content="客户名、人名、金额在你自己的电脑上替换，AI 回答一键还原。支持 PDF / Word / Excel，单文件离线，开源。">
+<meta property="og:url" content="https://sylvia-ccc.github.io/demask-workbench/">
+<meta property="og:image" content="https://raw.githubusercontent.com/sylvia-ccc/demask-workbench/main/assets/social-preview.png">
+<meta name="twitter:card" content="summary_large_image">
 <style>
   :root{
     --bg:#f5f6f8; --panel:#fff; --line:#e2e5ea; --line-soft:#eef0f3;
@@ -677,7 +685,7 @@
 
 <div class="toast" id="toast"></div>
 
-<script>/* 引擎内联于 2026-11-25 */
+<script>/* 引擎内联于 2026-11-26 */
 /* ==========================================================================
    内置行业词库（金融 / 咨询）
    --------------------------------------------------------------------------

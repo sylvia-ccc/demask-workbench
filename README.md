@@ -1,20 +1,41 @@
-# 脱敏工作台 · Demask Workbench
+# 脱敏工作台 · 把客户材料粘给 AI 前，先本地脱敏
 
-> **咨询 / 投融资 / 财务场景的数据脱敏工具。**
-> 把客户访谈纪要、财务模型、尽调材料、交易文件安全地粘给 ChatGPT / Claude / 豆包 / Kimi——
-> **不泄露客户名、项目代号和真实金额**，AI 拿到的答案贴回来还能一键还原。
+<p align="center"><img src="assets/hero.png" alt="把客户材料粘给 AI 前，先过一道本地脱敏" width="880"></p>
 
-<p>
-<img alt="size" src="https://img.shields.io/badge/size-214%20KB-1b3a5c">
-<img alt="deps" src="https://img.shields.io/badge/dependencies-0-0f766e">
-<img alt="license" src="https://img.shields.io/badge/license-MIT-2f5d8a">
-<img alt="offline" src="https://img.shields.io/badge/network-none-b45309">
-<a href="https://sylvia-ccc.github.io/demask-workbench/"><img alt="demo" src="https://img.shields.io/badge/%E5%9C%A8%E7%BA%BF%E8%AF%95%E7%94%A8-%E7%82%B9%E8%BF%99%E9%87%8C-2f5d8a"></a>
-<a href="https://huggingface.co/spaces/sylviacccyu/demask-workbench"><img alt="Hugging Face" src="https://img.shields.io/badge/%F0%9F%A4%97%20Hugging%20Face-Space-ffcc4d"></a>
+<p align="center">
+<a href="https://sylvia-ccc.github.io/demask-workbench/?demo=1"><b>▶ 在线看示例（10 秒）</b></a> ·
+<a href="https://github.com/sylvia-ccc/demask-workbench/releases/latest"><b>⬇ 下载单文件（344 KB）</b></a> ·
+<a href="https://huggingface.co/spaces/sylviacccyu/demask-workbench">🤗 Hugging Face</a> ·
+<a href="README.en.md">English</a>
 </p>
 
-**[→ 在线试用](https://sylvia-ccc.github.io/demask-workbench/)** · [Hugging Face 镜像](https://huggingface.co/spaces/sylviacccyu/demask-workbench)（建议只用于试，正式用请下载本地文件）· [English](README.en.md)
+<p align="center">
+<img alt="deps" src="https://img.shields.io/badge/依赖-0-0f766e">
+<img alt="offline" src="https://img.shields.io/badge/网络请求-0-b45309">
+<img alt="pdf" src="https://img.shields.io/badge/PDF%20%2F%20Word%20%2F%20Excel%20%2F%20PPT-直接拖入-1b3a5c">
+<img alt="license" src="https://img.shields.io/badge/license-MIT-2f5d8a">
+<img alt="release" src="https://img.shields.io/github/v/release/sylvia-ccc/demask-workbench?label=版本&color=2f5d8a">
+<img alt="stars" src="https://img.shields.io/github/stars/sylvia-ccc/demask-workbench?style=social">
+</p>
 
+> **给咨询、投行、PE/VC、券商研究、企业财务的人用的。**
+> 访谈纪要、财务模型、尽调报告、年报 PDF——想让 ChatGPT / Claude / 豆包 / Kimi 帮忙分析，又不能把客户名和真实数字发出去？
+> 拖进来，**客户名、人名、项目代号换成【企业A】，金额按同一比例缩放（比率、增速不变，AI 照样能算）**，AI 的回答贴回来一键换回真名真数。
+> 整个过程在你自己的浏览器里完成，**没有服务器、不联网、不用安装**，一个 344 KB 的 HTML 文件。
+
+<p align="center"><img src="assets/flow.png" alt="拖入材料 → 本地脱敏 → 粘给 AI → 一键还原" width="880"></p>
+
+### 为什么值得一试
+
+| | |
+|---|---|
+| 🔒 **真的不出本机** | 页面内置 CSP，浏览器层面拦截一切网络请求；可以断网用，也可以自己审代码（零依赖） |
+| 📄 **年报 PDF 直接拖** | 招股书、年报、研报读文字层，500 页 1 秒内；表格列、折行公司名都能还原 |
+| 🧮 **AI 还能算** | 金额等比缩放，毛利率、增速、占比分毫不变；不是简单打码 |
+| ↩️ **能还原** | 代号兼容 AI 的各种改写（去括号、加粗、加空格），还原时校验单位 |
+| 🧪 **数字公开可查** | 100 例真实年报 / 招股书 / 咨询文体封存盲测，F1 80.5%；每个版本都有独立核查 |
+
+![主界面：左边原文，右边是发给 AI 的版本](assets/main.png)
 
 ---
 
@@ -45,8 +66,6 @@
 ```
 
 AI 回答贴回「还原」页，客户名和原始金额自动换回来。
-
-![主界面](assets/main.png)
 
 ---
 

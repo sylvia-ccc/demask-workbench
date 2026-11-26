@@ -1,25 +1,39 @@
-# Demask Workbench
+# Demask Workbench — mask client data before it reaches AI
 
-> **Data masking for consultants, investors and finance teams.**
-> Paste client interview notes, financial models, due-diligence material or deal documents into
-> ChatGPT / Claude — **without leaking client names, project codes or real figures**.
-> Paste the answer back and everything restores.
+<p align="center"><img src="assets/hero-en.png" alt="Mask client data before it reaches AI" width="880"></p>
 
-<p>
-<img alt="size" src="https://img.shields.io/badge/size-214%20KB-1b3a5c">
-<img alt="deps" src="https://img.shields.io/badge/dependencies-0-0f766e">
-<img alt="license" src="https://img.shields.io/badge/license-MIT-2f5d8a">
-<img alt="offline" src="https://img.shields.io/badge/network-none-b45309">
-<a href="https://sylvia-ccc.github.io/demask-workbench/"><img alt="demo" src="https://img.shields.io/badge/live%20demo-try%20it-2f5d8a"></a>
-<a href="https://huggingface.co/spaces/sylviacccyu/demask-workbench"><img alt="Hugging Face" src="https://img.shields.io/badge/%F0%9F%A4%97%20Hugging%20Face-Space-ffcc4d"></a>
+<p align="center">
+<a href="https://sylvia-ccc.github.io/demask-workbench/?demo=1"><b>▶ Try the demo (10 s)</b></a> ·
+<a href="https://github.com/sylvia-ccc/demask-workbench/releases/latest"><b>⬇ Download the single file (344 KB)</b></a> ·
+<a href="https://huggingface.co/spaces/sylviacccyu/demask-workbench">🤗 Hugging Face</a> ·
+<a href="README.md">中文</a>
 </p>
 
-**[→ Live demo](https://sylvia-ccc.github.io/demask-workbench/)** · [Hugging Face Space](https://huggingface.co/spaces/sylviacccyu/demask-workbench) · [中文说明](README.md)
+<p align="center">
+<img alt="deps" src="https://img.shields.io/badge/dependencies-0-0f766e">
+<img alt="offline" src="https://img.shields.io/badge/network%20requests-0-b45309">
+<img alt="formats" src="https://img.shields.io/badge/PDF%20%2F%20Word%20%2F%20Excel%20%2F%20PPT-drag%20%26%20drop-1b3a5c">
+<img alt="license" src="https://img.shields.io/badge/license-MIT-2f5d8a">
+<img alt="release" src="https://img.shields.io/github/v/release/sylvia-ccc/demask-workbench?color=2f5d8a">
+<img alt="stars" src="https://img.shields.io/github/stars/sylvia-ccc/demask-workbench?style=social">
+</p>
 
-![Main UI](assets/main.png)
+> **For consultants, bankers, PE/VC, equity research and corporate finance.**
+> You want ChatGPT / Claude to analyse interview notes, a financial model or an annual report — but you can't send client names and real figures.
+> Drop the file in: **companies, people and project codes become `【企业A】`-style tokens, amounts are scaled by one hidden factor (ratios and growth rates are unchanged, so the AI can still do the math)**, and the AI's answer restores to real names and numbers in one click.
+> Everything runs in your own browser. **No server, no network, no install** — one 344 KB HTML file. Chinese-first (Chinese entity recognition), English entities supported.
+
+| | |
+|---|---|
+| 🔒 **Never leaves your machine** | A built-in CSP blocks every network request at the browser level; works offline; zero dependencies, easy to audit |
+| 📄 **Drop in PDFs** | Annual reports and prospectuses (500 pages in under a second); table columns and line-wrapped company names are reconstructed |
+| 🧮 **The AI can still calculate** | Proportional scaling keeps margins, growth and shares exact — not just redaction |
+| ↩️ **Reversible** | Tokens survive LLM rewriting (brackets dropped, bold, spacing); units are checked on restore |
+| 🧪 **Published numbers** | Sealed blind test on 100 real annual-report / prospectus / consulting passages: F1 80.5%; every release independently reviewed |
+
+![Main UI: original on the left, what the AI sees on the right](assets/main.png)
 
 ---
-
 
 ## New in v2.3: drop in a PDF
 
