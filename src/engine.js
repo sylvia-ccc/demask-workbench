@@ -58,12 +58,17 @@
     CONTRACT: { label: '合同/项目编号', prefix: '编号', color: 'sec' },
     INVOICE:  { label: '发票号',   prefix: '发票', color: 'sec' },
     ACCOUNT:  { label: '账号/证券账户', prefix: '账号', color: 'sec' },
-    BIRTH:    { label: '出生日期', prefix: '日期', color: 'sec' }
+    BIRTH:    { label: '出生日期', prefix: '日期', color: 'sec' },
+    DATE:     { label: '日期（平移）', prefix: '日期', color: 'amt' },
+    DEVICE:   { label: '设备标识', prefix: '设备', color: 'sec' },
+    CASE:     { label: '案号/文号/权证号', prefix: '文号', color: 'sec' },
+    SECURITY: { label: '证券/产品编码', prefix: '证券', color: 'sec' }
   };
 
   const PRIO = {
     IDCARD: 10, BANK: 10, SECRET: 10, USCC: 9, EMAIL: 9, PHONE: 8,
     ADDR: 7, URL: 6, IP: 6, PLATE: 6, TICKER: 9, CONTRACT: 9, INVOICE: 9, ACCOUNT: 11, BIRTH: 7,
+    DEVICE: 9, CASE: 9, SECURITY: 9, DATE: 2,
     ORG: 5, PERSON: 5, PROJECT: 4, MONEY: 3, PCT: 1
   };
 
@@ -359,6 +364,173 @@
   }
 
   /* ---------------- 检测器：规则类 ---------------- */
+  /* ---- 补充的强格式标识（对照个人金融信息与去标识化相关规范补齐）：
+     卡片安全码与有效期、密保答案、外国人永居证、军官证、登录名、保单号、公积金/社保账号、
+     MAC / IMEI / 车架号、案号 / 处罚文号 / 不动产权证号、ISIN / LEI / 私募备案编码。
+     能校验的都校验（IMEI、VIN、ISIN、LEI），其余必须有标签引导。 */
+function luhnOk(d) {
+    let s = 0, alt = false;
+    for (let i = d.length - 1; i >= 0; i--) {
+      let n = d.charCodeAt(i) - 48;
+      if (alt) { n *= 2; if (n > 9) n -= 9; }
+      s += n; alt = !alt;
+    }
+    return s % 10 === 0;
+  }
+  // VIN 第 9 位校验位（ISO 3779 / 北美与国标通用）
+  function vinOk(v) {
+    v = v.toUpperCase();
+    if (!/^[A-HJ-NPR-Z0-9]{17}$/.test(v)) return false;
+    const tr = { A: 1, B: 2, C: 3, D: 4, E: 5, F: 6, G: 7, H: 8, J: 1, K: 2, L: 3, M: 4, N: 5, P: 7, R: 9, S: 2, T: 3, U: 4, V: 5, W: 6, X: 7, Y: 8, Z: 9 };
+    const w = [8, 7, 6, 5, 4, 3, 2, 10, 0, 9, 8, 7, 6, 5, 4, 3, 2];
+    let s = 0;
+    for (let i = 0; i < 17; i++) { const c = v[i]; s += (/\d/.test(c) ? +c : tr[c]) * w[i]; }
+    const r = s % 11, chk = r === 10 ? 'X' : String(r);
+    return v[8] === chk;
+  }
+  // ISIN：字母换成数字后做 Luhn
+  function isinOk(x) {
+    if (!/^[A-Z]{2}[A-Z0-9]{9}\d$/.test(x)) return false;
+    const d = x.split('').map(c => /\d/.test(c) ? c : String(c.charCodeAt(0) - 55)).join('');
+    return luhnOk(d);
+  }
+  // LEI：ISO 17442，整体 mod 97 == 1
+  function leiOk(x) {
+    if (!/^[A-Z0-9]{18}\d{2}$/.test(x)) return false;
+    let r = 0;
+    for (const c of x) { const v = /\d/.test(c) ? c : String(c.charCodeAt(0) - 55); for (const d of v) r = (r * 10 + +d) % 97; }
+    return r === 1;
+  }
+  
+  const RULES = [
+    // 认证辅助信息（最高敏感）：必须有标签
+    { type: 'SECRET', note: 'CVV', re: /(?:CVV2?|CVN2?|CVC|安全码|卡背后三位)\s*(?:码)?\s*[:：为是]?\s*(\d{3,4})(?!\d)/gi },
+    { type: 'SECRET', note: '卡片有效期', re: /(?:有效期(?:至|到)?|有效期限|Valid\s*(?:Thru|Until)|EXP(?:IRY)?)\s*[:：为是]?\s*((?:0[1-9]|1[0-2])\s*\/\s*(?:\d{2}|20\d{2}))(?!\d)/gi, ctx: /卡|CVV|CVC|CVN|安全码|Card|VISA|Master/i },
+    { type: 'SECRET', note: '密码提示答案', re: /(?:密保问题答案|密码提示(?:答案|问题)?|安全问题答案)\s*[:：为是]\s*([^\s，。；,;]{1,30})/g },
+    // 证件
+    { type: 'IDCARD', note: '外国人永居证', re: /(?:永久居留(?:身份)?证|永居证|绿卡)(?:号码?|号)?\s*[:：为是]?\s*([A-Z]{3}\d{12}|9\d{17}|9\d{16}X)(?![\dA-Z])/g },
+    { type: 'IDCARD', note: '军官证/士兵证', re: /(?:军官证|士兵证|文职干部证|警官证)(?:号码?|号)?\s*[:：为是]?\s*([一-龥]{0,4}字?第?\s*\d{6,10}号?)/g },
+    // 账号类（带标签）
+    { type: 'ACCOUNT', note: '登录名', re: /(?:登录名|登录账号|用户名|账户名|Username|Login(?:\s*ID)?)\s*[:：为是]\s*([A-Za-z][A-Za-z0-9_.@-]{3,40})/gi },
+    { type: 'ACCOUNT', note: '保单号', re: /(?:保单号(?:码)?|保险单号|Policy\s*No\.?)\s*[:：为是]?\s*([A-Z0-9][A-Z0-9-]{7,29})/gi },
+    { type: 'ACCOUNT', note: '公积金/社保账号', re: /(?:公积金(?:个人)?账号|社保(?:个人)?编号|医保(?:卡)?号)\s*[:：为是]?\s*([A-Z0-9]{8,20})/g },
+    // 设备与网络标识
+    { type: 'DEVICE', note: 'MAC 地址', re: /(?<![0-9A-Fa-f:-])((?:[0-9A-Fa-f]{2}[:-]){5}[0-9A-Fa-f]{2})(?![0-9A-Fa-f:-])/g },
+    { type: 'DEVICE', note: 'IMEI', re: /(?:IMEI|MEID|设备串号|手机串号)\s*(?:号|码)?\s*[:：为是]?\s*(\d{15})(?!\d)/gi, check: v => luhnOk(v) },
+    { type: 'DEVICE', note: 'VIN', re: /(?<![A-Z0-9])([A-HJ-NPR-Z0-9]{17})(?![A-Z0-9])/g, check: v => /\d/.test(v) && /[A-Z]/.test(v) && vinOk(v) },
+    // 司法与行政文号
+    // 案号：（年份）+ 法院代字 + 案件类型字（初/终/再/申/执/破……）+ 序号 + 号（可带"之一"）
+    { type: 'CASE', note: '案号', re: /([（(]\s*(?:19|20)\d{2}\s*[)）]\s*[一-龥]{1,3}\s*\d{0,4}\s*[一-龥]{0,4}(?:初|终|再|申|执|破|特|监|督|保|赔|撤|恢|清|协|外|认|算|调|刑|民|行|商|知)[一-龥]{0,2}\s*\d{1,6}\s*号(?:之[一二三四五六七八九十])?)/g },
+    // 行政处罚 / 决定文号（公开发文字号"国发〔2024〕5号"不算：那是法规，AI 需要看到）
+    { type: 'CASE', note: '处罚/决定文号', re: /([一-龥]{1,14}(?:罚字|罚决字|处罚字|处罚决定书|决定书|决字|监决|罚)\s*[〔\[【(（]\s*(?:19|20)\d{2}\s*[〕\]】)）]\s*第?\s*\d{1,6}\s*号)/g },
+    { type: 'CASE', note: '不动产权证号', re: /([一-龥]{1,2}\s*[（(]\s*(?:19|20)\d{2}\s*[)）]\s*[一-龥]{0,10}?(?:不动产权|房权证|房地权证)\s*第?\s*\d{5,10}\s*号)/g },
+    // 证券与产品标识
+    { type: 'SECURITY', note: 'ISIN', re: /(?<![A-Z0-9])([A-Z]{2}[A-Z0-9]{9}\d)(?![A-Z0-9])/g, check: isinOk },
+    { type: 'SECURITY', note: 'LEI', re: /(?<![A-Z0-9])([A-Z0-9]{18}\d{2})(?![A-Z0-9])/g, check: leiOk },
+    { type: 'SECURITY', note: '私募备案编码', re: /(?:备案编码|备案号|基金备案)\s*[:：为是]?\s*(S[A-Z0-9]{5})(?![A-Z0-9])/g }
+  ];
+  
+  function detectExtra(text) {
+    const out = [];
+    for (const r of RULES) {
+      r.re.lastIndex = 0;
+      let m;
+      while ((m = r.re.exec(text)) !== null) {
+        const v = m[1];
+        if (r.check && !r.check(v.replace(/\s/g, ''))) continue;
+        if (r.ctx && !r.ctx.test(text.slice(Math.max(0, m.index - 30), m.index + m[0].length + 20))) continue;
+        const st = m.index + m[0].indexOf(v);
+        out.push(Span(st, st + v.length, r.type, v, 0.95, r.note));
+      }
+    }
+    return out;
+  }
+
+  /* ---- 日期平移（可选）：签约日、交割日、公告日这类完整日期能锁定具体交易 ----
+     打开后，所有带年月日的日期按同一个隐藏天数整体挪动（同一项目内固定），间隔天数不变，
+     AI 照样能算账期、工期；回复贴回来按对照表还原。只有年份或只有月份的不动。 */
+  const DATE_RE = /((?:19|20)\d{2})(年|-|\/|\.)(0?[1-9]|1[0-2])(月|-|\/|\.)(0?[1-9]|[12]\d|3[01])(日|号)?(?![\d])/g;
+  const MD_RE = /(?<![\d年\-\/.])(0?[1-9]|1[0-2])月(0?[1-9]|[12]\d|3[01])(日|号)(?![\d])/g;
+  const WEEK = '日一二三四五六';
+  function detectDates(text, refYear) {
+    const out = [];
+    const taken = new Uint8Array(text.length + 1);
+    DATE_RE.lastIndex = 0;
+    let m;
+    while ((m = DATE_RE.exec(text)) !== null) {
+      if (/\d/.test(text[m.index - 1] || '')) continue;
+      const sep1 = m[2], sep2 = m[4];
+      if (sep1 === '年' ? sep2 !== '月' : sep1 !== sep2) continue;        // 2025年3-1 这种不算
+      if (sep1 === '年' && !m[6]) continue;                               // 2025年3月15（没有"日"）不算
+      if (sep1 === '.' && (m[3].length < 2 || m[5].length < 2)) continue; // 2021.3.1 多半是版本号
+      const y = +m[1], mo = +m[3], d = +m[5];
+      const dt = new Date(Date.UTC(y, mo - 1, d));
+      if (dt.getUTCMonth() !== mo - 1) continue;                          // 2月30日不是日期
+      let end = m.index + m[0].length;
+      const wk = text.slice(end).match(/^\s?[（(]?(?:星期|周|礼拜)[一二三四五六日天][）)]?/);
+      if (wk) end += wk[0].length;
+      const sp = Span(m.index, end, 'DATE', text.slice(m.index, end), 0.9, '日期平移');
+      // 补零：横杠/斜杠/点写法按原样（两位就补零）；"年月日"写法只有原文带 0 才补
+      const pad = sep1 === '年' ? (/^0/.test(m[3]) || /^0/.test(m[5])) : (m[3].length === 2 || m[5].length === 2);
+      sp.date = { y, mo, d, fmt: { sep1, sep2, tail: m[6] || '', pad: pad, week: wk ? wk[0] : '' } };
+      out.push(sp);
+      for (let i = m.index; i < end; i++) taken[i] = 1;
+    }
+    // 只有月日（"3月5日"）：按文中最近的年份推算，平移后同样只写月日
+    MD_RE.lastIndex = 0;
+    while ((m = MD_RE.exec(text)) !== null) {
+      if (taken[m.index]) continue;
+      // 没有年份：固定按平年推算（去掉闰年差异，平移和还原才对得上）；星期几推不出来，直接去掉
+      const y = 2001;
+      void refYear;
+      const mo = +m[1], d = +m[2];
+      const dt = new Date(Date.UTC(y, mo - 1, d));
+      if (dt.getUTCMonth() !== mo - 1) continue;
+      let end = m.index + m[0].length;
+      const wk = text.slice(end).match(/^\s?[（(]?(?:星期|周|礼拜)[一二三四五六日天][）)]?/);
+      if (wk) end += wk[0].length;
+      const sp = Span(m.index, end, 'DATE', text.slice(m.index, end), 0.9, '日期平移');
+      sp.date = { y, mo, d, fmt: { sep1: '', sep2: '月', tail: m[3], pad: false, md: true, week: '' } };
+      out.push(sp);
+    }
+    return out;
+  }
+  function fmtDate(t, f) {
+    const p = n => f.pad ? String(n).padStart(2, '0') : String(n);
+    let s = f.md ? (t.getUTCMonth() + 1) + '月' + t.getUTCDate() + f.tail
+      : t.getUTCFullYear() + f.sep1 + p(t.getUTCMonth() + 1) + f.sep2 + p(t.getUTCDate()) + f.tail;
+    if (f.week) s += f.week.replace(/[一二三四五六日天](?=[）)]?$)/, WEEK[t.getUTCDay()]);
+    return s;
+  }
+
+  // 粗判"灾难性回溯"写法：带量词的分组外面再套量词，或分组里有可互相覆盖的分支再加量词
+  function unsafeRegex(p) {
+    // 先把转义和字符类压成一个占位字符，再按括号深度找"被量词修饰的分组"
+    const src = p.replace(/\\./g, 'x').replace(/\[(?:\\.|[^\]])*\]/g, 'x');
+    const stack = [];
+    for (let i = 0; i < src.length; i++) {
+      const c = src[i];
+      if (c === '(') stack.push(i);
+      else if (c === ')' && stack.length) {
+        const st = stack.pop();
+        let inner = src.slice(st + 1, i).replace(/^\?(?::|=|!|<=|<!|<[A-Za-z_]\w*>)/, '');
+        const after = src.slice(i + 1);
+        const q = after.match(/^(?:[+*]|\{(\d+)(,(\d*))?\})/);
+        if (!q) continue;
+        const repeats = q[0] === '+' || q[0] === '*' || (q[2] !== undefined) || (+q[1] >= 2);
+        if (!repeats) continue;
+        const unbounded = /[+*]|\{\d+,\}/.test(inner);
+        const alt = /\|/.test(inner);
+        // 分组以固定字面量开头（"-[A-Z0-9]+"）时，每次重复的边界唯一，不会回溯爆炸
+        const anchoredLiteral = /^[^\\.()x[+*?{|^$]/.test(inner);
+        if (alt) return true;
+        if (unbounded && !anchoredLiteral) return true;
+      }
+    }
+    return false;
+  }
+
+
   function detectRegex(text) {
     const out = [];
 
@@ -1118,18 +1290,23 @@
     if (!rules || !rules.length) return out;
     for (const r of rules) {
       if (!r || !r.pattern) continue;
+      if (r.slow || unsafeRegex(r.pattern) || !Object.prototype.hasOwnProperty.call(TYPES, r.type)) continue;   // 旧版本存下的危险规则也不跑
       let re;
       try {
         re = new RegExp(r.pattern, r.flags || 'g');
       } catch (e) { continue; }   // 用户写的正则可能有语法错，跳过不崩
       let m, n = 0;
+      const t0 = Date.now();
       while ((m = re.exec(text)) !== null) {
         if (m[0].length === 0) { re.lastIndex++; continue; }
+        // 兜底：某条规则在这段文字上跑了 300 毫秒以上，本次会话里停用它（没拦住的危险写法）
+        if (Date.now() - t0 > 300) { r.slow = true; break; }
         const val = (m[1] !== undefined && m[1] !== '') ? m[1] : m[0];
         const st = m.index + (val === m[0] ? 0 : m[0].indexOf(val));
         out.push(Span(st, st + val.length, r.type || 'ORG', val, 0.9, '规则:' + (r.name || '自定义')));
         if (++n >= 500) break;   // 防止写错的正则匹配爆炸
       }
+      if (Date.now() - t0 > 300) r.slow = true;
     }
     return out;
   }
@@ -2196,7 +2373,7 @@
   /* ---------------- 默认参数 ---------------- */
   const DEFAULT_OPTS = {
     mask_org: true, mask_person: true, mask_project: true,
-    mask_money: true, mask_contact: true, mask_pct: false, mask_equity: true,
+    mask_money: true, mask_contact: true, mask_pct: false, mask_equity: true, date_shift: false,
     num_mode: 'scale', num_factor: 0.618, token_style: 'bracket',
     lex_groups: null, exclude: []
   };
@@ -2376,7 +2553,7 @@
       if (!o.num_factor || o.num_factor === 'auto') o.num_factor = sessionFactor();
       let spans = [];
 
-      spans = spans.concat(detectRegex(text));
+      spans = spans.concat(detectRegex(text), detectExtra(text));
       if (o.mask_project) spans = spans.concat(detectCodename(text));
       if (o.mask_org) spans = spans.concat(detectOrgList(text));
       spans = spans.concat(detectDocNo(text));
@@ -2398,6 +2575,9 @@
         spans = spans.concat(detectTables(text));
       }
       if (o.mask_pct) spans = spans.concat(detectPercent(text));
+      if (o.date_shift) spans = spans.concat(detectDates(text));
+      else if (vault.dateShiftUsed && !o.fast && DATE_RE.test(text)) { vault.dateShiftUsed = false; }
+      DATE_RE.lastIndex = 0;
       if (o.mask_equity) spans = spans.concat(detectEquity(text));
 
       spans = resolveOverlaps(spans);
@@ -2501,6 +2681,7 @@
 
       // 分配代号：canon（规范名）决定身份，text（表面形式）决定还原文本
       for (const sp of spans) {
+        if (sp.type === 'DATE') continue;          // 日期平移不发代号
         const canon = sp.canon || sp.text;
         const ckey = sp.type + ':' + canon;
         const key = sp.type + ':' + sp.text;
@@ -2528,9 +2709,16 @@
       for (const sp of spans) {
         parts.push(text.slice(last, sp.start));
         const ent = vault.map[sp.type + ':' + sp.text];
-        let shown = ent.token;
+        let shown = ent ? ent.token : sp.text;
         if (o.token_style === 'mask') shown = maskToken(sp.text, sp.type);
-        if (sp.type === 'MONEY' && sp.cn && o.num_mode !== 'keep') {
+        if (sp.type === 'DATE' && sp.date) {
+          if (!vault.dateShift) { vault.dateShift = (Math.random() < 0.5 ? -1 : 1) * (37 + Math.floor(Math.random() * 140)); }
+          const t = new Date(Date.UTC(sp.date.y, sp.date.mo - 1, sp.date.d + vault.dateShift));
+          shown = fmtDate(t, sp.date.fmt);
+          vault.dateShiftUsed = true;
+          // 记住原文的补零习惯（2025/1/5 还是 2025/01/05），还原时照原样写回
+          if (!sp.date.fmt.md) { if (!vault.datePad) vault.datePad = {}; vault.datePad[sp.date.fmt.sep1] = /^0|^\d{4}\D\d{2}\D\d{2}/.test(sp.text.replace(/^\d{4}/, '')) || /\D0\d/.test(sp.text); }
+        } else if (sp.type === 'MONEY' && sp.cn && o.num_mode !== 'keep') {
           shown = numToken(sp.cn.num, o, sp.cn.unitWord.replace(/(美元|港元)$/, '') + (/(美元|港元)$/.test(sp.cn.unitWord) ? '' : '')) + sp.cn.unitWord;
           if (!vault.unit) vault.unit = {};
           if (!(shown in vault.unit)) vault.unit[shown] = sp.cn.unitWord;
@@ -2544,7 +2732,7 @@
         }
         parts.push(shown);
         last = sp.end;
-        entities.push(Object.assign({}, sp, { token: ent.token, shown }));
+        entities.push(Object.assign({}, sp, { token: ent ? ent.token : shown, shown }));
       }
       parts.push(text.slice(last));
       const masked = parts.join('');
@@ -2595,6 +2783,24 @@
       }
 
       let out = text;
+      // 日期平移打开时：回复里所有完整日期一次性反向平移（包括 AI 按平移后的日期推算出来的新日期）；
+      // 关掉时不动日期。一次扫描完成，不会出现"换回来的日期又被当成另一个平移结果再换一次"
+      if (vault.dateShift && vault.dateShiftUsed) {
+        const sh = vault.dateShift;
+        const spans = detectDates(out);
+        if (spans.length) {
+          let res = '', last = 0;
+          for (const sp of spans.sort((x, y) => x.start - y.start)) {
+            if (sp.start < last) continue;
+            const t = new Date(Date.UTC(sp.date.y, sp.date.mo - 1, sp.date.d - sh));
+            const f = Object.assign({}, sp.date.fmt);
+            if (vault.datePad && !f.md && (f.sep1 in vault.datePad)) f.pad = vault.datePad[f.sep1];
+            res += out.slice(last, sp.start) + wrap(fmtDate(t, f));
+            last = sp.end;
+          }
+          out = res + out.slice(last);
+        }
+      }
       // 兼容 AI 的各种改写：全角/半角方括号、括号内空格、markdown 包裹
       const tokRe = /[【\[［〔]\s*([\u4e00-\u9fa5]{1,4}|IP)\s*([A-Z]{1,2}\d?)\s*[】\]］〕]/g;
       out = out.replace(tokRe, (m, p, lab) => {
@@ -2795,12 +3001,12 @@
       save();
     }
     function exportVault() {
-      return JSON.stringify({ map: vault.map, num: vault.num, numRaw: vault.numRaw || {}, unit: vault.unit || {}, dict, created: vault.created, factor: vault.factor }, null, 1);
+      return JSON.stringify({ map: vault.map, num: vault.num, numRaw: vault.numRaw || {}, unit: vault.unit || {}, dict, created: vault.created, factor: vault.factor, dates: vault.dates || {}, dateShift: vault.dateShift || null }, null, 1);
     }
     function importVault(json) {
       const d = JSON.parse(json);
       if (!d || !d.map) throw new Error('格式不正确');
-      vault = { map: d.map, num: d.num || {}, numRaw: d.numRaw || {}, unit: d.unit || {}, created: d.created || '', factor: d.factor || null };
+      vault = { map: d.map, num: d.num || {}, numRaw: d.numRaw || {}, unit: d.unit || {}, created: d.created || '', factor: d.factor || null, dates: d.dates || {}, dateShift: d.dateShift || null };
       if (d.dict) dict = Object.assign({ ORG: [], PERSON: [], PROJECT: [] }, d.dict);
       save();
     }
@@ -2818,7 +3024,12 @@
       /* ---- 自定义规则 ---- */
       listRules() { return (vault.rules || []).slice(); },
       addRule(name, pattern, type, flags) {
-        try { new RegExp(pattern, flags || 'g'); }
+        if (typeof pattern !== 'string' || !pattern || pattern.length > 300) throw new Error('规则为空或太长（最多 300 字符）');
+        if (!Object.prototype.hasOwnProperty.call(TYPES, type) || type === 'DATE') throw new Error('不支持的类型：' + type);
+        flags = String(flags || 'g').replace(/[^gimsuy]/g, '');
+        if (flags.indexOf('g') < 0) flags += 'g';
+        if (unsafeRegex(pattern)) throw new Error('规则里有嵌套的重复（例如 (\\d+)+ 或 (a|aa)+），遇到长文本会让页面卡死，请改写');
+        try { new RegExp(pattern, flags); }
         catch (e) { throw new Error('正则语法有误：' + e.message); }
         if (!vault.rules) vault.rules = [];
         if (vault.rules.length >= 30) throw new Error('最多 30 条规则');
@@ -3731,6 +3942,62 @@
     return null;
   }
 
+  /* ---------------- 规则包：客户名单 + 自定义规则 + 放行 / 忽略名单，一人维护、团队导入 ----------------
+     可选口令加密（PBKDF2 20 万次 + AES-GCM）：规则包里是客户名单，本身就是敏感信息。 */
+  const PACK_KIND = 'demask-rulepack';
+  function b64(u8) { let s = ''; for (let i = 0; i < u8.length; i += 0x8000) s += String.fromCharCode.apply(null, u8.subarray(i, i + 0x8000)); return btoa(s); }
+  function unb64(s) { const b = atob(s); const u = new Uint8Array(b.length); for (let i = 0; i < b.length; i++) u[i] = b.charCodeAt(i); return u; }
+  async function packKey(pass, salt) {
+    const base = await crypto.subtle.importKey('raw', new TextEncoder().encode(pass), 'PBKDF2', false, ['deriveKey']);
+    return crypto.subtle.deriveKey({ name: 'PBKDF2', salt: salt, iterations: 200000, hash: 'SHA-256' }, base, { name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']);
+  }
+  async function buildRulePack(eng, extra, pass) {
+    const dict = eng.getDict();
+    const body = {
+      kind: PACK_KIND, v: 1, name: (extra && extra.name) || eng.currentProject().name, created: new Date().toISOString(),
+      dict: { ORG: (dict.ORG || []).slice(), PERSON: (dict.PERSON || []).slice(), PROJECT: (dict.PROJECT || []).slice() },
+      rules: eng.listRules().map(r => ({ name: r.name, pattern: r.pattern, type: r.type, flags: r.flags })),
+      exclude: (extra && extra.exclude) || [], ignore: (extra && extra.ignore) || []
+    };
+    const json = JSON.stringify(body);
+    if (!pass) return JSON.stringify(body, null, 1);
+    const salt = crypto.getRandomValues(new Uint8Array(16)), iv = crypto.getRandomValues(new Uint8Array(12));
+    const ct = new Uint8Array(await crypto.subtle.encrypt({ name: 'AES-GCM', iv: iv }, await packKey(pass, salt), new TextEncoder().encode(json)));
+    return JSON.stringify({ kind: PACK_KIND + '-enc', v: 1, salt: b64(salt), iv: b64(iv), ct: b64(ct) });
+  }
+  async function parseRulePack(text, pass) {
+    let d;
+    try { d = JSON.parse(text); } catch (e) { throw new Error('不是规则包文件'); }
+    if (d && d.kind === PACK_KIND + '-enc') {
+      if (!pass) { const e = new Error('这个规则包设了口令'); e.needPass = true; throw e; }
+      try {
+        const pt = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: unb64(d.iv) }, await packKey(pass, unb64(d.salt)), unb64(d.ct));
+        d = JSON.parse(new TextDecoder().decode(pt));
+      } catch (e) { throw new Error('口令不对，或文件已损坏'); }
+    }
+    if (!d || d.kind !== PACK_KIND) throw new Error('不是规则包文件');
+    const clean = a => Array.isArray(a) ? a.filter(x => typeof x === 'string' && x.trim().length >= 2 && x.length <= 60).map(x => x.trim()).slice(0, 20000) : [];
+    return {
+      name: String(d.name || ''), created: String(d.created || ''),
+      dict: { ORG: clean(d.dict && d.dict.ORG), PERSON: clean(d.dict && d.dict.PERSON), PROJECT: clean(d.dict && d.dict.PROJECT) },
+      rules: Array.isArray(d.rules) ? d.rules.filter(r => r && typeof r.pattern === 'string' && r.pattern.length <= 300 && typeof r.type === 'string' && Object.prototype.hasOwnProperty.call(TYPES, r.type)).map(r => ({ name: String(r.name || '自定义').slice(0, 40), pattern: r.pattern, type: r.type, flags: String(r.flags || 'g').replace(/[^gimsuy]/g, '') })).slice(0, 30) : [],
+      exclude: clean(d.exclude), ignore: clean(d.ignore)
+    };
+  }
+  // 合并进当前项目：已有的不重复加，返回新增数量
+  function applyRulePack(eng, pack) {
+    const dict = eng.getDict();
+    const n = { ORG: 0, PERSON: 0, PROJECT: 0, rules: 0 };
+    for (const t of ['ORG', 'PERSON', 'PROJECT']) for (const w of pack.dict[t]) if ((dict[t] || []).indexOf(w) < 0) { eng.addWord(t, w, true); n[t]++; }
+    const have = new Set(eng.listRules().map(r => r.pattern + '\u0001' + r.type));
+    for (const r of pack.rules) {
+      if (have.has(r.pattern + '\u0001' + r.type)) continue;
+      try { eng.addRule(r.name, r.pattern, r.type, r.flags); n.rules++; } catch (e) { /* 正则不合法或超过上限：跳过 */ }
+    }
+    if (eng.flushSave) eng.flushSave();
+    return n;
+  }
+
   async function partText(files, n) { return files[n] ? entryText(files, n) : null; }
 
   // 通读全文：先学到这个文件里所有的名字，再逐个部件替换，保证页眉里的"华润万佳"和正文里的全称拿同一个代号
@@ -3963,6 +4230,7 @@
 
   return {
     TYPES, createEngine, DEFAULT_OPTS, extractText, maskOfficeFile, writeZip, LEX,
+    buildRulePack, parseRulePack, applyRulePack,
     // 供测试使用
     _internal: { detectMoney, detectOrgs, detectPersons, detectFinRows, detectTables, resolveOverlaps, scaleAmount, detectLexicon, detectCodename, propagateNamed, detectRegex, detectDocNo, detectOrgList, detectEquity }
   };

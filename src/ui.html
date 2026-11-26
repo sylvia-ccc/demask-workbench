@@ -432,6 +432,7 @@
             <div class="chip on" data-k="mask_equity"><span class="box"></span>股权比例</div>
             <div class="chip on" data-k="ai_note"><span class="box"></span>复制时附说明</div>
             <div class="chip" data-k="mask_pct"><span class="box"></span>其他比率</div>
+            <div class="chip" data-k="date_shift" title="实验功能：带年月日的日期和「3月5日」整体挪动同一个隐藏天数（间隔不变，可还原）。暂不处理：Excel 里存成日期格式的单元格、英文日期、中文数字日期、8 位数字日期——同一份材料里有这些写法时，平移天数可能被反推。还原时 AI 凭常识写的真实日期也会被反向平移，请核对"><span class="box"></span>日期平移（实验）</div>
           </div>
         </div>
 
@@ -514,6 +515,14 @@
               <button class="btn" id="dictBulkGo">导入</button>
               <label class="btn" style="cursor:pointer">从文件导入<input type="file" id="dictFile" accept=".txt,.csv,.xlsx" style="display:none"></label>
               <span style="color:var(--faint)">txt / csv / xlsx，自动跳过数字和表头</span>
+            </div>
+          </details>
+          <details style="margin-top:6px;font-size:12px">
+            <summary style="cursor:pointer;color:var(--accent-2)">规则包：团队共用一套名单和规则</summary>
+            <div style="color:var(--muted);margin:6px 0;line-height:1.7">把当前的客户名单、自定义规则、放行和忽略名单打成一个文件，发给同事导入即可。名单本身是敏感信息，建议设口令。</div>
+            <div style="display:flex;gap:6px;align-items:center">
+              <button class="btn" id="btnPackOut">导出规则包</button>
+              <label class="btn" style="cursor:pointer">导入规则包<input type="file" id="packFile" accept=".json,.demask" style="display:none"></label>
             </div>
           </details>
         </div>
@@ -602,14 +611,16 @@
       <button class="btn" id="btnDecrypt" style="display:none">关闭加密</button>
     </div>
     <div style="display:flex;align-items:center;gap:8px;margin:18px 0 8px">
-      <b style="font-size:13px">操作记录</b>
-      <span style="font-size:11.5px;color:var(--faint)">只记时间、项目、字数、实体数，不记内容</span>
+      <b style="font-size:13px">脱敏记录</b>
+      <span style="font-size:11.5px;color:var(--faint)">每次复制、导出自动记一条：时间、项目、替换了什么类型、校验码；不记任何内容</span>
       <div class="grow"></div>
+      <button class="btn ghost" id="btnAuditCsv" style="font-size:11.5px;padding:3px 9px">导出表格</button>
+      <button class="btn ghost" id="btnAuditHtml" style="font-size:11.5px;padding:3px 9px">导出报告</button>
       <button class="btn ghost" id="btnClearAudit" style="font-size:11.5px;padding:3px 9px">清空</button>
     </div>
     <table style="margin-bottom:20px">
-      <thead><tr><th style="width:150px">时间</th><th style="width:180px">项目</th><th style="width:80px">字数</th><th style="width:80px">实体</th></tr></thead>
-      <tbody id="auditBody"><tr><td colspan="4" class="empty-row">还没有记录。</td></tr></tbody>
+      <thead><tr><th style="width:110px">时间</th><th style="width:130px">项目</th><th style="width:170px">动作</th><th>替换</th><th style="width:150px">校验码</th></tr></thead>
+      <tbody id="auditBody"><tr><td colspan="5" class="empty-row">还没有记录。</td></tr></tbody>
     </table>
 
     <table>
@@ -803,7 +814,7 @@ function runMask() {
   updateStats(r.stats.chars, r.stats.entities, r.stats.unique, r.residual, r.suggestions, r.reid);
   renderEntities(); renderRisk(r.residual); renderSuggestions(r.suggestions); renderPseudo(r.pseudo); renderReid(r.reid); renderUtility(r.masked, r.reid);
   $('#vaultCount').textContent = r.vaultSize;
-  logAudit(r);
+  state.lastResult = r;
   $('#projName').textContent = eng.currentProject().name;
   if (eng.saveFailed()) {
     $('#vaultCount').textContent = r.vaultSize + '（未保存）';
@@ -1047,6 +1058,7 @@ function syncHint() {
   if (state.opts.mask_contact) parts.push('联系方式');
   if (state.opts.mask_equity) parts.push('股权比例');
   if (state.opts.mask_pct) parts.push('其他比率');
+  if (state.opts.date_shift) parts.push('日期平移');
   const nm = { scale: `等比缩放 ${state.opts.num_factor.toFixed(2)}`, bucket: '区间化', hash: '等长乱数', keep: '金额原样' }[state.opts.num_mode];
   const lexN = state.lexOn ? state.lexOn.size : 0;
   $('#settingsHint').textContent = (parts.join('、') || '未选择') + ' · ' + nm + ' · 词库 ' + lexN + '/' + lexKeys.length
@@ -1057,46 +1069,132 @@ $('#settingsHead').onclick = () => $('#settings').classList.toggle('open');
 /* ---------------- 操作记录（只记元数据） ---------------- */
 const AUDIT_KEY = 'demask.audit.v1';
 
-function logAudit(r) {
+// 脱敏记录：只在"内容离开本机"的时刻记一条（复制、导出、批量），不记任何原文。
+// 校验码是发出内容的 SHA-256 前 16 位：日后能证明"当时发出去的就是这一版"。
+async function sha16(data) {
+  try {
+    const buf = typeof data === 'string' ? new TextEncoder().encode(data) : data;
+    const h = new Uint8Array(await crypto.subtle.digest('SHA-256', buf));
+    return Array.from(h.slice(0, 8), b => b.toString(16).padStart(2, '0')).join('');
+  } catch (e) { return ''; }
+}
+function typeCounts(ents) {
+  const seen = {}, out = {};
+  for (const e of ents || []) { const k = e.type + ':' + (e.token || e.text); if (seen[k]) continue; seen[k] = 1; out[e.type] = (out[e.type] || 0) + 1; }
+  return out;
+}
+async function recordOut(action, payload, extra) {
   if (!STORE) return;
+  const r = state.lastResult || {};
+  const rec = {
+    t: new Date().toISOString(),
+    p: eng.currentProject().name,
+    a: action,
+    n: (extra && extra.name) || '粘贴内容',
+    c: (extra && extra.chars) || (r.stats ? r.stats.chars : 0),
+    e: (extra && extra.entities != null) ? extra.entities : (r.stats ? r.stats.entities : 0),
+    k: (extra && extra.types) || typeCounts(state.entities),
+    pend: (extra && extra.pend != null) ? extra.pend : (state.suggestions || []).length,
+    res: (extra && extra.res != null) ? extra.res : (state.residual || []).length,
+    h: await sha16(payload),
+    x: (extra && extra.note) || ''
+  };
   try {
     const arr = JSON.parse(STORE.getItem(AUDIT_KEY) || '[]');
-    const last = arr[0];
-    // 连续编辑同一份内容时不要刷屏：同项目 + 同字数，30 秒内只记一次
-    if (last && last.p === eng.currentProject().name && last.c === r.stats.chars &&
-        Date.now() - new Date(last.t).getTime() < 30000) return;
-    arr.unshift({
-      t: new Date().toISOString(),
-      p: eng.currentProject().name,
-      c: r.stats.chars,
-      e: r.stats.entities
-    });
-    STORE.setItem(AUDIT_KEY, JSON.stringify(arr.slice(0, 200)));
+    arr.unshift(rec);
+    STORE.setItem(AUDIT_KEY, JSON.stringify(arr.slice(0, 1000)));
   } catch (e) {}
+  renderAudit();
 }
+function auditRows() {
+  let arr = [];
+  if (STORE) { try { arr = JSON.parse(STORE.getItem(AUDIT_KEY) || '[]'); } catch (e) {} }
+  return arr;
+}
+const AUDIT_TYPE = t => (TYPES[t] ? TYPES[t].label : t);
+function kText(k) { return Object.keys(k || {}).map(t => AUDIT_TYPE(t) + ' ' + k[t]).join('、'); }
 
 function renderAudit() {
   const tb = $('#auditBody');
   if (!tb) return;
-  let arr = [];
-  if (STORE) { try { arr = JSON.parse(STORE.getItem(AUDIT_KEY) || '[]'); } catch (e) {} }
+  const arr = auditRows();
   if (!arr.length) {
-    tb.innerHTML = '<tr><td colspan="4" class="empty-row">还没有记录。</td></tr>';
+    tb.innerHTML = '<tr><td colspan="5" class="empty-row">还没有记录。复制、导出时会自动记一条。</td></tr>';
     return;
   }
-  tb.innerHTML = arr.slice(0, 20).map(a => {
+  tb.innerHTML = arr.slice(0, 30).map(a => {
     const d = new Date(a.t);
     const ts = d.toLocaleString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
+    const act = a.a || '脱敏';
+    const warn = (a.pend ? '，' + a.pend + ' 处待确认' : '') + (a.res ? '，' + a.res + ' 处残留提示' : '');
     return `<tr><td class="mono" style="color:var(--muted)">${ts}</td>
-      <td>${esc(a.p)}</td><td class="mono">${a.c}</td><td class="mono">${a.e}</td></tr>`;
+      <td>${esc(a.p)}</td><td>${esc(act)}<div style="color:var(--faint);font-size:11px">${esc(a.n || '')}</div></td>
+      <td title="${esc(kText(a.k))}">${a.e} 处${esc(warn)}</td><td class="mono" style="font-size:11px">${esc(a.h || '')}</td></tr>`;
   }).join('');
 }
+function auditCsv() {
+  const head = ['时间', '项目', '动作', '对象', '字数', '替换处数', '按类型', '待确认', '残留提示', '校验码(SHA-256前16位)', '备注'];
+  // 以 = + - @ 开头的字段在 Excel 里会被当成公式执行：前面加单引号
+  const q = v => { let x = String(v == null ? '' : v); if (/^[=+\-@\t\r]/.test(x)) x = "'" + x; return '"' + x.replace(/"/g, '""') + '"'; };
+  const lines = [head.map(q).join(',')].concat(auditRows().map(a => [a.t, a.p, a.a || '脱敏', a.n || '', a.c, a.e, kText(a.k), a.pend || 0, a.res || 0, a.h || '', a.x || ''].map(q).join(',')));
+  return '﻿' + lines.join('\r\n');
+}
+function auditHtml() {
+  const rows = auditRows();
+  const tr = rows.map(a => `<tr><td>${esc(new Date(a.t).toLocaleString('zh-CN'))}</td><td>${esc(a.p)}</td><td>${esc(a.a || '脱敏')}</td><td>${esc(a.n || '')}</td><td>${a.e}</td><td>${esc(kText(a.k))}</td><td>${a.pend || 0}</td><td>${a.res || 0}</td><td class="m">${esc(a.h || '')}</td></tr>`).join('');
+  return `<!DOCTYPE html><html lang="zh-CN"><head><meta charset="utf-8"><title>脱敏记录</title><style>body{font:13px/1.6 -apple-system,"PingFang SC",sans-serif;margin:32px;color:#1d2733}h1{font-size:18px}table{border-collapse:collapse;width:100%}th,td{border:1px solid #d8dee6;padding:5px 8px;text-align:left;vertical-align:top}th{background:#f3f6f9}.m{font-family:ui-monospace,Menlo,monospace;font-size:11.5px}p{color:#5b6775}</style></head><body>
+<h1>脱敏记录</h1><p>导出时间：${esc(new Date().toLocaleString('zh-CN'))}　·　共 ${rows.length} 条　·　本记录只含时间、项目、动作、数量和校验码，不含任何原文或脱敏内容。校验码为发出内容的 SHA-256 前 16 位，可用于核对某一版本是否与记录一致。</p>
+<table><thead><tr><th>时间</th><th>项目</th><th>动作</th><th>对象</th><th>替换</th><th>按类型</th><th>待确认</th><th>残留提示</th><th>校验码</th></tr></thead><tbody>${tr}</tbody></table></body></html>`;
+}
+function download(name, data, type) {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([data], { type: type }));
+  a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+$('#btnAuditCsv').onclick = () => { if (!auditRows().length) return toast('还没有记录'); download('脱敏记录-' + new Date().toISOString().slice(0, 10) + '.csv', auditCsv(), 'text/csv;charset=utf-8'); };
+$('#btnAuditHtml').onclick = () => { if (!auditRows().length) return toast('还没有记录'); download('脱敏记录-' + new Date().toISOString().slice(0, 10) + '.html', auditHtml(), 'text/html;charset=utf-8'); };
 
 $('#btnClearAudit').onclick = () => {
   if (!confirm('清空操作记录？')) return;
   if (STORE) { try { STORE.removeItem(AUDIT_KEY); } catch (e) {} }
   renderAudit();
   toast('已清空');
+};
+
+/* ---------------- 规则包 ---------------- */
+$('#btnPackOut').onclick = async () => {
+  const pass = prompt('给规则包设一个口令（同事导入时需要输入）。\n不设口令直接点确定（名单会以明文保存）：', '');
+  if (pass === null) return;
+  try {
+    const txt = await DemaskEngine.buildRulePack(eng, { exclude: state.opts.exclude || [], ignore: state.opts.ignore_suspects || [] }, pass || '');
+    const name = '规则包-' + maskFileName(eng.currentProject().name) + '-' + new Date().toISOString().slice(0, 10) + '.demask.json';
+    download(name, txt, 'application/json');
+    toast('已导出规则包' + (pass ? '（已加密）' : '（未加密，请妥善保管）'));
+  } catch (e) { toast('导出失败：' + e.message); }
+};
+$('#packFile').onchange = async e => {
+  const f = e.target.files[0]; e.target.value = '';
+  if (!f) return;
+  const txt = await f.text();
+  let pack;
+  try { pack = await DemaskEngine.parseRulePack(txt); }
+  catch (err) {
+    if (!err.needPass) return toast('导入失败：' + err.message);
+    const pass = prompt('这个规则包设了口令，请输入：', '');
+    if (!pass) return;
+    try { pack = await DemaskEngine.parseRulePack(txt, pass); } catch (e2) { return toast('导入失败：' + e2.message); }
+  }
+  const d = pack.dict;
+  const sample = arr => arr.slice(0, 6).join('、') + (arr.length > 6 ? '……' : '');
+  const msg = '规则包「' + (pack.name || '未命名') + '」包含：企业 ' + d.ORG.length + ' 个、人名 ' + d.PERSON.length + ' 个、项目 ' + d.PROJECT.length + ' 个、自定义规则 ' + pack.rules.length + ' 条、放行 ' + pack.exclude.length + ' 个、忽略 ' + pack.ignore.length + ' 个。' +
+    (d.ORG.length ? '\n企业：' + sample(d.ORG) : '') + (pack.exclude.length ? '\n放行（这些词不会被脱敏）：' + sample(pack.exclude) : '') +
+    '\n合并到当前项目「' + eng.currentProject().name + '」？已有的不会重复添加。';
+  if (!confirm(msg)) return;
+  const n = DemaskEngine.applyRulePack(eng, pack);
+  state.opts.exclude = Array.from(new Set((state.opts.exclude || []).concat(pack.exclude)));
+  state.opts.ignore_suspects = Array.from(new Set((state.opts.ignore_suspects || []).concat(pack.ignore)));
+  saveLocalPrefs(); renderDict(); renderRules(); state.lastInput = ''; runMask();
+  toast('已合并：新增企业 ' + n.ORG + '、人名 ' + n.PERSON + '、项目 ' + n.PROJECT + '、规则 ' + n.rules);
 };
 
 /* ---------------- 自定义规则 ---------------- */
@@ -1280,6 +1378,7 @@ $('#btnCopy').onclick = async () => {
   try {
     await navigator.clipboard.writeText(withNote(state.masked));
     toast('已复制（含占位符说明），可以粘贴给 AI 了');
+    recordOut('复制给 AI', withNote(state.masked));
   }
   catch (e) { toast('复制失败，请手动选中'); }
 };
@@ -1317,6 +1416,7 @@ $('#btnExportFile').onclick = async () => {
     if (extra) msg += '；另外清理了' + extra;
     if (st.warnings && st.warnings.length) msg += '。注意：' + st.warnings.join('；');
     toast(msg, 9000);
+    recordOut('导出 ' + ext.toUpperCase(), await r.blob.arrayBuffer(), { name: a.download, entities: st.entities, types: {}, pend: 0, res: 0, chars: 0, note: extra });
   } catch (e) {
     toast('导出失败：' + e.message);
   } finally {
@@ -1333,6 +1433,7 @@ $('#btnDownload').onclick = () => {
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
   a.download = '脱敏稿-' + new Date().toISOString().slice(0, 10) + '.txt';
+  recordOut('导出 .txt', withNote(state.masked), { name: a.download });
   a.click(); URL.revokeObjectURL(a.href);
   toast('已导出');
 };
@@ -1462,6 +1563,7 @@ $('#btnChunk').onclick = () => {
       try {
         const i = +b.dataset.i;
         await navigator.clipboard.writeText(i === 0 ? withNote(chunks[0]) : chunks[i]);
+        recordOut('复制第 ' + (i + 1) + '/' + chunks.length + ' 段', i === 0 ? withNote(chunks[0]) : chunks[i]);
         toast('已复制第 ' + (i + 1) + ' 段');
       }
       catch (e) { toast('复制失败，请手动选中'); }
@@ -1565,7 +1667,7 @@ async function batchProcess(files) {
         const r = await (eng.setOpts(state.opts), DemaskEngine.maskOfficeFile)(f.name, buf, eng);
         const ab = await r.blob.arrayBuffer();
         out.push({ name: (r.stats.maskedName || maskFileName(base)) + '-脱敏.' + ext, data: new Uint8Array(ab) });
-        for (const w of (r.stats.warnings || [])) log.push(f.name + '：' + w);
+        for (const w of (r.stats.warnings || [])) log.push((r.stats.maskedName || maskFileName(base)) + '：' + eng.mask(w, state.opts).masked);
         ent += r.stats.entities || 0;
         cells += r.stats.cells || 0;
       } else {
@@ -1573,17 +1675,17 @@ async function batchProcess(files) {
         if (ext === 'pdf' && typeof DemaskPDF !== 'undefined') {
           const r = await DemaskPDF.extract(buf);
           txt = r.text;
-          for (const w of (r.warnings || [])) log.push(f.name + '：' + w);
+          for (const w of (r.warnings || [])) log.push(maskFileName(base) + '：' + w);
         } else {
           txt = await extractText(f.name, buf);
         }
-        if (txt === null) { log.push(f.name + '：格式不支持，已跳过'); continue; }
+        if (txt === null) { log.push(maskFileName(base) + '：格式不支持，已跳过'); continue; }
         const m = eng.mask(txt, state.opts);
         out.push({ name: maskFileName(base) + '-脱敏.txt', data: new TextEncoder().encode(withNote(m.masked)) });
         ent += m.entities.length;
       }
     } catch (e) {
-      log.push(f.name + '：' + e.message);
+      log.push(maskFileName(f.name.replace(/\.[^.]+$/, '')) + '：' + e.message);
     }
   }
 
@@ -1598,6 +1700,7 @@ async function batchProcess(files) {
   const a = document.createElement('a');
   a.href = URL.createObjectURL(zip);
   a.download = '脱敏结果-' + new Date().toISOString().slice(0, 10) + '.zip';
+  recordOut('批量导出 ' + out.length + ' 个文件', await zip.arrayBuffer(), { name: a.download, entities: ent, types: {}, pend: 0, res: 0, chars: 0, note: log.length ? log.length + ' 条处理提示（详见压缩包里的处理说明）' : '' });
   a.click(); URL.revokeObjectURL(a.href);
 
   toast(`已打包 ${out.length} 个文件（${ent} 处实体${cells ? '，' + cells + ' 个表格数字' : ''}）` +

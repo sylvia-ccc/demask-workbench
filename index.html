@@ -314,7 +314,7 @@
     脱敏工作台
   </div>
   <span class="tag">离线单文件 · 不联网</span>
-  <span class="ver" id="ver">v2.4</span>
+  <span class="ver" id="ver">v2.5</span>
   <div class="spacer"></div>
   <div class="proj">
     <div class="proj-btn" id="projBtn" title="切换项目：每个项目一套独立的映射">
@@ -432,6 +432,7 @@
             <div class="chip on" data-k="mask_equity"><span class="box"></span>股权比例</div>
             <div class="chip on" data-k="ai_note"><span class="box"></span>复制时附说明</div>
             <div class="chip" data-k="mask_pct"><span class="box"></span>其他比率</div>
+            <div class="chip" data-k="date_shift" title="实验功能：带年月日的日期和「3月5日」整体挪动同一个隐藏天数（间隔不变，可还原）。暂不处理：Excel 里存成日期格式的单元格、英文日期、中文数字日期、8 位数字日期——同一份材料里有这些写法时，平移天数可能被反推。还原时 AI 凭常识写的真实日期也会被反向平移，请核对"><span class="box"></span>日期平移（实验）</div>
           </div>
         </div>
 
@@ -514,6 +515,14 @@
               <button class="btn" id="dictBulkGo">导入</button>
               <label class="btn" style="cursor:pointer">从文件导入<input type="file" id="dictFile" accept=".txt,.csv,.xlsx" style="display:none"></label>
               <span style="color:var(--faint)">txt / csv / xlsx，自动跳过数字和表头</span>
+            </div>
+          </details>
+          <details style="margin-top:6px;font-size:12px">
+            <summary style="cursor:pointer;color:var(--accent-2)">规则包：团队共用一套名单和规则</summary>
+            <div style="color:var(--muted);margin:6px 0;line-height:1.7">把当前的客户名单、自定义规则、放行和忽略名单打成一个文件，发给同事导入即可。名单本身是敏感信息，建议设口令。</div>
+            <div style="display:flex;gap:6px;align-items:center">
+              <button class="btn" id="btnPackOut">导出规则包</button>
+              <label class="btn" style="cursor:pointer">导入规则包<input type="file" id="packFile" accept=".json,.demask" style="display:none"></label>
             </div>
           </details>
         </div>
@@ -602,14 +611,16 @@
       <button class="btn" id="btnDecrypt" style="display:none">关闭加密</button>
     </div>
     <div style="display:flex;align-items:center;gap:8px;margin:18px 0 8px">
-      <b style="font-size:13px">操作记录</b>
-      <span style="font-size:11.5px;color:var(--faint)">只记时间、项目、字数、实体数，不记内容</span>
+      <b style="font-size:13px">脱敏记录</b>
+      <span style="font-size:11.5px;color:var(--faint)">每次复制、导出自动记一条：时间、项目、替换了什么类型、校验码；不记任何内容</span>
       <div class="grow"></div>
+      <button class="btn ghost" id="btnAuditCsv" style="font-size:11.5px;padding:3px 9px">导出表格</button>
+      <button class="btn ghost" id="btnAuditHtml" style="font-size:11.5px;padding:3px 9px">导出报告</button>
       <button class="btn ghost" id="btnClearAudit" style="font-size:11.5px;padding:3px 9px">清空</button>
     </div>
     <table style="margin-bottom:20px">
-      <thead><tr><th style="width:150px">时间</th><th style="width:180px">项目</th><th style="width:80px">字数</th><th style="width:80px">实体</th></tr></thead>
-      <tbody id="auditBody"><tr><td colspan="4" class="empty-row">还没有记录。</td></tr></tbody>
+      <thead><tr><th style="width:110px">时间</th><th style="width:130px">项目</th><th style="width:170px">动作</th><th>替换</th><th style="width:150px">校验码</th></tr></thead>
+      <tbody id="auditBody"><tr><td colspan="5" class="empty-row">还没有记录。</td></tr></tbody>
     </table>
 
     <table>
@@ -2130,12 +2141,17 @@
     CONTRACT: { label: '合同/项目编号', prefix: '编号', color: 'sec' },
     INVOICE:  { label: '发票号',   prefix: '发票', color: 'sec' },
     ACCOUNT:  { label: '账号/证券账户', prefix: '账号', color: 'sec' },
-    BIRTH:    { label: '出生日期', prefix: '日期', color: 'sec' }
+    BIRTH:    { label: '出生日期', prefix: '日期', color: 'sec' },
+    DATE:     { label: '日期（平移）', prefix: '日期', color: 'amt' },
+    DEVICE:   { label: '设备标识', prefix: '设备', color: 'sec' },
+    CASE:     { label: '案号/文号/权证号', prefix: '文号', color: 'sec' },
+    SECURITY: { label: '证券/产品编码', prefix: '证券', color: 'sec' }
   };
 
   const PRIO = {
     IDCARD: 10, BANK: 10, SECRET: 10, USCC: 9, EMAIL: 9, PHONE: 8,
     ADDR: 7, URL: 6, IP: 6, PLATE: 6, TICKER: 9, CONTRACT: 9, INVOICE: 9, ACCOUNT: 11, BIRTH: 7,
+    DEVICE: 9, CASE: 9, SECURITY: 9, DATE: 2,
     ORG: 5, PERSON: 5, PROJECT: 4, MONEY: 3, PCT: 1
   };
 
@@ -2431,6 +2447,173 @@
   }
 
   /* ---------------- 检测器：规则类 ---------------- */
+  /* ---- 补充的强格式标识（对照个人金融信息与去标识化相关规范补齐）：
+     卡片安全码与有效期、密保答案、外国人永居证、军官证、登录名、保单号、公积金/社保账号、
+     MAC / IMEI / 车架号、案号 / 处罚文号 / 不动产权证号、ISIN / LEI / 私募备案编码。
+     能校验的都校验（IMEI、VIN、ISIN、LEI），其余必须有标签引导。 */
+function luhnOk(d) {
+    let s = 0, alt = false;
+    for (let i = d.length - 1; i >= 0; i--) {
+      let n = d.charCodeAt(i) - 48;
+      if (alt) { n *= 2; if (n > 9) n -= 9; }
+      s += n; alt = !alt;
+    }
+    return s % 10 === 0;
+  }
+  // VIN 第 9 位校验位（ISO 3779 / 北美与国标通用）
+  function vinOk(v) {
+    v = v.toUpperCase();
+    if (!/^[A-HJ-NPR-Z0-9]{17}$/.test(v)) return false;
+    const tr = { A: 1, B: 2, C: 3, D: 4, E: 5, F: 6, G: 7, H: 8, J: 1, K: 2, L: 3, M: 4, N: 5, P: 7, R: 9, S: 2, T: 3, U: 4, V: 5, W: 6, X: 7, Y: 8, Z: 9 };
+    const w = [8, 7, 6, 5, 4, 3, 2, 10, 0, 9, 8, 7, 6, 5, 4, 3, 2];
+    let s = 0;
+    for (let i = 0; i < 17; i++) { const c = v[i]; s += (/\d/.test(c) ? +c : tr[c]) * w[i]; }
+    const r = s % 11, chk = r === 10 ? 'X' : String(r);
+    return v[8] === chk;
+  }
+  // ISIN：字母换成数字后做 Luhn
+  function isinOk(x) {
+    if (!/^[A-Z]{2}[A-Z0-9]{9}\d$/.test(x)) return false;
+    const d = x.split('').map(c => /\d/.test(c) ? c : String(c.charCodeAt(0) - 55)).join('');
+    return luhnOk(d);
+  }
+  // LEI：ISO 17442，整体 mod 97 == 1
+  function leiOk(x) {
+    if (!/^[A-Z0-9]{18}\d{2}$/.test(x)) return false;
+    let r = 0;
+    for (const c of x) { const v = /\d/.test(c) ? c : String(c.charCodeAt(0) - 55); for (const d of v) r = (r * 10 + +d) % 97; }
+    return r === 1;
+  }
+  
+  const RULES = [
+    // 认证辅助信息（最高敏感）：必须有标签
+    { type: 'SECRET', note: 'CVV', re: /(?:CVV2?|CVN2?|CVC|安全码|卡背后三位)\s*(?:码)?\s*[:：为是]?\s*(\d{3,4})(?!\d)/gi },
+    { type: 'SECRET', note: '卡片有效期', re: /(?:有效期(?:至|到)?|有效期限|Valid\s*(?:Thru|Until)|EXP(?:IRY)?)\s*[:：为是]?\s*((?:0[1-9]|1[0-2])\s*\/\s*(?:\d{2}|20\d{2}))(?!\d)/gi, ctx: /卡|CVV|CVC|CVN|安全码|Card|VISA|Master/i },
+    { type: 'SECRET', note: '密码提示答案', re: /(?:密保问题答案|密码提示(?:答案|问题)?|安全问题答案)\s*[:：为是]\s*([^\s，。；,;]{1,30})/g },
+    // 证件
+    { type: 'IDCARD', note: '外国人永居证', re: /(?:永久居留(?:身份)?证|永居证|绿卡)(?:号码?|号)?\s*[:：为是]?\s*([A-Z]{3}\d{12}|9\d{17}|9\d{16}X)(?![\dA-Z])/g },
+    { type: 'IDCARD', note: '军官证/士兵证', re: /(?:军官证|士兵证|文职干部证|警官证)(?:号码?|号)?\s*[:：为是]?\s*([一-龥]{0,4}字?第?\s*\d{6,10}号?)/g },
+    // 账号类（带标签）
+    { type: 'ACCOUNT', note: '登录名', re: /(?:登录名|登录账号|用户名|账户名|Username|Login(?:\s*ID)?)\s*[:：为是]\s*([A-Za-z][A-Za-z0-9_.@-]{3,40})/gi },
+    { type: 'ACCOUNT', note: '保单号', re: /(?:保单号(?:码)?|保险单号|Policy\s*No\.?)\s*[:：为是]?\s*([A-Z0-9][A-Z0-9-]{7,29})/gi },
+    { type: 'ACCOUNT', note: '公积金/社保账号', re: /(?:公积金(?:个人)?账号|社保(?:个人)?编号|医保(?:卡)?号)\s*[:：为是]?\s*([A-Z0-9]{8,20})/g },
+    // 设备与网络标识
+    { type: 'DEVICE', note: 'MAC 地址', re: /(?<![0-9A-Fa-f:-])((?:[0-9A-Fa-f]{2}[:-]){5}[0-9A-Fa-f]{2})(?![0-9A-Fa-f:-])/g },
+    { type: 'DEVICE', note: 'IMEI', re: /(?:IMEI|MEID|设备串号|手机串号)\s*(?:号|码)?\s*[:：为是]?\s*(\d{15})(?!\d)/gi, check: v => luhnOk(v) },
+    { type: 'DEVICE', note: 'VIN', re: /(?<![A-Z0-9])([A-HJ-NPR-Z0-9]{17})(?![A-Z0-9])/g, check: v => /\d/.test(v) && /[A-Z]/.test(v) && vinOk(v) },
+    // 司法与行政文号
+    // 案号：（年份）+ 法院代字 + 案件类型字（初/终/再/申/执/破……）+ 序号 + 号（可带"之一"）
+    { type: 'CASE', note: '案号', re: /([（(]\s*(?:19|20)\d{2}\s*[)）]\s*[一-龥]{1,3}\s*\d{0,4}\s*[一-龥]{0,4}(?:初|终|再|申|执|破|特|监|督|保|赔|撤|恢|清|协|外|认|算|调|刑|民|行|商|知)[一-龥]{0,2}\s*\d{1,6}\s*号(?:之[一二三四五六七八九十])?)/g },
+    // 行政处罚 / 决定文号（公开发文字号"国发〔2024〕5号"不算：那是法规，AI 需要看到）
+    { type: 'CASE', note: '处罚/决定文号', re: /([一-龥]{1,14}(?:罚字|罚决字|处罚字|处罚决定书|决定书|决字|监决|罚)\s*[〔\[【(（]\s*(?:19|20)\d{2}\s*[〕\]】)）]\s*第?\s*\d{1,6}\s*号)/g },
+    { type: 'CASE', note: '不动产权证号', re: /([一-龥]{1,2}\s*[（(]\s*(?:19|20)\d{2}\s*[)）]\s*[一-龥]{0,10}?(?:不动产权|房权证|房地权证)\s*第?\s*\d{5,10}\s*号)/g },
+    // 证券与产品标识
+    { type: 'SECURITY', note: 'ISIN', re: /(?<![A-Z0-9])([A-Z]{2}[A-Z0-9]{9}\d)(?![A-Z0-9])/g, check: isinOk },
+    { type: 'SECURITY', note: 'LEI', re: /(?<![A-Z0-9])([A-Z0-9]{18}\d{2})(?![A-Z0-9])/g, check: leiOk },
+    { type: 'SECURITY', note: '私募备案编码', re: /(?:备案编码|备案号|基金备案)\s*[:：为是]?\s*(S[A-Z0-9]{5})(?![A-Z0-9])/g }
+  ];
+  
+  function detectExtra(text) {
+    const out = [];
+    for (const r of RULES) {
+      r.re.lastIndex = 0;
+      let m;
+      while ((m = r.re.exec(text)) !== null) {
+        const v = m[1];
+        if (r.check && !r.check(v.replace(/\s/g, ''))) continue;
+        if (r.ctx && !r.ctx.test(text.slice(Math.max(0, m.index - 30), m.index + m[0].length + 20))) continue;
+        const st = m.index + m[0].indexOf(v);
+        out.push(Span(st, st + v.length, r.type, v, 0.95, r.note));
+      }
+    }
+    return out;
+  }
+
+  /* ---- 日期平移（可选）：签约日、交割日、公告日这类完整日期能锁定具体交易 ----
+     打开后，所有带年月日的日期按同一个隐藏天数整体挪动（同一项目内固定），间隔天数不变，
+     AI 照样能算账期、工期；回复贴回来按对照表还原。只有年份或只有月份的不动。 */
+  const DATE_RE = /((?:19|20)\d{2})(年|-|\/|\.)(0?[1-9]|1[0-2])(月|-|\/|\.)(0?[1-9]|[12]\d|3[01])(日|号)?(?![\d])/g;
+  const MD_RE = /(?<![\d年\-\/.])(0?[1-9]|1[0-2])月(0?[1-9]|[12]\d|3[01])(日|号)(?![\d])/g;
+  const WEEK = '日一二三四五六';
+  function detectDates(text, refYear) {
+    const out = [];
+    const taken = new Uint8Array(text.length + 1);
+    DATE_RE.lastIndex = 0;
+    let m;
+    while ((m = DATE_RE.exec(text)) !== null) {
+      if (/\d/.test(text[m.index - 1] || '')) continue;
+      const sep1 = m[2], sep2 = m[4];
+      if (sep1 === '年' ? sep2 !== '月' : sep1 !== sep2) continue;        // 2025年3-1 这种不算
+      if (sep1 === '年' && !m[6]) continue;                               // 2025年3月15（没有"日"）不算
+      if (sep1 === '.' && (m[3].length < 2 || m[5].length < 2)) continue; // 2021.3.1 多半是版本号
+      const y = +m[1], mo = +m[3], d = +m[5];
+      const dt = new Date(Date.UTC(y, mo - 1, d));
+      if (dt.getUTCMonth() !== mo - 1) continue;                          // 2月30日不是日期
+      let end = m.index + m[0].length;
+      const wk = text.slice(end).match(/^\s?[（(]?(?:星期|周|礼拜)[一二三四五六日天][）)]?/);
+      if (wk) end += wk[0].length;
+      const sp = Span(m.index, end, 'DATE', text.slice(m.index, end), 0.9, '日期平移');
+      // 补零：横杠/斜杠/点写法按原样（两位就补零）；"年月日"写法只有原文带 0 才补
+      const pad = sep1 === '年' ? (/^0/.test(m[3]) || /^0/.test(m[5])) : (m[3].length === 2 || m[5].length === 2);
+      sp.date = { y, mo, d, fmt: { sep1, sep2, tail: m[6] || '', pad: pad, week: wk ? wk[0] : '' } };
+      out.push(sp);
+      for (let i = m.index; i < end; i++) taken[i] = 1;
+    }
+    // 只有月日（"3月5日"）：按文中最近的年份推算，平移后同样只写月日
+    MD_RE.lastIndex = 0;
+    while ((m = MD_RE.exec(text)) !== null) {
+      if (taken[m.index]) continue;
+      // 没有年份：固定按平年推算（去掉闰年差异，平移和还原才对得上）；星期几推不出来，直接去掉
+      const y = 2001;
+      void refYear;
+      const mo = +m[1], d = +m[2];
+      const dt = new Date(Date.UTC(y, mo - 1, d));
+      if (dt.getUTCMonth() !== mo - 1) continue;
+      let end = m.index + m[0].length;
+      const wk = text.slice(end).match(/^\s?[（(]?(?:星期|周|礼拜)[一二三四五六日天][）)]?/);
+      if (wk) end += wk[0].length;
+      const sp = Span(m.index, end, 'DATE', text.slice(m.index, end), 0.9, '日期平移');
+      sp.date = { y, mo, d, fmt: { sep1: '', sep2: '月', tail: m[3], pad: false, md: true, week: '' } };
+      out.push(sp);
+    }
+    return out;
+  }
+  function fmtDate(t, f) {
+    const p = n => f.pad ? String(n).padStart(2, '0') : String(n);
+    let s = f.md ? (t.getUTCMonth() + 1) + '月' + t.getUTCDate() + f.tail
+      : t.getUTCFullYear() + f.sep1 + p(t.getUTCMonth() + 1) + f.sep2 + p(t.getUTCDate()) + f.tail;
+    if (f.week) s += f.week.replace(/[一二三四五六日天](?=[）)]?$)/, WEEK[t.getUTCDay()]);
+    return s;
+  }
+
+  // 粗判"灾难性回溯"写法：带量词的分组外面再套量词，或分组里有可互相覆盖的分支再加量词
+  function unsafeRegex(p) {
+    // 先把转义和字符类压成一个占位字符，再按括号深度找"被量词修饰的分组"
+    const src = p.replace(/\\./g, 'x').replace(/\[(?:\\.|[^\]])*\]/g, 'x');
+    const stack = [];
+    for (let i = 0; i < src.length; i++) {
+      const c = src[i];
+      if (c === '(') stack.push(i);
+      else if (c === ')' && stack.length) {
+        const st = stack.pop();
+        let inner = src.slice(st + 1, i).replace(/^\?(?::|=|!|<=|<!|<[A-Za-z_]\w*>)/, '');
+        const after = src.slice(i + 1);
+        const q = after.match(/^(?:[+*]|\{(\d+)(,(\d*))?\})/);
+        if (!q) continue;
+        const repeats = q[0] === '+' || q[0] === '*' || (q[2] !== undefined) || (+q[1] >= 2);
+        if (!repeats) continue;
+        const unbounded = /[+*]|\{\d+,\}/.test(inner);
+        const alt = /\|/.test(inner);
+        // 分组以固定字面量开头（"-[A-Z0-9]+"）时，每次重复的边界唯一，不会回溯爆炸
+        const anchoredLiteral = /^[^\\.()x[+*?{|^$]/.test(inner);
+        if (alt) return true;
+        if (unbounded && !anchoredLiteral) return true;
+      }
+    }
+    return false;
+  }
+
+
   function detectRegex(text) {
     const out = [];
 
@@ -3190,18 +3373,23 @@
     if (!rules || !rules.length) return out;
     for (const r of rules) {
       if (!r || !r.pattern) continue;
+      if (r.slow || unsafeRegex(r.pattern) || !Object.prototype.hasOwnProperty.call(TYPES, r.type)) continue;   // 旧版本存下的危险规则也不跑
       let re;
       try {
         re = new RegExp(r.pattern, r.flags || 'g');
       } catch (e) { continue; }   // 用户写的正则可能有语法错，跳过不崩
       let m, n = 0;
+      const t0 = Date.now();
       while ((m = re.exec(text)) !== null) {
         if (m[0].length === 0) { re.lastIndex++; continue; }
+        // 兜底：某条规则在这段文字上跑了 300 毫秒以上，本次会话里停用它（没拦住的危险写法）
+        if (Date.now() - t0 > 300) { r.slow = true; break; }
         const val = (m[1] !== undefined && m[1] !== '') ? m[1] : m[0];
         const st = m.index + (val === m[0] ? 0 : m[0].indexOf(val));
         out.push(Span(st, st + val.length, r.type || 'ORG', val, 0.9, '规则:' + (r.name || '自定义')));
         if (++n >= 500) break;   // 防止写错的正则匹配爆炸
       }
+      if (Date.now() - t0 > 300) r.slow = true;
     }
     return out;
   }
@@ -4268,7 +4456,7 @@
   /* ---------------- 默认参数 ---------------- */
   const DEFAULT_OPTS = {
     mask_org: true, mask_person: true, mask_project: true,
-    mask_money: true, mask_contact: true, mask_pct: false, mask_equity: true,
+    mask_money: true, mask_contact: true, mask_pct: false, mask_equity: true, date_shift: false,
     num_mode: 'scale', num_factor: 0.618, token_style: 'bracket',
     lex_groups: null, exclude: []
   };
@@ -4448,7 +4636,7 @@
       if (!o.num_factor || o.num_factor === 'auto') o.num_factor = sessionFactor();
       let spans = [];
 
-      spans = spans.concat(detectRegex(text));
+      spans = spans.concat(detectRegex(text), detectExtra(text));
       if (o.mask_project) spans = spans.concat(detectCodename(text));
       if (o.mask_org) spans = spans.concat(detectOrgList(text));
       spans = spans.concat(detectDocNo(text));
@@ -4470,6 +4658,9 @@
         spans = spans.concat(detectTables(text));
       }
       if (o.mask_pct) spans = spans.concat(detectPercent(text));
+      if (o.date_shift) spans = spans.concat(detectDates(text));
+      else if (vault.dateShiftUsed && !o.fast && DATE_RE.test(text)) { vault.dateShiftUsed = false; }
+      DATE_RE.lastIndex = 0;
       if (o.mask_equity) spans = spans.concat(detectEquity(text));
 
       spans = resolveOverlaps(spans);
@@ -4573,6 +4764,7 @@
 
       // 分配代号：canon（规范名）决定身份，text（表面形式）决定还原文本
       for (const sp of spans) {
+        if (sp.type === 'DATE') continue;          // 日期平移不发代号
         const canon = sp.canon || sp.text;
         const ckey = sp.type + ':' + canon;
         const key = sp.type + ':' + sp.text;
@@ -4600,9 +4792,16 @@
       for (const sp of spans) {
         parts.push(text.slice(last, sp.start));
         const ent = vault.map[sp.type + ':' + sp.text];
-        let shown = ent.token;
+        let shown = ent ? ent.token : sp.text;
         if (o.token_style === 'mask') shown = maskToken(sp.text, sp.type);
-        if (sp.type === 'MONEY' && sp.cn && o.num_mode !== 'keep') {
+        if (sp.type === 'DATE' && sp.date) {
+          if (!vault.dateShift) { vault.dateShift = (Math.random() < 0.5 ? -1 : 1) * (37 + Math.floor(Math.random() * 140)); }
+          const t = new Date(Date.UTC(sp.date.y, sp.date.mo - 1, sp.date.d + vault.dateShift));
+          shown = fmtDate(t, sp.date.fmt);
+          vault.dateShiftUsed = true;
+          // 记住原文的补零习惯（2025/1/5 还是 2025/01/05），还原时照原样写回
+          if (!sp.date.fmt.md) { if (!vault.datePad) vault.datePad = {}; vault.datePad[sp.date.fmt.sep1] = /^0|^\d{4}\D\d{2}\D\d{2}/.test(sp.text.replace(/^\d{4}/, '')) || /\D0\d/.test(sp.text); }
+        } else if (sp.type === 'MONEY' && sp.cn && o.num_mode !== 'keep') {
           shown = numToken(sp.cn.num, o, sp.cn.unitWord.replace(/(美元|港元)$/, '') + (/(美元|港元)$/.test(sp.cn.unitWord) ? '' : '')) + sp.cn.unitWord;
           if (!vault.unit) vault.unit = {};
           if (!(shown in vault.unit)) vault.unit[shown] = sp.cn.unitWord;
@@ -4616,7 +4815,7 @@
         }
         parts.push(shown);
         last = sp.end;
-        entities.push(Object.assign({}, sp, { token: ent.token, shown }));
+        entities.push(Object.assign({}, sp, { token: ent ? ent.token : shown, shown }));
       }
       parts.push(text.slice(last));
       const masked = parts.join('');
@@ -4667,6 +4866,24 @@
       }
 
       let out = text;
+      // 日期平移打开时：回复里所有完整日期一次性反向平移（包括 AI 按平移后的日期推算出来的新日期）；
+      // 关掉时不动日期。一次扫描完成，不会出现"换回来的日期又被当成另一个平移结果再换一次"
+      if (vault.dateShift && vault.dateShiftUsed) {
+        const sh = vault.dateShift;
+        const spans = detectDates(out);
+        if (spans.length) {
+          let res = '', last = 0;
+          for (const sp of spans.sort((x, y) => x.start - y.start)) {
+            if (sp.start < last) continue;
+            const t = new Date(Date.UTC(sp.date.y, sp.date.mo - 1, sp.date.d - sh));
+            const f = Object.assign({}, sp.date.fmt);
+            if (vault.datePad && !f.md && (f.sep1 in vault.datePad)) f.pad = vault.datePad[f.sep1];
+            res += out.slice(last, sp.start) + wrap(fmtDate(t, f));
+            last = sp.end;
+          }
+          out = res + out.slice(last);
+        }
+      }
       // 兼容 AI 的各种改写：全角/半角方括号、括号内空格、markdown 包裹
       const tokRe = /[【\[［〔]\s*([\u4e00-\u9fa5]{1,4}|IP)\s*([A-Z]{1,2}\d?)\s*[】\]］〕]/g;
       out = out.replace(tokRe, (m, p, lab) => {
@@ -4867,12 +5084,12 @@
       save();
     }
     function exportVault() {
-      return JSON.stringify({ map: vault.map, num: vault.num, numRaw: vault.numRaw || {}, unit: vault.unit || {}, dict, created: vault.created, factor: vault.factor }, null, 1);
+      return JSON.stringify({ map: vault.map, num: vault.num, numRaw: vault.numRaw || {}, unit: vault.unit || {}, dict, created: vault.created, factor: vault.factor, dates: vault.dates || {}, dateShift: vault.dateShift || null }, null, 1);
     }
     function importVault(json) {
       const d = JSON.parse(json);
       if (!d || !d.map) throw new Error('格式不正确');
-      vault = { map: d.map, num: d.num || {}, numRaw: d.numRaw || {}, unit: d.unit || {}, created: d.created || '', factor: d.factor || null };
+      vault = { map: d.map, num: d.num || {}, numRaw: d.numRaw || {}, unit: d.unit || {}, created: d.created || '', factor: d.factor || null, dates: d.dates || {}, dateShift: d.dateShift || null };
       if (d.dict) dict = Object.assign({ ORG: [], PERSON: [], PROJECT: [] }, d.dict);
       save();
     }
@@ -4890,7 +5107,12 @@
       /* ---- 自定义规则 ---- */
       listRules() { return (vault.rules || []).slice(); },
       addRule(name, pattern, type, flags) {
-        try { new RegExp(pattern, flags || 'g'); }
+        if (typeof pattern !== 'string' || !pattern || pattern.length > 300) throw new Error('规则为空或太长（最多 300 字符）');
+        if (!Object.prototype.hasOwnProperty.call(TYPES, type) || type === 'DATE') throw new Error('不支持的类型：' + type);
+        flags = String(flags || 'g').replace(/[^gimsuy]/g, '');
+        if (flags.indexOf('g') < 0) flags += 'g';
+        if (unsafeRegex(pattern)) throw new Error('规则里有嵌套的重复（例如 (\\d+)+ 或 (a|aa)+），遇到长文本会让页面卡死，请改写');
+        try { new RegExp(pattern, flags); }
         catch (e) { throw new Error('正则语法有误：' + e.message); }
         if (!vault.rules) vault.rules = [];
         if (vault.rules.length >= 30) throw new Error('最多 30 条规则');
@@ -5803,6 +6025,62 @@
     return null;
   }
 
+  /* ---------------- 规则包：客户名单 + 自定义规则 + 放行 / 忽略名单，一人维护、团队导入 ----------------
+     可选口令加密（PBKDF2 20 万次 + AES-GCM）：规则包里是客户名单，本身就是敏感信息。 */
+  const PACK_KIND = 'demask-rulepack';
+  function b64(u8) { let s = ''; for (let i = 0; i < u8.length; i += 0x8000) s += String.fromCharCode.apply(null, u8.subarray(i, i + 0x8000)); return btoa(s); }
+  function unb64(s) { const b = atob(s); const u = new Uint8Array(b.length); for (let i = 0; i < b.length; i++) u[i] = b.charCodeAt(i); return u; }
+  async function packKey(pass, salt) {
+    const base = await crypto.subtle.importKey('raw', new TextEncoder().encode(pass), 'PBKDF2', false, ['deriveKey']);
+    return crypto.subtle.deriveKey({ name: 'PBKDF2', salt: salt, iterations: 200000, hash: 'SHA-256' }, base, { name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']);
+  }
+  async function buildRulePack(eng, extra, pass) {
+    const dict = eng.getDict();
+    const body = {
+      kind: PACK_KIND, v: 1, name: (extra && extra.name) || eng.currentProject().name, created: new Date().toISOString(),
+      dict: { ORG: (dict.ORG || []).slice(), PERSON: (dict.PERSON || []).slice(), PROJECT: (dict.PROJECT || []).slice() },
+      rules: eng.listRules().map(r => ({ name: r.name, pattern: r.pattern, type: r.type, flags: r.flags })),
+      exclude: (extra && extra.exclude) || [], ignore: (extra && extra.ignore) || []
+    };
+    const json = JSON.stringify(body);
+    if (!pass) return JSON.stringify(body, null, 1);
+    const salt = crypto.getRandomValues(new Uint8Array(16)), iv = crypto.getRandomValues(new Uint8Array(12));
+    const ct = new Uint8Array(await crypto.subtle.encrypt({ name: 'AES-GCM', iv: iv }, await packKey(pass, salt), new TextEncoder().encode(json)));
+    return JSON.stringify({ kind: PACK_KIND + '-enc', v: 1, salt: b64(salt), iv: b64(iv), ct: b64(ct) });
+  }
+  async function parseRulePack(text, pass) {
+    let d;
+    try { d = JSON.parse(text); } catch (e) { throw new Error('不是规则包文件'); }
+    if (d && d.kind === PACK_KIND + '-enc') {
+      if (!pass) { const e = new Error('这个规则包设了口令'); e.needPass = true; throw e; }
+      try {
+        const pt = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: unb64(d.iv) }, await packKey(pass, unb64(d.salt)), unb64(d.ct));
+        d = JSON.parse(new TextDecoder().decode(pt));
+      } catch (e) { throw new Error('口令不对，或文件已损坏'); }
+    }
+    if (!d || d.kind !== PACK_KIND) throw new Error('不是规则包文件');
+    const clean = a => Array.isArray(a) ? a.filter(x => typeof x === 'string' && x.trim().length >= 2 && x.length <= 60).map(x => x.trim()).slice(0, 20000) : [];
+    return {
+      name: String(d.name || ''), created: String(d.created || ''),
+      dict: { ORG: clean(d.dict && d.dict.ORG), PERSON: clean(d.dict && d.dict.PERSON), PROJECT: clean(d.dict && d.dict.PROJECT) },
+      rules: Array.isArray(d.rules) ? d.rules.filter(r => r && typeof r.pattern === 'string' && r.pattern.length <= 300 && typeof r.type === 'string' && Object.prototype.hasOwnProperty.call(TYPES, r.type)).map(r => ({ name: String(r.name || '自定义').slice(0, 40), pattern: r.pattern, type: r.type, flags: String(r.flags || 'g').replace(/[^gimsuy]/g, '') })).slice(0, 30) : [],
+      exclude: clean(d.exclude), ignore: clean(d.ignore)
+    };
+  }
+  // 合并进当前项目：已有的不重复加，返回新增数量
+  function applyRulePack(eng, pack) {
+    const dict = eng.getDict();
+    const n = { ORG: 0, PERSON: 0, PROJECT: 0, rules: 0 };
+    for (const t of ['ORG', 'PERSON', 'PROJECT']) for (const w of pack.dict[t]) if ((dict[t] || []).indexOf(w) < 0) { eng.addWord(t, w, true); n[t]++; }
+    const have = new Set(eng.listRules().map(r => r.pattern + '\u0001' + r.type));
+    for (const r of pack.rules) {
+      if (have.has(r.pattern + '\u0001' + r.type)) continue;
+      try { eng.addRule(r.name, r.pattern, r.type, r.flags); n.rules++; } catch (e) { /* 正则不合法或超过上限：跳过 */ }
+    }
+    if (eng.flushSave) eng.flushSave();
+    return n;
+  }
+
   async function partText(files, n) { return files[n] ? entryText(files, n) : null; }
 
   // 通读全文：先学到这个文件里所有的名字，再逐个部件替换，保证页眉里的"华润万佳"和正文里的全称拿同一个代号
@@ -6035,6 +6313,7 @@
 
   return {
     TYPES, createEngine, DEFAULT_OPTS, extractText, maskOfficeFile, writeZip, LEX,
+    buildRulePack, parseRulePack, applyRulePack,
     // 供测试使用
     _internal: { detectMoney, detectOrgs, detectPersons, detectFinRows, detectTables, resolveOverlaps, scaleAmount, detectLexicon, detectCodename, propagateNamed, detectRegex, detectDocNo, detectOrgList, detectEquity }
   };
@@ -6157,7 +6436,7 @@ function runMask() {
   updateStats(r.stats.chars, r.stats.entities, r.stats.unique, r.residual, r.suggestions, r.reid);
   renderEntities(); renderRisk(r.residual); renderSuggestions(r.suggestions); renderPseudo(r.pseudo); renderReid(r.reid); renderUtility(r.masked, r.reid);
   $('#vaultCount').textContent = r.vaultSize;
-  logAudit(r);
+  state.lastResult = r;
   $('#projName').textContent = eng.currentProject().name;
   if (eng.saveFailed()) {
     $('#vaultCount').textContent = r.vaultSize + '（未保存）';
@@ -6401,6 +6680,7 @@ function syncHint() {
   if (state.opts.mask_contact) parts.push('联系方式');
   if (state.opts.mask_equity) parts.push('股权比例');
   if (state.opts.mask_pct) parts.push('其他比率');
+  if (state.opts.date_shift) parts.push('日期平移');
   const nm = { scale: `等比缩放 ${state.opts.num_factor.toFixed(2)}`, bucket: '区间化', hash: '等长乱数', keep: '金额原样' }[state.opts.num_mode];
   const lexN = state.lexOn ? state.lexOn.size : 0;
   $('#settingsHint').textContent = (parts.join('、') || '未选择') + ' · ' + nm + ' · 词库 ' + lexN + '/' + lexKeys.length
@@ -6411,46 +6691,132 @@ $('#settingsHead').onclick = () => $('#settings').classList.toggle('open');
 /* ---------------- 操作记录（只记元数据） ---------------- */
 const AUDIT_KEY = 'demask.audit.v1';
 
-function logAudit(r) {
+// 脱敏记录：只在"内容离开本机"的时刻记一条（复制、导出、批量），不记任何原文。
+// 校验码是发出内容的 SHA-256 前 16 位：日后能证明"当时发出去的就是这一版"。
+async function sha16(data) {
+  try {
+    const buf = typeof data === 'string' ? new TextEncoder().encode(data) : data;
+    const h = new Uint8Array(await crypto.subtle.digest('SHA-256', buf));
+    return Array.from(h.slice(0, 8), b => b.toString(16).padStart(2, '0')).join('');
+  } catch (e) { return ''; }
+}
+function typeCounts(ents) {
+  const seen = {}, out = {};
+  for (const e of ents || []) { const k = e.type + ':' + (e.token || e.text); if (seen[k]) continue; seen[k] = 1; out[e.type] = (out[e.type] || 0) + 1; }
+  return out;
+}
+async function recordOut(action, payload, extra) {
   if (!STORE) return;
+  const r = state.lastResult || {};
+  const rec = {
+    t: new Date().toISOString(),
+    p: eng.currentProject().name,
+    a: action,
+    n: (extra && extra.name) || '粘贴内容',
+    c: (extra && extra.chars) || (r.stats ? r.stats.chars : 0),
+    e: (extra && extra.entities != null) ? extra.entities : (r.stats ? r.stats.entities : 0),
+    k: (extra && extra.types) || typeCounts(state.entities),
+    pend: (extra && extra.pend != null) ? extra.pend : (state.suggestions || []).length,
+    res: (extra && extra.res != null) ? extra.res : (state.residual || []).length,
+    h: await sha16(payload),
+    x: (extra && extra.note) || ''
+  };
   try {
     const arr = JSON.parse(STORE.getItem(AUDIT_KEY) || '[]');
-    const last = arr[0];
-    // 连续编辑同一份内容时不要刷屏：同项目 + 同字数，30 秒内只记一次
-    if (last && last.p === eng.currentProject().name && last.c === r.stats.chars &&
-        Date.now() - new Date(last.t).getTime() < 30000) return;
-    arr.unshift({
-      t: new Date().toISOString(),
-      p: eng.currentProject().name,
-      c: r.stats.chars,
-      e: r.stats.entities
-    });
-    STORE.setItem(AUDIT_KEY, JSON.stringify(arr.slice(0, 200)));
+    arr.unshift(rec);
+    STORE.setItem(AUDIT_KEY, JSON.stringify(arr.slice(0, 1000)));
   } catch (e) {}
+  renderAudit();
 }
+function auditRows() {
+  let arr = [];
+  if (STORE) { try { arr = JSON.parse(STORE.getItem(AUDIT_KEY) || '[]'); } catch (e) {} }
+  return arr;
+}
+const AUDIT_TYPE = t => (TYPES[t] ? TYPES[t].label : t);
+function kText(k) { return Object.keys(k || {}).map(t => AUDIT_TYPE(t) + ' ' + k[t]).join('、'); }
 
 function renderAudit() {
   const tb = $('#auditBody');
   if (!tb) return;
-  let arr = [];
-  if (STORE) { try { arr = JSON.parse(STORE.getItem(AUDIT_KEY) || '[]'); } catch (e) {} }
+  const arr = auditRows();
   if (!arr.length) {
-    tb.innerHTML = '<tr><td colspan="4" class="empty-row">还没有记录。</td></tr>';
+    tb.innerHTML = '<tr><td colspan="5" class="empty-row">还没有记录。复制、导出时会自动记一条。</td></tr>';
     return;
   }
-  tb.innerHTML = arr.slice(0, 20).map(a => {
+  tb.innerHTML = arr.slice(0, 30).map(a => {
     const d = new Date(a.t);
     const ts = d.toLocaleString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
+    const act = a.a || '脱敏';
+    const warn = (a.pend ? '，' + a.pend + ' 处待确认' : '') + (a.res ? '，' + a.res + ' 处残留提示' : '');
     return `<tr><td class="mono" style="color:var(--muted)">${ts}</td>
-      <td>${esc(a.p)}</td><td class="mono">${a.c}</td><td class="mono">${a.e}</td></tr>`;
+      <td>${esc(a.p)}</td><td>${esc(act)}<div style="color:var(--faint);font-size:11px">${esc(a.n || '')}</div></td>
+      <td title="${esc(kText(a.k))}">${a.e} 处${esc(warn)}</td><td class="mono" style="font-size:11px">${esc(a.h || '')}</td></tr>`;
   }).join('');
 }
+function auditCsv() {
+  const head = ['时间', '项目', '动作', '对象', '字数', '替换处数', '按类型', '待确认', '残留提示', '校验码(SHA-256前16位)', '备注'];
+  // 以 = + - @ 开头的字段在 Excel 里会被当成公式执行：前面加单引号
+  const q = v => { let x = String(v == null ? '' : v); if (/^[=+\-@\t\r]/.test(x)) x = "'" + x; return '"' + x.replace(/"/g, '""') + '"'; };
+  const lines = [head.map(q).join(',')].concat(auditRows().map(a => [a.t, a.p, a.a || '脱敏', a.n || '', a.c, a.e, kText(a.k), a.pend || 0, a.res || 0, a.h || '', a.x || ''].map(q).join(',')));
+  return '﻿' + lines.join('\r\n');
+}
+function auditHtml() {
+  const rows = auditRows();
+  const tr = rows.map(a => `<tr><td>${esc(new Date(a.t).toLocaleString('zh-CN'))}</td><td>${esc(a.p)}</td><td>${esc(a.a || '脱敏')}</td><td>${esc(a.n || '')}</td><td>${a.e}</td><td>${esc(kText(a.k))}</td><td>${a.pend || 0}</td><td>${a.res || 0}</td><td class="m">${esc(a.h || '')}</td></tr>`).join('');
+  return `<!DOCTYPE html><html lang="zh-CN"><head><meta charset="utf-8"><title>脱敏记录</title><style>body{font:13px/1.6 -apple-system,"PingFang SC",sans-serif;margin:32px;color:#1d2733}h1{font-size:18px}table{border-collapse:collapse;width:100%}th,td{border:1px solid #d8dee6;padding:5px 8px;text-align:left;vertical-align:top}th{background:#f3f6f9}.m{font-family:ui-monospace,Menlo,monospace;font-size:11.5px}p{color:#5b6775}</style></head><body>
+<h1>脱敏记录</h1><p>导出时间：${esc(new Date().toLocaleString('zh-CN'))}　·　共 ${rows.length} 条　·　本记录只含时间、项目、动作、数量和校验码，不含任何原文或脱敏内容。校验码为发出内容的 SHA-256 前 16 位，可用于核对某一版本是否与记录一致。</p>
+<table><thead><tr><th>时间</th><th>项目</th><th>动作</th><th>对象</th><th>替换</th><th>按类型</th><th>待确认</th><th>残留提示</th><th>校验码</th></tr></thead><tbody>${tr}</tbody></table></body></html>`;
+}
+function download(name, data, type) {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([data], { type: type }));
+  a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+$('#btnAuditCsv').onclick = () => { if (!auditRows().length) return toast('还没有记录'); download('脱敏记录-' + new Date().toISOString().slice(0, 10) + '.csv', auditCsv(), 'text/csv;charset=utf-8'); };
+$('#btnAuditHtml').onclick = () => { if (!auditRows().length) return toast('还没有记录'); download('脱敏记录-' + new Date().toISOString().slice(0, 10) + '.html', auditHtml(), 'text/html;charset=utf-8'); };
 
 $('#btnClearAudit').onclick = () => {
   if (!confirm('清空操作记录？')) return;
   if (STORE) { try { STORE.removeItem(AUDIT_KEY); } catch (e) {} }
   renderAudit();
   toast('已清空');
+};
+
+/* ---------------- 规则包 ---------------- */
+$('#btnPackOut').onclick = async () => {
+  const pass = prompt('给规则包设一个口令（同事导入时需要输入）。\n不设口令直接点确定（名单会以明文保存）：', '');
+  if (pass === null) return;
+  try {
+    const txt = await DemaskEngine.buildRulePack(eng, { exclude: state.opts.exclude || [], ignore: state.opts.ignore_suspects || [] }, pass || '');
+    const name = '规则包-' + maskFileName(eng.currentProject().name) + '-' + new Date().toISOString().slice(0, 10) + '.demask.json';
+    download(name, txt, 'application/json');
+    toast('已导出规则包' + (pass ? '（已加密）' : '（未加密，请妥善保管）'));
+  } catch (e) { toast('导出失败：' + e.message); }
+};
+$('#packFile').onchange = async e => {
+  const f = e.target.files[0]; e.target.value = '';
+  if (!f) return;
+  const txt = await f.text();
+  let pack;
+  try { pack = await DemaskEngine.parseRulePack(txt); }
+  catch (err) {
+    if (!err.needPass) return toast('导入失败：' + err.message);
+    const pass = prompt('这个规则包设了口令，请输入：', '');
+    if (!pass) return;
+    try { pack = await DemaskEngine.parseRulePack(txt, pass); } catch (e2) { return toast('导入失败：' + e2.message); }
+  }
+  const d = pack.dict;
+  const sample = arr => arr.slice(0, 6).join('、') + (arr.length > 6 ? '……' : '');
+  const msg = '规则包「' + (pack.name || '未命名') + '」包含：企业 ' + d.ORG.length + ' 个、人名 ' + d.PERSON.length + ' 个、项目 ' + d.PROJECT.length + ' 个、自定义规则 ' + pack.rules.length + ' 条、放行 ' + pack.exclude.length + ' 个、忽略 ' + pack.ignore.length + ' 个。' +
+    (d.ORG.length ? '\n企业：' + sample(d.ORG) : '') + (pack.exclude.length ? '\n放行（这些词不会被脱敏）：' + sample(pack.exclude) : '') +
+    '\n合并到当前项目「' + eng.currentProject().name + '」？已有的不会重复添加。';
+  if (!confirm(msg)) return;
+  const n = DemaskEngine.applyRulePack(eng, pack);
+  state.opts.exclude = Array.from(new Set((state.opts.exclude || []).concat(pack.exclude)));
+  state.opts.ignore_suspects = Array.from(new Set((state.opts.ignore_suspects || []).concat(pack.ignore)));
+  saveLocalPrefs(); renderDict(); renderRules(); state.lastInput = ''; runMask();
+  toast('已合并：新增企业 ' + n.ORG + '、人名 ' + n.PERSON + '、项目 ' + n.PROJECT + '、规则 ' + n.rules);
 };
 
 /* ---------------- 自定义规则 ---------------- */
@@ -6634,6 +7000,7 @@ $('#btnCopy').onclick = async () => {
   try {
     await navigator.clipboard.writeText(withNote(state.masked));
     toast('已复制（含占位符说明），可以粘贴给 AI 了');
+    recordOut('复制给 AI', withNote(state.masked));
   }
   catch (e) { toast('复制失败，请手动选中'); }
 };
@@ -6671,6 +7038,7 @@ $('#btnExportFile').onclick = async () => {
     if (extra) msg += '；另外清理了' + extra;
     if (st.warnings && st.warnings.length) msg += '。注意：' + st.warnings.join('；');
     toast(msg, 9000);
+    recordOut('导出 ' + ext.toUpperCase(), await r.blob.arrayBuffer(), { name: a.download, entities: st.entities, types: {}, pend: 0, res: 0, chars: 0, note: extra });
   } catch (e) {
     toast('导出失败：' + e.message);
   } finally {
@@ -6687,6 +7055,7 @@ $('#btnDownload').onclick = () => {
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
   a.download = '脱敏稿-' + new Date().toISOString().slice(0, 10) + '.txt';
+  recordOut('导出 .txt', withNote(state.masked), { name: a.download });
   a.click(); URL.revokeObjectURL(a.href);
   toast('已导出');
 };
@@ -6816,6 +7185,7 @@ $('#btnChunk').onclick = () => {
       try {
         const i = +b.dataset.i;
         await navigator.clipboard.writeText(i === 0 ? withNote(chunks[0]) : chunks[i]);
+        recordOut('复制第 ' + (i + 1) + '/' + chunks.length + ' 段', i === 0 ? withNote(chunks[0]) : chunks[i]);
         toast('已复制第 ' + (i + 1) + ' 段');
       }
       catch (e) { toast('复制失败，请手动选中'); }
@@ -6919,7 +7289,7 @@ async function batchProcess(files) {
         const r = await (eng.setOpts(state.opts), DemaskEngine.maskOfficeFile)(f.name, buf, eng);
         const ab = await r.blob.arrayBuffer();
         out.push({ name: (r.stats.maskedName || maskFileName(base)) + '-脱敏.' + ext, data: new Uint8Array(ab) });
-        for (const w of (r.stats.warnings || [])) log.push(f.name + '：' + w);
+        for (const w of (r.stats.warnings || [])) log.push((r.stats.maskedName || maskFileName(base)) + '：' + eng.mask(w, state.opts).masked);
         ent += r.stats.entities || 0;
         cells += r.stats.cells || 0;
       } else {
@@ -6927,17 +7297,17 @@ async function batchProcess(files) {
         if (ext === 'pdf' && typeof DemaskPDF !== 'undefined') {
           const r = await DemaskPDF.extract(buf);
           txt = r.text;
-          for (const w of (r.warnings || [])) log.push(f.name + '：' + w);
+          for (const w of (r.warnings || [])) log.push(maskFileName(base) + '：' + w);
         } else {
           txt = await extractText(f.name, buf);
         }
-        if (txt === null) { log.push(f.name + '：格式不支持，已跳过'); continue; }
+        if (txt === null) { log.push(maskFileName(base) + '：格式不支持，已跳过'); continue; }
         const m = eng.mask(txt, state.opts);
         out.push({ name: maskFileName(base) + '-脱敏.txt', data: new TextEncoder().encode(withNote(m.masked)) });
         ent += m.entities.length;
       }
     } catch (e) {
-      log.push(f.name + '：' + e.message);
+      log.push(maskFileName(f.name.replace(/\.[^.]+$/, '')) + '：' + e.message);
     }
   }
 
@@ -6952,6 +7322,7 @@ async function batchProcess(files) {
   const a = document.createElement('a');
   a.href = URL.createObjectURL(zip);
   a.download = '脱敏结果-' + new Date().toISOString().slice(0, 10) + '.zip';
+  recordOut('批量导出 ' + out.length + ' 个文件', await zip.arrayBuffer(), { name: a.download, entities: ent, types: {}, pend: 0, res: 0, chars: 0, note: log.length ? log.length + ' 条处理提示（详见压缩包里的处理说明）' : '' });
   a.click(); URL.revokeObjectURL(a.href);
 
   toast(`已打包 ${out.length} 个文件（${ent} 处实体${cells ? '，' + cells + ' 个表格数字' : ''}）` +

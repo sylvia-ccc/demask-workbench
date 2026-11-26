@@ -35,6 +35,10 @@
 
 ---
 
+## New in v2.5
+
+16 more identifier types (card CVV and expiry, security answers, residence permits, login names, policy numbers, MAC / IMEI / VIN, court case numbers, penalty notices, property certificates, ISIN / LEI / private fund codes — checksums verified where they exist); optional reversible **date shifting** (all full dates move by one hidden offset, intervals preserved); a **compliance log** that records every copy / export with type counts and a SHA-256 fingerprint of what was sent, never the content; and **rule packs** to share client lists and custom rules with your team (optionally passphrase-encrypted).
+
 ## New in v2.4: nothing left in the corners of Office files
 
 Masking the body text is not enough: Word stores the author, reviewers and deleted revisions; PowerPoint charts carry an embedded Excel with the raw numbers; Excel sheets are named after the client; the file name itself says "ClientX DD report.docx". v2.4 cleans document properties, comments and reviewer names, tracked deletions, headers/footers, alt text, chart caches and embedded workbooks (scaled consistently), sheet names (formulas updated), formula caches, pivot caches, hyperlinks, thumbnails and the exported file name — and lists what it cleaned. It also recognises speakers in meeting minutes and chat logs, and scales amounts written in Chinese numerals.

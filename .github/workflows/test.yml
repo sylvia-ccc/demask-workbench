@@ -11,7 +11,7 @@ jobs:
       - name: 端到端
         run: cd src && node test.js
       - name: PDF 文字层提取
-        run: cd src && node test-pdf.js && node test-suspects.js && node test-office.js
+        run: cd src && node test-pdf.js && node test-suspects.js && node test-office.js && node test-features.js
       - name: 回归测试集（必须 100%）
         run: |
           cd src
