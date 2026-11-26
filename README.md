@@ -14,7 +14,7 @@
 <img alt="offline" src="https://img.shields.io/badge/%E7%BD%91%E7%BB%9C%E8%AF%B7%E6%B1%82-0-b45309">
 <img alt="pdf" src="https://img.shields.io/badge/PDF%20%2F%20Word%20%2F%20Excel%20%2F%20PPT-%E7%9B%B4%E6%8E%A5%E6%8B%96%E5%85%A5-1b3a5c">
 <img alt="license" src="https://img.shields.io/badge/license-MIT-2f5d8a">
-<img alt="release" src="https://img.shields.io/github/v/release/sylvia-ccc/demask-workbench?label=版本&color=2f5d8a">
+<img alt="release" src="https://img.shields.io/github/v/release/sylvia-ccc/demask-workbench?label=%E7%89%88%E6%9C%AC&color=2f5d8a">
 <img alt="stars" src="https://img.shields.io/github/stars/sylvia-ccc/demask-workbench?style=social">
 </p>
 
