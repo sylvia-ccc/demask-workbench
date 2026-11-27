@@ -315,7 +315,7 @@
     脱敏工作台
   </div>
   <span class="tag">离线单文件 · 不联网</span>
-  <span class="ver" id="ver">v2.8</span>
+  <span class="ver" id="ver">v2.9</span>
   <div class="spacer"></div>
   <div class="proj">
     <div class="proj-btn" id="projBtn" title="切换项目：每个项目一套独立的映射">
@@ -433,6 +433,7 @@
             <div class="chip on" data-k="mask_equity"><span class="box"></span>股权比例</div>
             <div class="chip on" data-k="ai_note"><span class="box"></span>复制时附说明</div>
             <div class="chip" data-k="mask_pct"><span class="box"></span>其他比率</div>
+            <div class="chip" data-k="mask_public" title="默认不脱：大学/学院、监管与政府部门、交易所、法院、行业协会。这些不是客户隐私，保留后 AI 能读懂履历和监管语境。履历里的学校组合可能帮人认出是谁，对外发前可打开此项"><span class="box"></span>公共机构（学校/监管/法院）</div>
             <div class="chip" data-k="date_shift" title="实验功能：带年月日的日期和「3月5日」整体挪动同一个隐藏天数（间隔不变，可还原）。暂不处理：Excel 里存成日期格式的单元格、英文日期、中文数字日期、8 位数字日期——同一份材料里有这些写法时，平移天数可能被反推。还原时 AI 凭常识写的真实日期也会被反向平移，请核对"><span class="box"></span>日期平移（实验）</div>
           </div>
         </div>
@@ -1616,6 +1617,18 @@
   function gbk(bytesStr) {
     try { gbkDec = gbkDec || new TextDecoder('gbk'); return gbkDec.decode(bytesOf(bytesStr)); } catch (e) { return ''; }
   }
+  // 没有 ToUnicode 的 Adobe-GB1 字体（年报里常见于标点）：CID 0–939 是符号区，直接查表；
+  // 940–7702 是 GB2312 一二级汉字，按 GB2312 区位顺序推算（D7 区只有 89 个字）
+  const GB1_LO = '\u0000 !"#$%&\u0027()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\u005c]^_`abcdefghijklmnopqrstuvwxyz{|}~\u3000、。·ˉˇ¨〃々—～‖…‘’“”〔〕〈〉《》「」『』〖〗【】±×÷∶∧∨∑∏∪∩∈∷√⊥∥∠⌒⊙∫∮≡≌≈∽∝≠≮≯≤≥∞∵∴♂♀°′″℃＄¤￠￡‰§№☆★○●◎◇◆□■△▲※→←↑↓〓⒈⒉⒊⒋⒌⒍⒎⒏⒐⒑⒒⒓⒔⒕⒖⒗⒘⒙⒚⒛⑴⑵⑶⑷⑸⑹⑺⑻⑼⑽⑾⑿⒀⒁⒂⒃⒄⒅⒆⒇①②③④⑤⑥⑦⑧⑨⑩㈠㈡㈢㈣㈤㈥㈦㈧㈨㈩ⅠⅡⅢⅣⅤⅥⅦⅧⅨⅩⅪⅫ！＂＃￥％＆＇（）＊＋，－．／０１２３４５６７８９：；＜＝＞？＠ＡＢＣＤＥＦＧＨＩＪＫＬＭＮＯＰＱＲＳＴＵＶＷＸＹＺ［＼］＾＿｀ａｂｃｄｅｆｇｈｉｊｋｌｍｎｏｐｑｒｓｔｕｖｗｘｙｚ｛｜｝￣ぁあぃいぅうぇえぉおかがきぎくぐけげこごさざしじすずせぜそぞただちぢっつづてでとどなにぬねのはばぱひびぴふぶぷへべぺほぼぽまみむめもゃやゅゆょよらりるれろゎわゐゑをんァアィイゥウェエォオカガキギクグケゲコゴサザシジスズセゼソゾタダチヂッツヅテデトドナニヌネノハバパヒビピフブプヘベペホボポマミムメモャヤュユョヨラリルレロヮワヰヱヲンヴヵヶΑΒΓΔΕΖΗΘΙΚΛΜΝΞΟΠΡΣΤΥΦΧΨΩαβγδεζηθικλμνξοπρστυφχψω︐︒︑\ue790\ue791\ue792\ue793︵︶︹︺︿﹀︽︾﹁﹂﹃﹄\ue794\ue795︻︼︷︸︱⁝︳︴АБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯабвгдеёжзийклмнопрстуфхцчшщъыьэюяāáǎàēéěèīíǐìōóǒòūúǔùǖǘǚǜüêɑḿńňǹɡㄅㄆㄇㄈㄉㄊㄋㄌㄍㄎㄏㄐㄑㄒㄓㄔㄕㄖㄗㄘㄙㄚㄛㄜㄝㄞㄟㄠㄡㄢㄣㄤㄥㄦㄧㄨㄩ\u0000─━│┃┄┅┆┇┈┉┊┋┌┍┎┏┐┑┒┓└┕┖┗┘┙┚┛├┝┞┟┠┡┢┣┤┥┦┧┨┩┪┫┬┭┮┯┰┱┲┳┴┵┶┷┸┹┺┻┼┽┾┿╀╁╂╃╄╅╆╇╈╉╊╋！＂＃￥％＆＇（）＊＋，－．／０１２３４５６７８９：；＜＝＞？＠ＡＢＣＤＥＦＧＨＩＪＫＬＭＮＯＰＱＲＳＴＵＶＷＸＹＺ［＼］＾＿｀ａｂｃｄｅｆｇｈｉｊｋｌｍｎｏｐｑｒｓｔｕｖｗｘｙｚ｛｜｝￣āáǎàēéěèīíǐìōóǒòūúǔùǖǘǚǜüê\u0000ḿ\u0000\u0000ǹ\u0000';
+  function gb1Cid(cid) {
+    if (cid < 940) { const c = GB1_LO[cid] || ''; return c === '\u0000' ? '' : c; }
+    if (cid > 7702) return '';
+    let k = cid - 940, row, cell;
+    if (k < 3666) { row = 0xB0 + (k / 94 | 0); cell = 0xA1 + k % 94; }
+    else if (k < 3755) { row = 0xD7; cell = 0xA1 + (k - 3666); }
+    else { k -= 3755; row = 0xD8 + (k / 94 | 0); cell = 0xA1 + k % 94; }
+    return gbk(String.fromCharCode(row, cell));
+  }
   const GBK_SPACE = [{ len: 1, lo: '\x00', hi: '\x80' }, { len: 2, lo: '\x81\x40', hi: '\xfe\xfe' }];
 
   async function loadFont(doc, ref) {
@@ -1646,6 +1659,12 @@
       const desc = resolveSync(doc, fd.DescendantFonts);
       const d0 = resolveSync(doc, desc instanceof Array ? desc[0] : null) || {};
       if (typeof d0.DW === 'number') font.dw = d0.DW;
+      if (!font.toU && /^Identity-[HV]$/.test(ename) && d0.Subtype instanceof Name && d0.Subtype.name === 'CIDFontType0') {
+        const si = resolveSync(doc, d0.CIDSystemInfo) || {};
+        const ord = resolveSync(doc, si.Ordering);
+        const os = ord instanceof PStr ? ord.s : (ord && ord.name) || '';
+        if (os === 'GB1') font.mode = 'gb1';
+      }
       const W = resolveSync(doc, d0.W);
       if (W instanceof Array) {
         for (let i = 0; i < W.length;) {
@@ -1705,6 +1724,7 @@
       if (u === undefined) {
         if (!font.type0) u = font.enc[c.code];
         else if (font.mode === 'utf16') u = String.fromCharCode(c.code);
+        else if (font.mode === 'gb1') u = gb1Cid(c.code);
         else if (font.mode === 'gbk') u = gbk(c.len === 2 ? String.fromCharCode(c.code >> 8, c.code & 255) : String.fromCharCode(c.code));
         else if (font.mode === 'big5') { try { u = new TextDecoder('big5').decode(new Uint8Array(c.len === 2 ? [c.code >> 8, c.code & 255] : [c.code])); } catch (e) { u = ''; } }
         else u = '';                             // Identity-H 又没有 ToUnicode：无法得知是什么字
@@ -2176,7 +2196,7 @@
   // 也是常用字的姓（管理/时间/明确/华东/路径…）：只在强引导（职务、名单、称谓、由…担任）后才认
   // 歧义档姓打头的常用词：命中就不是人名
   const AMBIG_WORDS = new Set(('管理 管控 管道 管辖 解决 解释 解读 单位 单独 单价 单店 车辆 车间 车型 包括 包装 包含 路径 路线 路演 齐全 时间 时候 时期 时代 时点 景气 简单 简称 简要 房地 房产 华东 华南 华北 华中 华西 华为 华夏 华润 连续 连锁 连接 应收 应付 应当 应用 应对 关于 关注 关联 关系 关键 明确 明年 明细 明显 符合 费用 费率 相关 相应 相比 查询 查看 荣誉 宫格 门店 门槛 门户 尚未 尚需 古典 艾瑞 商品 商业 商务 商誉 麻烦 燕麦 伏笔 乐观 昌盛 冷链 冷却 那些 那么 税务 税收 税率 税前 税后 权益 权利 权限 皮肤 毕业 丰富 丰田 康复 洪水 鲁棒 习惯 边际 边界 童装 宁可 危机 危险 兰州 迟滞 项目 季度 纪要 纪律 储备 储能 焦点 凌晨 薄弱 庞大 谈判 谈话 施工 施行 牛市 游戏 游客 颜色 卓越 衡量 廉洁 舒适 辛苦 蓝图 幸运 揭示 庄园 苗头 伊始 丛林 甘肃 池子 麦当 乔迁 成本 成功 成立 成长 成为 成交 成熟 成果 成员 盛行 盛大 区域').split(' '));
-  const SURNAMES_AMBIG = '成盛项季纪储焦凌薄庞谈施牛游颜卓衡廉舒辛蓝幸揭庄苗伊丛楚甘池麦乔管解单车包路齐时景简房华连应关明符费相查荣宫门尚古翁艾商麻燕伏乐昌冷那税权皮毕丰康洪鲁习边童宁危兰迟';
+  const SURNAMES_AMBIG = '易成盛项季纪储焦凌薄庞谈施牛游颜卓衡廉舒辛蓝幸揭庄苗伊丛楚甘池麦乔管解单车包路齐时景简房华连应关明符费相查荣宫门尚古翁艾商麻燕伏乐昌冷那税权皮毕丰康洪鲁习边童宁危兰迟';
 
   const TITLE_SUFFIX = [
     '董事长', '总裁', '总监', '经理', '副总', '先生', '女士', '小姐', '老师', '博士', '教授',
@@ -2413,6 +2433,47 @@
       if (!looksLikeName(name, true) || COMMON_2.has(name)) continue;
       const st = m.index + m[0].indexOf(name);
       out.push(Span(st, st + name.length, 'PERSON', name, 0.9, '履历'));
+    }
+    // 年报董监高简历：名字单独一行（常带全角空格"李　岷"），下一行是履历
+    const hdr = new RegExp('(?:^|\\n)[ \\t]*(' + SURNAME_CLASS_SAFE + '(?:[　 ]{1,2})?[\\u4e00-\\u9fa5]{1,2})[ \\t　]*(?:先生|女士)?[ \\t　]*\\n(?=[ \\t]*(?:现任|曾任|历任|本公司|本行|男[，,\\s]|女[，,\\s]|自 ?\\d|(?:19|20)\\d{2} ?年|中国国籍))', 'g');
+    while ((m = hdr.exec(text)) !== null) {
+      const name = m[1];
+      const bare = name.replace(/[　 ]/g, '');
+      if (bare.length < 2 || COMMON_2.has(bare) || /(?:简历|情况|说明|董事|监事|高管|公司|简介|名称|主要|基本|姓名)$/.test(bare)) continue;
+      if (!/[　 ]/.test(name) && !looksLikeName(bare, true)) continue;
+      if (/[　 ]$/.test(name)) continue;
+      const st = m.index + m[0].indexOf(name);
+      out.push(Span(st, st + name.length, 'PERSON', name, 0.9, '简历标题'));
+    }
+    // 句首/标点后"易峥先生，55 岁"：歧义姓也认（后面紧跟称谓 + 标点/年龄）
+    const tt = new RegExp('(?:^|[\\n，。；：、（(\\t])(' + SURNAME_CLASS + '[\\u4e00-\\u9fa5]{1,2}?)(?:先生|女士)(?=[，,：:\\s（(]|\\d)', 'g');
+    while ((m = tt.exec(text)) !== null) {
+      const name = m[1];
+      if (COMMON_2.has(name) || /^(?:各位|诸位|这位|那位|该位)/.test(name)) continue;
+      if (/[于为是在和与的了把被对向从]$/.test(name) || AMBIG_WORDS.has(name)) continue;
+      if (SURNAMES_AMBIG.indexOf(name[0]) >= 0 && !looksLikeName(name, true) && !(name.length === 2 && GIVEN.has(name[1]) && !AMBIG_WORDS.has(name))) continue;
+      const st = m.index + m[0].indexOf(name);
+      out.push(Span(st, st + name.length, 'PERSON', name, 0.86, '名字+称谓'));
+      tt.lastIndex = st + name.length;
+    }
+    // 年报董监高表格：名字和职务粘在一起，后面跟性别（"闫小雷非执行董事\t男 1975 年"）
+    const glued = new RegExp('(?:^|\\n)[ \\t]*(' + SURNAME_CLASS + '(?:[　 ])?[\\u4e00-\\u9fa5]{1,2}?)(?:非执行董事|执行董事|独立非执行董事|独立董事|职工代表监事|职工监事|监事会主席|副董事长|董事长|董事|监事|副总经理|总经理|副总裁|总裁|财务总监|董事会秘书|首席[\\u4e00-\\u9fa5]{2,4}官)[ \\t]+(?:男|女)(?![\\u4e00-\\u9fa5])', 'g');
+    while ((m = glued.exec(text)) !== null) {
+      const name = m[1];
+      if (COMMON_2.has(name.replace(/[　 ]/g, ''))) continue;
+      const st = m.index + m[0].indexOf(name);
+      out.push(Span(st, st + name.length, 'PERSON', name, 0.9, '董监高表'));
+    }
+    // 表格"姓名"行：姓名\t朱志峰\t唐俊克
+    const row = /(?:^|\n)[ \t]*(?:姓名|联系人|负责人|经办人)[ \t]*\t([^\n]+)/g;
+    while ((m = row.exec(text)) !== null) {
+      const base = m.index + m[0].length - m[1].length;
+      let off = 0;
+      for (const cell of m[1].split('\t')) {
+        const c = cell.trim();
+        const st = base + m[1].indexOf(cell, off) + cell.indexOf(c); off = st - base + c.length;
+        if (/^[\u4e00-\u9fa5]{2,4}$/.test(c) && looksLikeName(c, true) && !COMMON_2.has(c) && !ROLE_WORD_RE.test(c)) out.push(Span(st, st + c.length, 'PERSON', c, 0.88, '表格姓名'));
+      }
     }
     const lao = /(?<![\u4e00-\u9fa5])|(?<=老板|老总|客户|对接人|联系人|董事长|总经理|经理|总监|跟|和|与|找|问|给|让|叫|是|的)/;
     void lao;
@@ -2852,6 +2913,7 @@ function luhnOk(d) {
     add(/([一-龥A-Za-z]{2,10})(?=\s*[（(]\s*(?:\d{6}\.(?:SH|SZ|BJ)|\d{4,5}\.HK|[A-Z]{1,5}\.(?:US|N|O))\s*[）)])/g, 'ORG', 0.95,
       v => !/^(?:公司|本公司|发行人|标的|其中|包括|如|例如|对标|可比公司)$/.test(v), '代码前名称');
     add(/(?:股票代码|证券代码|代码)\s*[:：]?\s*((?:00|30|60|68|83|87|92)\d{4})\b/g, 'TICKER', 0.85, null, '语境');
+    add(/(?:上交所|深交所|北交所|上海证券交易所|深圳证券交易所|A股|A 股|科创板|创业板)\s*[:：]?\s*((?:00|30|60|68|83|87|92)\d{4})(?!\d)/g, 'TICKER', 0.9, null, '交易所');
 
     // 合同 / 项目编号
     add(/(?:合同|项目|订单|招标|标书|立项|协议)(?:编号|号|编码|代码)\s*[:：]?\s*([A-Za-z0-9][A-Za-z0-9\-_/]{3,30})/g,
@@ -2945,6 +3007,15 @@ function luhnOk(d) {
     if (/[省市区县旗州盟]$/.test(x)) return true;
     return x.length <= 4 && !COMMON_2.has(x);
   }
+  const LEX_STOPEND = (function () {
+    const st = new Set();
+    for (const g in LEX.GROUPS) {
+      if (LEX.GROUPS[g].optIn) continue;
+      for (const n of LEX.GROUPS[g].orgs) if (n.length >= 2 && n.length <= 4 && ORG_STOP_CHARS.has(n[n.length - 1])) st.add(n);
+    }
+    if (LEX.WEAK) for (const n of LEX.WEAK) if (n.length >= 2 && n.length <= 4 && ORG_STOP_CHARS.has(n[n.length - 1])) st.add(n);
+    return st;
+  })();
   function walkLeft(text, end, limit) {
     limit = limit || 30;
     let i = end;
@@ -2960,6 +3031,12 @@ function luhnOk(d) {
       }
       // "多"只在"多家 / 多个"这类数量语境才算停止字（"汤姆逊多媒体"）
       if (c === '多' && !/[家个位名只种项年]/.test(text[i] || '')) { i--; continue; }
+      // 名字本身以停止字结尾的品牌（美的、华为、有为）：词库里有就整个吃进去
+      if (ORG_STOP_CHARS.has(c) && i < end + 1) {
+        let hit = 0;
+        for (let L = 4; L >= 2 && !hit; L--) if (i - L >= 0 && LEX_STOPEND.has(text.slice(i - L, i))) hit = L;
+        if (hit) { i -= hit; continue; }
+      }
       if (/\d/.test(c) || /\s/.test(c) || ORG_STOP_CHARS.has(c)) break;
       // 左边已经是上一个名字的结尾（"…有限公司杭州云栖…"）：停
       if (i < end && text[i - 1] === '司' && text[i - 2] === '公') break;
@@ -2979,6 +3056,41 @@ function luhnOk(d) {
     return i;
   }
 
+  // 公共机构：学校、监管与政府、交易所、法院、行业协会。企业内部的"工会委员会""研究院"不算
+  const PUBLIC_END = /(?:大学|学院|研究生院|商学院|中学|小学|协会|学会|联合会|法院|检察院|仲裁委员会|人民政府|政府|国资委|证监会|银保监会|保监会|银监会|交易所|监管局|人民银行|中央银行|财政部|发改委|税务局|国家税务总局)$/;
+  const ROLE_WORD_RE = /(?:先生|女士|小姐)$|^(?:独立董事|独立非执行董事|非执行董事|执行董事|董事|监事|副总经理|总经理|董事长|副董事长|总裁|副总裁|财务总监|董事会秘书|首席执行官|首席财务官)$|(?:会长|教授|院长|委员|理事|秘书长|客座教授|副总经理|总经理|总裁|总监)$/;
+  // 职务、规章、半截公司名、"曾任中"不是实体；公共机构默认不脱。用户名单里的一律照脱
+  function saneSpan(sp, o) {
+    if (sp.note === '词库' || sp.note === '名单简称' || sp.note === '名单') return true;
+    if (sp.type === 'ORG') {
+      const t = sp.text.replace(/\s/g, '');
+      if (!o.mask_public && isPublicOrg(t)) return false;
+      if (ROLE_WORD_RE.test(t) || /^(?:有?限公司|公司|责任公司)/.test(t)) return false;
+      if (/(?:部|处|中心)(?:副)?(?:总经理|经理|主任|处长)/.test(t) || /^综合/.test(t)) return false;   // 跨过"业务部副总经理"拼出来的串
+      if (/(?:规则|办法|准则|指引|规定|条例|细则)$/.test(t)) return false;
+      if (/^(?:境内|境外|国内|国际|年审|审计)(?:会计师|律师)?事务所$/.test(t)) return false;
+    }
+    if (sp.type === 'PERSON' && /^(?:曾|现|历|担|兼|出)任/.test(sp.text) && !(sp.text[0] === '曾' && sp.text.length === 3 && GIVEN.has(sp.text[2]))) return false;
+    return true;
+  }
+  // 学校、协会要有地名/国名、知名校名或学科词，才算公共机构（"腾讯大学""华为大学""星耀商学院"是企业）
+  const PUBLIC_PLACE = /^(?:中国|中华|国家|国立|全国|国际|亚洲|世界|北京|上海|天津|重庆|河北|山西|辽宁|吉林|黑龙江|江苏|浙江|安徽|福建|江西|山东|河南|湖北|湖南|广东|广西|海南|四川|贵州|云南|陕西|甘肃|青海|宁夏|新疆|西藏|内蒙古|香港|澳门|台湾|美国|英国|法国|德国|日本|韩国|新加坡|加拿大|澳大利亚|俄罗斯|瑞士|荷兰|意大利|西班牙|伦敦|纽约|巴黎|东京|首都|中央|中南|东南|西南|西北|东北|华东|华南|华中|华北|南京|杭州|广州|深圳|武汉|成都|西安|长沙|厦门|苏州|宁波|大连|青岛|济南|郑州|合肥|福州|南昌|昆明|兰州|沈阳|长春|哈尔滨|石家庄|太原|南宁|贵阳|海口|乌鲁木齐|呼和浩特|拉萨|银川|西宁|珠海|汕头|无锡|常州|扬州|温州|烟台)/;
+  const PUBLIC_FAMOUS = /^(?:清华|北大|复旦|南开|同济|中山|暨南|人民|交通|哈佛|斯坦福|麻省|剑桥|牛津|耶鲁|普林斯顿|哥伦比亚|芝加哥|宾夕法尼亚|沃顿|密西根|伯克利|加州|康奈尔|杜克|西北|约翰|欧洲|中欧|长江|光华|汇丰|INSEAD)/;
+  const PUBLIC_FIELD = /(?:理工|科技|财经|财政|金融|经济|经贸|商业|工商|政法|法学|师范|农业|林业|医科|医学|药科|中医|交通|工业|工程|电子|电力|邮电|航空|航天|石油|地质|矿业|海洋|水利|民族|外国语|传媒|艺术|美术|音乐|体育|纺织|化工|建筑|管理|会计|注册会计师|审计|统计|计算机|工程师|律师|证券业|银行业|保险|基金业|上市公司|期货业)(?:大学|学院|研究生院|协会|学会|联合会)$/;
+  function isPublicOrg(t) {
+    t = String(t || '').replace(/\s/g, '').replace(/[（(][^）)]{1,8}[）)]$/, '');
+    if (/(?:大学|学院|研究生院|商学院|中学|小学|协会|学会|联合会)$/.test(t) && !/(?:大学|学院)[\u4e00-\u9fa5]{2,}(?:学院|研究生院)$/.test(t))
+      return PUBLIC_PLACE.test(t) || PUBLIC_FAMOUS.test(t) || PUBLIC_FIELD.test(t);
+    if (PUBLIC_END.test(t)) return true;
+    if (/(?:交易所|结算)(?:股份)?有限(?:责任)?公司$/.test(t) && /(?:证券|期货|联合|商品|金融)/.test(t)) return true;
+    if (/(?:监督管理委员会|管理委员会|国有资产监督管理委员会|发展和改革委员会|标准化技术委员会)$/.test(t)) return true;
+    if (/委员会$/.test(t) && /^(?:中国|国家|国务院|全国|[\u4e00-\u9fa5]{2,3}(?:省|市|自治区))/.test(t) && !/工会/.test(t)) return true;
+    if (/(?:研究院|研究所|科学院|工程院)$/.test(t) && /^(?:中国|国家|财政部|中科院|国务院|美国国家)/.test(t)) return true;
+    const par = /^(.*?(?:大学|学院))[\u4e00-\u9fa5]{1,10}(?:学院|研究院|研究生院|中心|分校)$/.exec(t);
+    if (par && isPublicOrg(par[1])) return true;
+    return false;
+  }
+
   function detectOrgs(text, noWrap) {
     const out = [];
     ORG_SUFFIX_RE.lastIndex = 0;
@@ -2992,6 +3104,8 @@ function luhnOk(d) {
       // 证券交易所 / 证券公司 / 基金公司 —— 机构类型，不是具体企业
       if ((suf === '证券' || suf === '基金' || suf === '保险' || suf === '银行') &&
           after && '交公业会'.indexOf(after) >= 0) continue;
+      // 中国证券监督管理委员会 / 《上海证券报》《证券时报》
+      if (suf === '证券' && /^(?:监督|报|时报(?!道))/.test(text.slice(m.index + suf.length, m.index + suf.length + 3))) continue;
       const start = walkLeft(text, m.index);
       let name = text.slice(start, m.index + suf.length);
       let changed = true;
@@ -3004,6 +3118,9 @@ function luhnOk(d) {
           }
         }
       }
+      // "许女士现亦任百度集团…""李先生曾任中国工商银行…"：只留动词后面的部分
+      const vcut = /^.*(?:曾任|现任|历任|亦任|担任|兼任|出任|任职于|就职于|加入|供职于|(?:先生|女士)(?=现|亦|曾|历|担|兼|出|任|于|在|自|加入))/.exec(name);
+      if (vcut && name.length - vcut[0].length >= 4) name = name.slice(vcut[0].length);
       if (name.length < 4 || name.length > 30) continue;
       // 名称主体过长（>8 字）且后缀不是"有限公司"这类强后缀，多半是描述性短语
       const body = name.slice(0, name.length - suf.length);
@@ -3240,7 +3357,7 @@ function luhnOk(d) {
       }
     }
     // 5) 后置动词
-    const r5 = /([\u4e00-\u9fa5]{2,3})(?=负责|牵头|主导|跟进|对接|汇报|签字|审批|确认|提供|反馈|统筹|表示|认为|指出|透露|介绍|回应|告诉|强调|预计|分析|坦言|直言|回忆|补充|主持|出席|参加|列席|发言|提问|答复|建议|提出)/g;
+    const r5 = /([\u4e00-\u9fa5]{2,3})(?=负责|牵头|主导|跟进|对接|汇报|签字|审批|确认|提供|反馈|统筹|表示|认为|指出|透露|介绍|回应|告诉|强调|预计|分析(?!师|员)|坦言|直言|回忆|补充|主持|出席|参加|列席|发言|提问|答复|建议|提出)/g;
     while ((m = r5.exec(text)) !== null) {
       if (!looksLikeName(m[1])) continue;
       out.push(Span(m.index, m.index + m[1].length, 'PERSON', m[1], 0.72, '后置动词'));
@@ -3291,6 +3408,13 @@ function luhnOk(d) {
       const holdCtx = /^[\u4e00-\u9fa5]{0,4}(?:通过|直接持有|间接持有|持有公司)/.test(text.slice(m.index + 2, m.index + 10));
       const nm = pickName(text, m.index, holdCtx);   // 只有持股语境才认常用字姓（"访谈对象曾任"不再误认）
       if (nm && !cutInsideCompound(text, m.index, nm)) out.push(Span(m.index, m.index + nm.length, 'PERSON', nm, 0.88, '履历动词'));
+    }
+    // 11a) 姓 + 女士/先生/博士：句首、标点后也认（"许女士毕业于""刘博士曾任"）
+    const r11a = new RegExp('(' + SURNAME_CLASS_SAFE + ')(?:女士|先生(?![物产活命态])|博士)(?!后|生|学位|研究|论文|课程)', 'g');
+    while ((m = r11a.exec(text)) !== null) {
+      const pc = text[m.index - 1] || '';
+      if (pc && /[\u4e00-\u9fa5A-Za-z0-9]/.test(pc) && SHORT_PREV.indexOf(pc) < 0) continue;
+      out.push(Span(m.index, m.index + m[0].length, 'PERSON', m[0], 0.84, '姓+称谓'));
     }
     // 11) 姓 + 职务简称：王总、张总监、李总工、刘董、小刘、老陈
     const r11 = new RegExp('(?:[老小](?:' + SURNAME_CLASS_SAFE + ')|(?:' + SURNAME_CLASS + ')(?:总监|总工|总|董|工|经理|律师|老师|行长|主任|先生|女士))(?=' + NAME_FOLLOW + ')', 'g');
@@ -4245,7 +4369,7 @@ function luhnOk(d) {
     { re: /(?:对|向)\s*([一-龥]{2,10}?)(?=的?(?:[A-E]\+?|Pre-[A-E]|天使|种子|战略)?轮?(?:投资|增资|注资|收购|并购|尽调|估值))/g, conf: 0.88, note: '投资对象' }
   ];
   const INVEST_BAD = /^(?:项目|行业|赛道|人才|新能源|消费|医疗|龙头|领域|板块|企业|公司|标的|资产|业务|市场|技术|研发|产能|团队|平台|子公司|母公司|该公司|本公司|其|上述|相关|部分|多个|多家)|(?:行业|赛道|领域|板块|项目|业务|市场|龙头|人才|消费品|企业|公司)$/;
-  const ITEM_BAD = /^(?:董事|监事|高级管理人员|高管|管理层|自然人|法人|全资子公司|控股子公司|子公司|母公司|国有资本|民营资本|外资|外资股东|研发中心|生产基地|销售公司|分公司|事业部|分别|其他|其余|上述|本公司|发行人|公司|员工|员工持股平台|持股平台|实际控制人|控股股东|一致行动人|配偶|家族|个人|机构|基金|信托|银行|证券|保险)$|(?:职务|人员|部门|中心|基地|地区|区域|省|市|县|区|董事|监事|高管|高级管理人员|员工|股东|服务机构)$|^(?:通过|持有|将|已|拟|在|于|对|向|与|和|为|是|的|系|均|及|应|需|可|所|其|自然人|第三方|外部|专业|相关|多家|一家)/;
+  const ITEM_BAD = /^(?:董事|监事|高级管理人员|高管|管理层|自然人|法人|全资子公司|控股子公司|子公司|母公司|国有资本|民营资本|外资|外资股东|研发中心|生产基地|销售公司|分公司|事业部|分别|其他|其余|上述|本公司|发行人|公司|员工|员工持股平台|持股平台|实际控制人|控股股东|一致行动人|配偶|家族|个人|机构|基金|信托|银行|证券|保险|控制|名称|关联方|关系|参股|合营|联营|副总经理|总经理|董事长|副董事长|总裁|副总裁|财务总监|董事会秘书)$|(?:职务|人员|部门|中心|基地|地区|区域|省|市|县|区|董事|监事|高管|高级管理人员|员工|股东|服务机构)$|^(?:通过|持有|将|已|拟|在|于|对|向|与|和|为|是|的|系|均|及|应|需|可|所|其|自然人|第三方|外部|专业|相关|多家|一家)/;
   const CITY_RE = /^(?:北京|上海|广州|深圳|杭州|南京|成都|武汉|西安|苏州|天津|重庆|宁波|青岛|长沙|郑州|合肥|福州|厦门|济南|沈阳|大连|无锡|佛山|东莞|珠海|中山|香港|澳门|台北|新加坡|东京|纽约|伦敦|华东|华南|华北|华中|西南|东北|西北|海外|境外|国内)$/;
   function orgItemOk(x) {
     if (ITEM_BAD.test(x) || CITY_RE.test(x)) return false;
@@ -4607,7 +4731,7 @@ function luhnOk(d) {
   /* ---------------- 默认参数 ---------------- */
   const DEFAULT_OPTS = {
     mask_org: true, mask_person: true, mask_project: true,
-    mask_money: true, mask_contact: true, mask_pct: false, mask_equity: true, date_shift: false,
+    mask_money: true, mask_contact: true, mask_pct: false, mask_equity: true, date_shift: false, mask_public: false,
     num_mode: 'scale', num_factor: 0.618, token_style: 'bracket',
     lex_groups: null, exclude: []
   };
@@ -4828,6 +4952,9 @@ function luhnOk(d) {
       DATE_RE.lastIndex = 0;
       if (o.mask_equity) spans = spans.concat(detectEquity(text));
 
+      // 公共机构（大学、监管、交易所、法院、政府、行业协会）默认不脱：它们不是客户隐私，换掉反而让 AI 读不懂履历和监管语境；
+      // 用户自己加进名单的照脱
+      spans = spans.filter(sp => saneSpan(sp, o));
       spans = resolveOverlaps(spans);
 
       // 简称归并（同一实体只用一个代号）
@@ -4886,6 +5013,9 @@ function luhnOk(d) {
           }
         }
       }
+
+      // 最后一道把关（后补的简称、扩散也要过一遍）
+      spans = spans.filter(sp => saneSpan(sp, o));
 
       // 类型开关
       spans = spans.filter(sp => {
@@ -6554,7 +6684,7 @@ function luhnOk(d) {
   }
 
   return {
-    TYPES, createEngine, DEFAULT_OPTS, extractText, maskOfficeFile, writeZip, LEX, deriveAliases,
+    TYPES, createEngine, DEFAULT_OPTS, extractText, maskOfficeFile, writeZip, LEX, deriveAliases, isPublicOrg,
     buildRulePack, parseRulePack, applyRulePack,
     // 供测试使用
     _internal: { detectMoney, detectOrgs, detectPersons, detectFinRows, detectTables, resolveOverlaps, scaleAmount, detectLexicon, detectCodename, propagateNamed, detectRegex, detectDocNo, detectOrgList, detectEquity }
@@ -6923,6 +7053,7 @@ function syncHint() {
   if (state.opts.mask_equity) parts.push('股权比例');
   if (state.opts.mask_pct) parts.push('其他比率');
   if (state.opts.date_shift) parts.push('日期平移');
+  if (state.opts.mask_public) parts.push('公共机构');
   const nm = { scale: `等比缩放 ${state.opts.num_factor.toFixed(2)}`, bucket: '区间化', hash: '等长乱数', keep: '金额原样' }[state.opts.num_mode];
   const lexN = state.lexOn ? state.lexOn.size : 0;
   $('#settingsHint').textContent = (parts.join('、') || '未选择') + ' · ' + nm + ' · 词库 ' + lexN + '/' + lexKeys.length

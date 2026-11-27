@@ -667,6 +667,18 @@
   function gbk(bytesStr) {
     try { gbkDec = gbkDec || new TextDecoder('gbk'); return gbkDec.decode(bytesOf(bytesStr)); } catch (e) { return ''; }
   }
+  // 没有 ToUnicode 的 Adobe-GB1 字体（年报里常见于标点）：CID 0–939 是符号区，直接查表；
+  // 940–7702 是 GB2312 一二级汉字，按 GB2312 区位顺序推算（D7 区只有 89 个字）
+  const GB1_LO = '\u0000 !"#$%&\u0027()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\u005c]^_`abcdefghijklmnopqrstuvwxyz{|}~\u3000、。·ˉˇ¨〃々—～‖…‘’“”〔〕〈〉《》「」『』〖〗【】±×÷∶∧∨∑∏∪∩∈∷√⊥∥∠⌒⊙∫∮≡≌≈∽∝≠≮≯≤≥∞∵∴♂♀°′″℃＄¤￠￡‰§№☆★○●◎◇◆□■△▲※→←↑↓〓⒈⒉⒊⒋⒌⒍⒎⒏⒐⒑⒒⒓⒔⒕⒖⒗⒘⒙⒚⒛⑴⑵⑶⑷⑸⑹⑺⑻⑼⑽⑾⑿⒀⒁⒂⒃⒄⒅⒆⒇①②③④⑤⑥⑦⑧⑨⑩㈠㈡㈢㈣㈤㈥㈦㈧㈨㈩ⅠⅡⅢⅣⅤⅥⅦⅧⅨⅩⅪⅫ！＂＃￥％＆＇（）＊＋，－．／０１２３４５６７８９：；＜＝＞？＠ＡＢＣＤＥＦＧＨＩＪＫＬＭＮＯＰＱＲＳＴＵＶＷＸＹＺ［＼］＾＿｀ａｂｃｄｅｆｇｈｉｊｋｌｍｎｏｐｑｒｓｔｕｖｗｘｙｚ｛｜｝￣ぁあぃいぅうぇえぉおかがきぎくぐけげこごさざしじすずせぜそぞただちぢっつづてでとどなにぬねのはばぱひびぴふぶぷへべぺほぼぽまみむめもゃやゅゆょよらりるれろゎわゐゑをんァアィイゥウェエォオカガキギクグケゲコゴサザシジスズセゼソゾタダチヂッツヅテデトドナニヌネノハバパヒビピフブプヘベペホボポマミムメモャヤュユョヨラリルレロヮワヰヱヲンヴヵヶΑΒΓΔΕΖΗΘΙΚΛΜΝΞΟΠΡΣΤΥΦΧΨΩαβγδεζηθικλμνξοπρστυφχψω︐︒︑\ue790\ue791\ue792\ue793︵︶︹︺︿﹀︽︾﹁﹂﹃﹄\ue794\ue795︻︼︷︸︱⁝︳︴АБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯабвгдеёжзийклмнопрстуфхцчшщъыьэюяāáǎàēéěèīíǐìōóǒòūúǔùǖǘǚǜüêɑḿńňǹɡㄅㄆㄇㄈㄉㄊㄋㄌㄍㄎㄏㄐㄑㄒㄓㄔㄕㄖㄗㄘㄙㄚㄛㄜㄝㄞㄟㄠㄡㄢㄣㄤㄥㄦㄧㄨㄩ\u0000─━│┃┄┅┆┇┈┉┊┋┌┍┎┏┐┑┒┓└┕┖┗┘┙┚┛├┝┞┟┠┡┢┣┤┥┦┧┨┩┪┫┬┭┮┯┰┱┲┳┴┵┶┷┸┹┺┻┼┽┾┿╀╁╂╃╄╅╆╇╈╉╊╋！＂＃￥％＆＇（）＊＋，－．／０１２３４５６７８９：；＜＝＞？＠ＡＢＣＤＥＦＧＨＩＪＫＬＭＮＯＰＱＲＳＴＵＶＷＸＹＺ［＼］＾＿｀ａｂｃｄｅｆｇｈｉｊｋｌｍｎｏｐｑｒｓｔｕｖｗｘｙｚ｛｜｝￣āáǎàēéěèīíǐìōóǒòūúǔùǖǘǚǜüê\u0000ḿ\u0000\u0000ǹ\u0000';
+  function gb1Cid(cid) {
+    if (cid < 940) { const c = GB1_LO[cid] || ''; return c === '\u0000' ? '' : c; }
+    if (cid > 7702) return '';
+    let k = cid - 940, row, cell;
+    if (k < 3666) { row = 0xB0 + (k / 94 | 0); cell = 0xA1 + k % 94; }
+    else if (k < 3755) { row = 0xD7; cell = 0xA1 + (k - 3666); }
+    else { k -= 3755; row = 0xD8 + (k / 94 | 0); cell = 0xA1 + k % 94; }
+    return gbk(String.fromCharCode(row, cell));
+  }
   const GBK_SPACE = [{ len: 1, lo: '\x00', hi: '\x80' }, { len: 2, lo: '\x81\x40', hi: '\xfe\xfe' }];
 
   async function loadFont(doc, ref) {
@@ -697,6 +709,12 @@
       const desc = resolveSync(doc, fd.DescendantFonts);
       const d0 = resolveSync(doc, desc instanceof Array ? desc[0] : null) || {};
       if (typeof d0.DW === 'number') font.dw = d0.DW;
+      if (!font.toU && /^Identity-[HV]$/.test(ename) && d0.Subtype instanceof Name && d0.Subtype.name === 'CIDFontType0') {
+        const si = resolveSync(doc, d0.CIDSystemInfo) || {};
+        const ord = resolveSync(doc, si.Ordering);
+        const os = ord instanceof PStr ? ord.s : (ord && ord.name) || '';
+        if (os === 'GB1') font.mode = 'gb1';
+      }
       const W = resolveSync(doc, d0.W);
       if (W instanceof Array) {
         for (let i = 0; i < W.length;) {
@@ -756,6 +774,7 @@
       if (u === undefined) {
         if (!font.type0) u = font.enc[c.code];
         else if (font.mode === 'utf16') u = String.fromCharCode(c.code);
+        else if (font.mode === 'gb1') u = gb1Cid(c.code);
         else if (font.mode === 'gbk') u = gbk(c.len === 2 ? String.fromCharCode(c.code >> 8, c.code & 255) : String.fromCharCode(c.code));
         else if (font.mode === 'big5') { try { u = new TextDecoder('big5').decode(new Uint8Array(c.len === 2 ? [c.code >> 8, c.code & 255] : [c.code])); } catch (e) { u = ''; } }
         else u = '';                             // Identity-H 又没有 ToUnicode：无法得知是什么字

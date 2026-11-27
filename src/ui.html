@@ -433,6 +433,7 @@
             <div class="chip on" data-k="mask_equity"><span class="box"></span>股权比例</div>
             <div class="chip on" data-k="ai_note"><span class="box"></span>复制时附说明</div>
             <div class="chip" data-k="mask_pct"><span class="box"></span>其他比率</div>
+            <div class="chip" data-k="mask_public" title="默认不脱：大学/学院、监管与政府部门、交易所、法院、行业协会。这些不是客户隐私，保留后 AI 能读懂履历和监管语境。履历里的学校组合可能帮人认出是谁，对外发前可打开此项"><span class="box"></span>公共机构（学校/监管/法院）</div>
             <div class="chip" data-k="date_shift" title="实验功能：带年月日的日期和「3月5日」整体挪动同一个隐藏天数（间隔不变，可还原）。暂不处理：Excel 里存成日期格式的单元格、英文日期、中文数字日期、8 位数字日期——同一份材料里有这些写法时，平移天数可能被反推。还原时 AI 凭常识写的真实日期也会被反向平移，请核对"><span class="box"></span>日期平移（实验）</div>
           </div>
         </div>
@@ -1061,6 +1062,7 @@ function syncHint() {
   if (state.opts.mask_equity) parts.push('股权比例');
   if (state.opts.mask_pct) parts.push('其他比率');
   if (state.opts.date_shift) parts.push('日期平移');
+  if (state.opts.mask_public) parts.push('公共机构');
   const nm = { scale: `等比缩放 ${state.opts.num_factor.toFixed(2)}`, bucket: '区间化', hash: '等长乱数', keep: '金额原样' }[state.opts.num_mode];
   const lexN = state.lexOn ? state.lexOn.size : 0;
   $('#settingsHint').textContent = (parts.join('、') || '未选择') + ' · ' + nm + ' · 词库 ' + lexN + '/' + lexKeys.length

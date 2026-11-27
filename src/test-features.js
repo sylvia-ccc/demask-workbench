@@ -85,6 +85,35 @@ const ok = (c, m) => { if (c) pass++; else { fail++; console.log('✗ ' + m); } 
     ok(!/鹏城智造今年/.test(t.masked), '文中全称推出的简称没有脱敏：' + t.masked);
   }
 
+  // ---- v2.9 真实年报写法 ----
+  {
+    const run = (t, o) => E.createEngine().mask(t, o || {});
+    const m1 = run('许女士毕业于北京大学，曾任中国证券监督管理委员会处长，现任深圳市鹏城智造科技有限公司董事。');
+    ok(/北京大学/.test(m1.masked) && /中国证券监督管理委员会/.test(m1.masked), '公共机构默认不该脱：' + m1.masked);
+    ok(!/许女士|鹏城智造/.test(m1.masked), '人名或公司漏了：' + m1.masked);
+    ok(!/北京大学/.test(run('毕业于北京大学', { mask_public: true }).masked), '打开公共机构后应当脱敏');
+    const e2 = E.createEngine(); e2.addWord('ORG', '北京大学');
+    ok(!/北京大学/.test(e2.mask('毕业于北京大学', {}).masked), '用户名单里的公共机构必须照脱');
+    ok(!E.isPublicOrg('美的工会委员会') && !E.isPublicOrg('微软亚洲研究院') && E.isPublicOrg('香港联合交易所有限公司'), '公共机构判断不对');
+    const m3 = run('李　岷\n本公司副董事长、非执行董事\n吴凯之\n现任副总裁');
+    ok(!/李　岷|吴凯之/.test(m3.masked), '简历标题行的名字漏了：' + m3.masked);
+    const m4 = run('境内会计师事务所名称\t普华永道中天会计师事务所\n国际特许金融分析师，担任独立董事');
+    ok(/境内会计师事务所名称/.test(m4.masked) && /特许金融分析师/.test(m4.masked) && /独立董事/.test(m4.masked), '通用说法被当成实体：' + m4.masked);
+    const m5 = run('美的控股有限公司持有；华为技术有限公司；贵州茅台酒股份有限公司（上交所：600519）');
+    ok(!/美的控股|华为技术|600519/.test(m5.masked), '品牌名带停止字或交易所代码漏了：' + m5.masked);
+    const m6 = run('许女士现亦任百度集团股份有限公司独立董事');
+    ok(m6.entities.some(x => x.type === 'PERSON' && x.text === '许女士') && m6.entities.some(x => x.type === 'ORG' && x.text === '百度集团股份有限公司'), '人名被吞进公司名：' + JSON.stringify(m6.entities.map(x => x.text)));
+  }
+
+  // ---- v2.9 核查反例：不能漏、不能误伤 ----
+  {
+    const mk = t => E.createEngine().mask(t, {}).masked;
+    for (const t of ['小先生教育科技有限公司获得融资', '美丽女士服饰有限公司', '腾讯大学', '华为大学', '星耀商学院', '华夏精英教育学院']) ok(mk(t).indexOf(t.slice(0, 4)) < 0, '私营机构漏脱：' + mk(t));
+    const m = mk('华创证券部分营业部关闭；平安资产管理部负责人陈明；曾任飞表示同意。');
+    ok(!/华创|平安|任飞/.test(m), '简称或人名漏脱：' + m);
+    for (const t of ['杜邦\n首席执行官', '江苏\n董事长表示', '姓名\t金额\t股份', '联系人\t董事长\t财务总监', '易于先生，您好', '周先生物学', '马先生产']) ok(mk(t) === t, '普通文字被误脱：' + mk(t));
+  }
+
   // ---- 规则包 ----
   {
     const a = E.createEngine();
