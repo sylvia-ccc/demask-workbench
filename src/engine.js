@@ -1029,8 +1029,46 @@ function luhnOk(d) {
     return out;
   }
 
+  /* 由全称推出常用简称："深圳市鹏城智造科技有限公司" → "鹏城智造科技""鹏城智造"
+     用户导入的客户名单多是全称，正文里却常写简称；名单里的名字要做到一个不漏 */
+  const ALIAS_SUFFIX = /(?:集团股份有限公司|集团有限公司|股份有限公司|有限责任公司|有限公司|股份公司|总公司|（集团）|\(集团\)|（有限合伙）|\(有限合伙\)|有限合伙|合伙企业|集团|控股|股份)$/;
+  const ALIAS_REGION = /^(?:中国|(?:北京|上海|天津|重庆|河北|山西|辽宁|吉林|黑龙江|江苏|浙江|安徽|福建|江西|山东|河南|湖北|湖南|广东|海南|四川|贵州|云南|陕西|甘肃|青海|内蒙古|广西|西藏|宁夏|新疆|香港|澳门|台湾)(?:省|市|自治区)?|(?:广州|深圳|杭州|南京|成都|武汉|西安|苏州|宁波|青岛|长沙|郑州|合肥|福州|厦门|济南|沈阳|大连|无锡|佛山|东莞|珠海|中山|昆明|南宁|南昌|贵阳|太原|石家庄|哈尔滨|长春|兰州|乌鲁木齐|呼和浩特|海口|常州|温州|绍兴|嘉兴|金华|台州|泉州|烟台|潍坊|徐州|南通|扬州|镇江|惠州|江门|汕头|珠江)(?:市)?)/;
+  const ALIAS_INDUSTRY = /(?:新能源|新材料|数字技术|网络技术|信息技术|科技|电子|数字|数码|软件|系统|互联|实业|投资|贸易|网络|信息|技术|发展|管理|咨询|服务|新材料|材料|医药|生物|智能|能源|物流|文化|传媒|置业|地产|建设|工程|设备|机械|制造|食品|农业|环保|化工|商业|商贸|国际|供应链)$/;
+  // 字号是这些普通词时（"中国石油化工"去掉"中国"剩"石油化工"），推出来的简称会误伤行业说法、甚至撞上另一家公司
+  const ALIAS_GENERIC = /^(?:发展|创新|国际|人寿|移动|石油|天然气|化工|国有|资产|经营|城市|建设|开发|金融|通信|电力|交通|铁路|航空|港务|保险|证券|信托|银行|投资|实业|贸易|中心|工业|商业|农业|科学|网络|电信|邮政|烟草|水务|燃气|环境|医疗|健康|教育|文化|旅游|体育|出版|广播|电视|新闻|人民|国家|中央|地方|总|股份|有限|集团|控股|科技|技术|服务|管理|咨询|物流|能源|材料|新材料|新能源|医药|生物|智能|电子|信息|置业|地产|工程|设备|机械|制造|食品|环保|供应链|港口|航运|汽车|钢铁|煤炭|有色|黄金|电网|核电|水电|风电|光伏)+$/;
+  function aliasOk(a) {
+    if (!a || a.length < 3) return false;
+    if (ALIAS_GENERIC.test(a.replace(ALIAS_REGION, ''))) return false;
+    if (ALIAS_GENERIC.test(a)) return false;
+    return true;
+  }
+  function deriveAliases(full) {
+    const out = [];
+    let core = String(full || '').trim().replace(/[（(](?:中国|香港|深圳|上海|北京|广州|集团|控股)[）)]/g, '');
+    if (!ALIAS_SUFFIX.test(core) && !/(?:公司|集团)$/.test(core)) return out;
+    for (let k = 0; k < 3 && ALIAS_SUFFIX.test(core); k++) core = core.replace(ALIAS_SUFFIX, '');
+    core = core.replace(/[（(][^）)]{1,8}[）)]$/, '');                       // 去掉末尾括注"（深圳）"
+    const noRegion = core.replace(ALIAS_REGION, '');
+    // 字号（去掉地名和行业词以后剩下的部分）不足两个字：名字本身就是泛称（"北京科技发展有限公司"），不推简称
+    let brand = noRegion;
+    for (let k = 0; k < 4 && ALIAS_INDUSTRY.test(brand); k++) brand = brand.replace(ALIAS_INDUSTRY, '');
+    if (brand.length < 2 || ALIAS_REGION.test(brand + '市')) return out;
+    if (ALIAS_GENERIC.test(brand)) return out;
+    const add = x => { if (x && x.length >= 3 && x.length <= 12 && x !== full && out.indexOf(x) < 0 && nameRemainderOk(x) && !COMMON_2.has(x) && aliasOk(x)) out.push(x); };
+    add(core);
+    add(noRegion);
+    // "中国XX"：中国是字号的一部分，不再砍行业词（"中国石油化工"砍成"中国石油"就成了另一家公司）
+    if (/^中国/.test(core)) return out;
+    for (const base of [core, noRegion]) {
+      let b = base;
+      for (let k = 0; k < 2 && ALIAS_INDUSTRY.test(b); k++) { b = b.replace(ALIAS_INDUSTRY, ''); add(b); }
+    }
+    return out;
+  }
+
   /* 词库匹配：按首字分桶，一遍扫完（词库上千、单元格上万时，逐词 indexOf 太慢） */
   const dictIdx = new WeakMap();
+  const dictAliasCache = new WeakMap();
   function dictFind(list, text, type, note, minLen) {
     const out = [];
     if (!list || !list.length || !text) return out;
@@ -2071,7 +2109,7 @@ function luhnOk(d) {
   // "双欣化工""双欣资源"这类"字头 + 行业词"的写法也是同一集团的主体
   const REGION_PREFIX = /^(?:中国|内蒙古|黑龙江|新疆|西藏|宁夏|广西|香港|澳门|台湾|[一-龥]{2}省|[一-龥]{2}市|北京|上海|天津|重庆|河北|山西|辽宁|吉林|江苏|浙江|安徽|福建|江西|山东|河南|湖北|湖南|广东|海南|四川|贵州|云南|陕西|甘肃|青海|深圳|广州|杭州|南京|苏州|成都|武汉|西安|宁波|青岛|厦门|长沙|郑州|合肥|无锡|东莞|佛山|珠海)+/;
   const INDUSTRY_TAIL = '电子|国际|化工|资源|医疗|光电|新材|物流|生物|资本|投资|科技|医药|控股|集团|股份|实业|环保|能源|材料|制造|智能|汽车|食品|地产|置业|传媒|网络|软件|数据|信息|电气|机械|重工|重能|重装|旅游|酒店|文旅|索道|航空|物业|商贸|贸易|供应链|半导体|健康|新能源|证券|基金|银行|保险|金融|租赁';
-  const HEAD_STOP = /^(?:中国|中华|国际|全球|亚洲|华东|华南|华北|华中|西南|东北|西北|股份|有限|集团|控股|投资|科技|实业|发展|建设|产业|新材|电子|医药|生物|能源|资本|信息|技术|管理|咨询|服务|贸易|国家|人民|公司)$/;
+  const HEAD_STOP = /^(?:中国|中华|国际|石油|移动|人寿|国有|资产|城市|全球|亚洲|华东|华南|华北|华中|西南|东北|西北|股份|有限|集团|控股|投资|科技|实业|发展|建设|产业|新材|电子|医药|生物|能源|资本|信息|技术|管理|咨询|服务|贸易|国家|人民|公司)$/;
   function detectHeadAliases(text, orgSpans, spans) {
     const heads = new Set();
     for (const o of orgSpans) {
@@ -2087,6 +2125,7 @@ function luhnOk(d) {
     while ((m = re.exec(text)) !== null) {
       const st = m.index, en = st + m[0].length;
       if (spans.some(x => x.start <= st && x.end >= en)) continue;   // 已在别的实体里
+      if (ALIAS_GENERIC.test(m[0])) continue;                             // "石油化工""移动通信"是行业词
       out.push(Span(st, en, 'ORG', m[0], 0.88, '同字头简称'));
     }
     return out;
@@ -2666,6 +2705,18 @@ function luhnOk(d) {
         spans = spans.concat(detectOrgs(text));
         spans = spans.concat(detectLexicon(text, o.lex_groups));
         spans = spans.concat(dictFind(dict.ORG, text, 'ORG', '词库'));
+        // 名单里的全称 → 自动认它的简称，并和全称拿同一个代号
+        if (dict.ORG && dict.ORG.length) {
+          let ex = dictAliasCache.get(dict.ORG);
+          if (!ex || ex.n !== dict.ORG.length) {
+            const words = [], canon = new Map();
+            const own = new Set(dict.ORG);
+            for (const w of dict.ORG) for (const a of deriveAliases(w)) if (!own.has(a) && !canon.has(a)) { canon.set(a, w); words.push(a); }
+            ex = { n: dict.ORG.length, words: words, canon: canon };
+            dictAliasCache.set(dict.ORG, ex);
+          }
+          for (const sp of dictFind(ex.words, text, 'ORG', '名单简称')) { sp.canon = ex.canon.get(sp.text); spans.push(sp); }
+        }
       }
       if (o.mask_project) {
         spans = spans.concat(detectProjects(text));
@@ -2700,6 +2751,30 @@ function luhnOk(d) {
           if (extra.length) spans = resolveOverlaps(spans.concat(extra));
         }
         detectRoles(text, spans);
+      }
+
+      // 全称推简称：文中出现过"深圳市鹏城智造科技有限公司"，别处单独写的"鹏城智造"（≥4 字）也换成同一个代号
+      if (o.mask_org && !o.fast && text.length <= 400000) {
+        const covered = new Uint8Array(text.length + 1);
+        for (const sp of spans) for (let i = sp.start; i < sp.end; i++) covered[i] = 1;
+        const add = [];
+        const seen = new Set();
+        for (const sp of spans) {
+          if (sp.type !== 'ORG' || !ALIAS_SUFFIX.test(sp.text.replace(/\s/g, ''))) continue;
+          for (const a of deriveAliases(sp.text.replace(/\s/g, ''))) {
+            if (a.length < 4 || seen.has(a)) continue;
+            seen.add(a);
+            let i = -1;
+            while ((i = text.indexOf(a, i + 1)) >= 0) {
+              if (covered[i] || covered[i + a.length - 1]) continue;
+              const x = Span(i, i + a.length, 'ORG', a, 0.85, '全称推简称');
+              x.canon = sp.canon || sp.text;
+              add.push(x);
+              for (let k = i; k < i + a.length; k++) covered[k] = 1;
+            }
+          }
+        }
+        if (add.length) spans = resolveOverlaps(spans.concat(add));
       }
 
       // 同名扩散：不管机构开关，人名和组织都做（否则同一人只在名单里脱、正文里漏）
@@ -4387,7 +4462,7 @@ function luhnOk(d) {
   }
 
   return {
-    TYPES, createEngine, DEFAULT_OPTS, extractText, maskOfficeFile, writeZip, LEX,
+    TYPES, createEngine, DEFAULT_OPTS, extractText, maskOfficeFile, writeZip, LEX, deriveAliases,
     buildRulePack, parseRulePack, applyRulePack,
     // 供测试使用
     _internal: { detectMoney, detectOrgs, detectPersons, detectFinRows, detectTables, resolveOverlaps, scaleAmount, detectLexicon, detectCodename, propagateNamed, detectRegex, detectDocNo, detectOrgList, detectEquity }

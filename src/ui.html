@@ -511,7 +511,7 @@
           <details style="margin-top:8px;font-size:12px">
             <summary style="cursor:pointer;color:var(--accent-2)">批量导入客户名单</summary>
             <textarea id="dictBulk" style="min-height:90px;border:1px solid var(--line);border-radius:6px;margin-top:6px;padding:8px;font-size:12.5px"
-              placeholder="每行一个，也可用逗号、顿号分隔。&#10;默认按企业导入；人名或项目加前缀：&#10;人：张伟、李娜&#10;项目：凤凰、青松"></textarea>
+              placeholder="每行一个，也可用逗号、顿号分隔。写全称即可，简称自动认出：&#10;深圳市鹏城智造科技有限公司 → 鹏城智造、鹏城智造科技&#10;默认按企业导入；人名或项目加前缀：&#10;人：张伟、李娜&#10;项目：凤凰、青松"></textarea>
             <div style="display:flex;gap:6px;margin-top:6px;align-items:center">
               <button class="btn" id="dictBulkGo">导入</button>
               <label class="btn" style="cursor:pointer">从文件导入<input type="file" id="dictFile" accept=".txt,.csv,.xlsx" style="display:none"></label>
@@ -1280,7 +1280,10 @@ function renderDict() {
     el.innerHTML = '<span style="font-size:12px;color:var(--faint)">还没有自定义词。加上客户简称、内部代号，识别率会明显提升。</span>' + ignHtml;
     return;
   }
-  el.innerHTML = all.map(([k, w]) => `<span class="dict-item">${esc(w)}<button data-t="${k}" data-w="${esc(w)}">×</button></span>`).join('') + ignHtml;
+  el.innerHTML = all.map(([k, w]) => {
+    const al = k === 'ORG' ? DemaskEngine.deriveAliases(w) : [];
+    return `<span class="dict-item"${al.length ? ` title="同时认出：${esc(al.join('、'))}"` : ''}>${esc(w)}${al.length ? `<span style="opacity:.55;font-size:11px"> +${al.length} 简称</span>` : ''}<button data-t="${k}" data-w="${esc(w)}">×</button></span>`;
+  }).join('') + ignHtml;
   el.querySelectorAll('button[data-t]').forEach(b => {
     b.onclick = () => { eng.removeWord(b.dataset.t, b.dataset.w); renderDict(); state.lastInput = ''; runMask(); };
   });
@@ -1999,7 +2002,12 @@ $('#btnNewProj').onclick = () => {
   eng.newProject(name || undefined);
   $('#newProjName').value = '';
   renderProjects(); afterProjectChange();
-  toast('已新建项目，代号从 A 重新开始');
+  // 新项目第一步：导入这个项目的客户、标的、交易对手名单——名单里的名字（含自动推出的简称）一个不漏
+  $('#projModal').classList.remove('on');
+  $('#settings').classList.add('open');
+  const det = $('#dictBulk') && $('#dictBulk').closest('details');
+  if (det) { det.open = true; setTimeout(() => { $('#dictBulk').focus(); $('#dictBulk').scrollIntoView({ block: 'center' }); }, 50); }
+  toast('已新建项目，代号从 A 重新开始。建议先把本项目的客户、标的、交易对手名单粘进来（写全称即可，简称会自动认出）', 8000);
 };
 $('#newProjName').addEventListener('keydown', e => { if (e.key === 'Enter') $('#btnNewProj').click(); });
 $('#btnNewProj2').onclick = () => { renderProjects(); $('#projModal').classList.add('on'); };
