@@ -44,6 +44,22 @@ const ok = (c, m) => { if (c) pass++; else { fail++; console.log('✗ ' + m); } 
     ok(e.restore('今天是 2025-04-04') === '今天是 2025-04-04', '关掉后还原仍在改日期');
   }
 
+  // ---- AI 新算出的金额：按同一系数换回真实量级 ----
+  {
+    const e = E.createEngine();
+    const m = e.mask('华润万佳商业集团 2024 年营收 128.6 亿元，2025 年营收 152.3 亿元，门店 1,240 家。', {});
+    const n = m.masked.match(/[\d.]+(?= 亿元)/g).map(Number);
+    const ai = '合计营收 ' + (n[0] + n[1]).toFixed(1) + ' 亿元，2024 年 ' + n[0] + ' 亿元，同比增长 18.4%，门店 1,240 家，第 3 季度。';
+    const r = e.restore(ai);
+    ok(/合计营收 280\.9 亿元/.test(r), 'AI 合计没有换回真实量级：' + r);
+    ok(/2024 年 128\.6 亿元/.test(r) && /18\.4%/.test(r) && /1,240 家/.test(r) && /第 3 季度/.test(r), '不该动的数字被改了：' + r);
+    ok(e.lastRestoreStats().estimated === 1, '推算值计数不对：' + JSON.stringify(e.lastRestoreStats()));
+    const r2 = e.restore('【企业A】预计收入 10–15 亿元；2025元旦促销；用户规模 500 万；300 万家门店；带宽 100M；3 元素');
+    ok(/2025元旦/.test(r2) && /500 万/.test(r2) && /300 万家/.test(r2) && /100M/.test(r2) && /3 元素/.test(r2), '不该换的被换了：' + r2);
+    ok(!/10–15 亿元/.test(r2) && !/–15 亿元/.test(r2), '区间只换了一半：' + r2);
+    ok(e.restore(r) === r, '对已还原的文字再还原，数字被重复换算');
+  }
+
   // ---- 规则包 ----
   {
     const a = E.createEngine();

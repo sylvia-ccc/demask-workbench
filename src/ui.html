@@ -220,6 +220,7 @@
   .rlog-head .btn{margin-left:auto;padding:2px 8px;font-size:11.5px}
   .rlog-body{font-size:13px;line-height:1.75;color:var(--ink-2);white-space:pre-wrap;word-break:break-word}
   .rlog-body mark.rs{background:#fff3c4;color:#7c4a09;border-radius:3px;padding:0 1px}
+  .rlog-body mark.rs.est{background:#ffe2cc;color:#9a3412;border-bottom:1px dashed #c2410c}
 
   .restore-hint{display:none;background:#fffbeb;border:1px solid #fde68a;color:#92400e;
     border-radius:8px;padding:10px 12px;font-size:12.5px;line-height:1.7;margin-bottom:10px}
@@ -572,6 +573,7 @@
           <span class="cnt" id="restoreCount" style="display:none"></span>
           <div class="grow"></div>
           <button class="btn" id="btnCopyRestore">复制全部</button>
+          <button class="btn" id="btnRestoreDocx" title="把还原后的内容存成 Word，直接交付或继续编辑">导出 Word</button>
         </div>
         <div class="card-body">
           <div class="restore-hint" id="restoreHint"></div>
@@ -1771,9 +1773,12 @@ $('#btnRestore').onclick = () => {
   if (state.opts.token_style === 'mask') {
     return toast('当前是掩码模式，无法还原——切回代号模式再试');
   }
+  eng.setOpts(state.opts);
   const html = eng.restore(t, { mark: true });
   const plain = eng.restore(t);
-  state.restoreLog.push({ html: html, plain: plain, len: plain.length });
+  const est = (eng.lastRestoreStats && eng.lastRestoreStats().estimated) || 0;
+  const raw = eng.restore(t, { raw: true });
+  state.restoreLog.push({ html: html, plain: plain, raw: raw, len: plain.length });
   renderRestoreLog();
   $('#aiInput').value = '';
   const out = plain;
@@ -1781,7 +1786,11 @@ $('#btnRestore').onclick = () => {
   // 还有代号没还原 → 多半是这段内容属于别的项目
   const left = (out.match(TOK_LEFT) || []);
   const hint = $('#restoreHint');
-  if (!left.length) { hint.classList.remove('on'); hint.innerHTML = ''; toast('已还原真实名称'); return; }
+  if (!left.length) {
+    hint.classList.remove('on'); hint.innerHTML = '';
+    toast(est ? '已还原。其中 ' + est + ' 个金额是 AI 新算出的（合计、预测等），已按缩放系数换回真实量级，用橙色虚线标出，请核对' : '已还原真实名称', est ? 8000 : 0);
+    return;
+  }
 
   const others = eng.projectsCanRestore(t).filter(p => !p.current);
   const uniq = [...new Set(left)].slice(0, 6).join(' ');
@@ -1810,6 +1819,65 @@ $('#btnClearRestore').onclick = () => {
   $('#aiInput').value = '';
   renderRestoreLog();
 };
+// 还原后的结果导出为 Word（最小 docx：每行一个段落，Markdown 标题和列表转成对应样式）
+$('#btnRestoreDocx').onclick = async () => {
+  if (!state.restoreLog.length) return toast('还没有还原记录');
+  // 用带标记的版本：\u0001…\u0002 是还原的名称和原值，\u0003…\u0004 是 AI 新算出、按系数换回的数（在 Word 里标黄提醒核对）
+  const text = state.restoreLog.map(r => r.raw || r.plain).join('\n\n').replace(/\r\n?/g, '\n').replace(/[\v\f]/g, '\n');
+  const x = t => t.replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  const runOne = (t, bold) => {
+    const rp = bold ? '<w:b/>' : '';
+    return t.split(/(\u0003[^\u0004]*\u0004)/).filter(Boolean).map(seg => {
+      const est = seg[0] === '\u0003';
+      const body = seg.replace(/[\u0001-\u0004]/g, '');
+      const pr = (rp || est) ? '<w:rPr>' + rp + (est ? '<w:highlight w:val="yellow"/>' : '') + '</w:rPr>' : '';
+      return body.split('\t').map((piece, i) => (i ? '<w:r>' + pr + '<w:tab/></w:r>' : '') + (piece ? '<w:r>' + pr + '<w:t xml:space="preserve">' + x(piece) + '</w:t></w:r>' : '')).join('');
+    }).join('');
+  };
+  const runs = t => t.split(/(\*\*[^*]+\*\*)/).filter(Boolean).map(seg => /^\*\*[^*]+\*\*$/.test(seg) ? runOne(seg.slice(2, -2), true) : runOne(seg, false)).join('');
+  const lines = text.split('\n');
+  let body = '';
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    // Markdown 表格 → Word 表格
+    if (/^\s*\|.*\|\s*$/.test(line)) {
+      const rows = [];
+      while (i < lines.length && /^\s*\|.*\|\s*$/.test(lines[i])) {
+        if (!/^\s*\|[\s:|-]+\|\s*$/.test(lines[i])) rows.push(lines[i].trim().slice(1, -1).split('|').map(c => c.trim()));
+        i++;
+      }
+      i--;
+      const cell = c => '<w:tc><w:tcPr><w:tcBorders><w:top w:val="single" w:sz="4"/><w:left w:val="single" w:sz="4"/><w:bottom w:val="single" w:sz="4"/><w:right w:val="single" w:sz="4"/></w:tcBorders></w:tcPr><w:p>' + runs(c) + '</w:p></w:tc>';
+      body += '<w:tbl><w:tblPr><w:tblW w:w="0" w:type="auto"/></w:tblPr>' + rows.map(r => '<w:tr>' + r.map(cell).join('') + '</w:tr>').join('') + '</w:tbl><w:p/>';
+      continue;
+    }
+    const h = line.match(/^(#{1,3})\s+(.*)$/);
+    if (h) { body += '<w:p><w:pPr><w:pStyle w:val="Heading' + h[1].length + '"/></w:pPr>' + runs(h[2]) + '</w:p>'; continue; }
+    const ol = line.match(/^\s*(\d+[.、)])\s+(.*)$/);
+    if (ol) { body += '<w:p><w:pPr><w:ind w:left="420" w:hanging="300"/></w:pPr>' + runs(ol[1] + ' ' + ol[2]) + '</w:p>'; continue; }
+    const li = line.match(/^\s*[-*•]\s+(.*)$/);
+    if (li) { body += '<w:p><w:pPr><w:ind w:left="420" w:hanging="210"/></w:pPr>' + runs('• ' + li[1]) + '</w:p>'; continue; }
+    body += '<w:p>' + runs(line) + '</w:p>';
+  }
+  const paras = body;
+  const W = 'http://schemas.openxmlformats.org/wordprocessingml/2006/main';
+  const enc = t => new TextEncoder().encode(t);
+  const styles = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:styles xmlns:w="' + W + '"><w:docDefaults><w:rPrDefault><w:rPr><w:rFonts w:ascii="Calibri" w:eastAsia="微软雅黑" w:hAnsi="Calibri"/><w:sz w:val="22"/></w:rPr></w:rPrDefault><w:pPrDefault><w:pPr><w:spacing w:after="120" w:line="300" w:lineRule="auto"/></w:pPr></w:pPrDefault></w:docDefaults>' +
+    [1, 2, 3].map(n => '<w:style w:type="paragraph" w:styleId="Heading' + n + '"><w:name w:val="heading ' + n + '"/><w:basedOn w:val="Normal"/><w:pPr><w:keepNext/><w:spacing w:before="240"/><w:outlineLvl w:val="' + (n - 1) + '"/></w:pPr><w:rPr><w:b/><w:sz w:val="' + (36 - n * 4) + '"/></w:rPr></w:style>').join('') +
+    '<w:style w:type="paragraph" w:default="1" w:styleId="Normal"><w:name w:val="Normal"/></w:style></w:styles>';
+  const files = [
+    { name: '[Content_Types].xml', data: enc('<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/><Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/></Types>') },
+    { name: '_rels/.rels', data: enc('<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>') },
+    { name: 'word/_rels/document.xml.rels', data: enc('<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>') },
+    { name: 'word/styles.xml', data: enc(styles) },
+    { name: 'word/document.xml', data: enc('<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:document xmlns:w="' + W + '"><w:body>' + paras + '<w:sectPr><w:pgSz w:w="11906" w:h="16838"/><w:pgMar w:top="1440" w:right="1440" w:bottom="1440" w:left="1440"/></w:sectPr></w:body></w:document>') }
+  ];
+  const blob = await DemaskEngine.writeZip(files);
+  const d = new Date(), ds = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  download('还原结果-' + ds + '.docx', blob, 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
+  toast('已导出 Word（含真实名称和数字，请按原资料的保密级别保管）');
+};
+
 $('#btnCopyRestore').onclick = async () => {
   if (!state.restoreLog.length) return toast('还没有还原结果');
   const all = state.restoreLog.map(r => r.plain).join('\n\n');

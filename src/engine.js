@@ -309,6 +309,76 @@
     return true;
   }
 
+  /* ---- 真实文体里的人名补充 ----
+     "成明和，男，1961 年出生"（履历）、"成明和 男 63 副董事长"（董监高表格）、
+     "龙腾的老板老陈""跟小李说"（口语里的老/小 + 姓）。 */
+  function detectBioPersons(text) {
+    const out = [];
+    let m;
+    const bio = /(?:^|[\n\t（(）)、，。；;：:\d]\s*)([\u4e00-\u9fa5]{2,4})(?:\s*[，,]\s*|\s+)(男|女)(?:\s*[，,]\s*|\s+)(?=\d{2,4}|汉族|中国|出生|生于|博士|硕士|本科|大专|研究生|籍贯|国籍|无境外|现任|曾任)/g;
+    while ((m = bio.exec(text)) !== null) {
+      const name = m[1];
+      if (!looksLikeName(name, true) || COMMON_2.has(name)) continue;
+      const st = m.index + m[0].indexOf(name);
+      out.push(Span(st, st + name.length, 'PERSON', name, 0.9, '履历'));
+    }
+    const lao = /(?<![\u4e00-\u9fa5])|(?<=老板|老总|客户|对接人|联系人|董事长|总经理|经理|总监|跟|和|与|找|问|给|让|叫|是|的)/;
+    void lao;
+    const re = /(老|小)([王李张刘陈杨黄赵吴周徐孙马朱胡郭何高林罗郑梁谢宋唐许韩冯邓曹彭曾肖田董袁潘于蒋蔡余杜叶程苏魏吕丁任沈姚卢姜崔钟谭陆汪范金石廖贾夏韦付方白邹孟熊秦邱江尹薛闫段雷侯龙史陶黎贺顾毛郝龚邵万钱严覃武戴莫孔向汤])(?![\u4e00-\u9fa5]{0,1}(?:时|候|区|鼠|虎|龙|姐|弟|妹|哥|孩|朋友|学|伙|子|板|公|婆|乡|家|师|鸟|麦|米|吃|费|说法))/g;
+    while ((m = re.exec(text)) !== null) {
+      const prev = text.slice(Math.max(0, m.index - 3), m.index);
+      const next = text.slice(m.index + 2, m.index + 4);
+      const before = /(?:老板|老总|客户|对接人|联系人|董事长|总经理|经理|总监|跟|和|与|找|问|给|让|叫|是|的|[，。；：、\s（(“"]|^)$/.test(prev) || m.index === 0;
+      const after = /^(?:说|讲|提|表示|认为|那边|他们|她们|这边|的|是|也|就|其实|在|跟|和|$|[，。；：、！？\s）)”"])/.test(next) || m.index + 2 >= text.length;
+      if (!(before && after)) continue;
+      out.push(Span(m.index, m.index + 2, 'PERSON', m[0], 0.8, '老/小+姓'));
+    }
+    return out;
+  }
+  /* ---- 真实文体里的机构补充 ----
+     合同当事方（"乙方嘉宏电子每季度…"）、邮件签名里的公司行、"X 拟在科创板上市"。 */
+  const PARTY_RE = /(?:甲方|乙方|丙方|丁方|卖方|买方|出让方|受让方|转让方|投资方|被投资方|借款人|贷款人|出租方|承租方|委托方|受托方|发包方|承包方)(为|是|：|:)?\s*([\u4e00-\u9fa5]{2,12}?)(?=每|向|应|须|需|将|于|按|已|同意|承诺|负责|保证|收到|支付|提供|供货|，|。|；|、|（|\(|\s|$)/g;
+  const PARTY_BAD = /市场|分析师|研报|机构|尽调|普遍|认为|施工|爸爸|方面|一方|代表|人员|团队|律师|顾问|意见|要求|需求|报价|立场|角度|视角|利益|风险|责任|义务|权利|资金|股东|董事/;
+  const ORG_TAIL = /(?:电子|科技|资本|投资|集团|控股|实业|医疗|医药|智能|精密|新材|物流|生物|化工|汽车|能源|股份|公司|基金|银行|证券|信托|保险|置业|地产|传媒|食品|贸易|咨询|管理)$/;
+  function detectContextOrgs(text) {
+    const out = [];
+    let m;
+    PARTY_RE.lastIndex = 0;
+    while ((m = PARTY_RE.exec(text)) !== null) {
+      const sep = m[1], name = m[2];
+      if (PARTY_BAD.test(name) || /^(?:房东|业主|房主|租客|客户|对方|本人|自然人)$/.test(name)) continue;
+      // 没有"为 / 是 / ："分隔时（"卖方研报认为"），名字必须像公司（行业词尾）或像人名，且不长于 6 个字
+      if (!sep && !(ORG_TAIL.test(name) && name.length <= 8) && !(name.length <= 4 && looksLikeName(name, true))) continue;
+      if (name.length < 2 || ORG_STOP.has(name) || COMMON_2.has(name) || /^(?:公司|本公司|双方|各方|一方|对方|其|该|上述|以下|指定|授权|代表|法定)/.test(name)) continue;
+      if (/^[供支提收同承负保应须需将按已向于签履交付退违解终有在对就因如若与和及或不可]/.test(name)) continue;   // "乙方应于…""甲方同意"：动词，不是名字
+      if (/(?:人|方|者|机构|单位|主体)$/.test(name)) continue;              // "丙方为担保人"：角色，不是名字
+      const st0 = m.index + m[0].lastIndexOf(name);
+      if (/^[\u4e00-\u9fa5]{2,4}$/.test(name) && looksLikeName(name, true) && !/(?:电子|科技|资本|投资|集团|控股|实业|医疗|医药)$/.test(name)) {
+        out.push(Span(st0, st0 + name.length, 'PERSON', name, 0.85, '合同当事人')); continue;
+      }
+      if (!nameRemainderOk(name) && !/(?:电子|科技|资本|投资|集团|控股|实业|医疗|医药|智能|精密|新材|物流|生物|化工|汽车|能源)$/.test(name)) continue;
+      const st = m.index + m[0].lastIndexOf(name);
+      out.push(Span(st, st + name.length, 'ORG', name, 0.85, '合同当事方'));
+    }
+    // 邮件签名：姓名 | 职务 下一行（或紧邻电话、邮箱的上一行）是公司名
+    const sig = /(?:^|\n)[^\n|｜]{2,30}[|｜][^\n|｜]{2,20}\n([\u4e00-\u9fa5A-Za-z&（）() ]{2,30})\n(?=[^\n]{0,6}(?:手机|电话|Tel|Mobile|M[:：]|T[:：]|邮箱|Email|E[:：]|地址))/gi;
+    while ((m = sig.exec(text)) !== null) {
+      const name = m[1].trim();
+      if (name.length < 2 || /^(?:谢谢|此致|敬礼|祝好|Best|Regards|Thanks)/i.test(name) || /(?:完成|中|部|待定|状态|项目|备注|进行|处理)$/.test(name)) continue;
+      const st = m.index + m[0].lastIndexOf(m[1]);
+      out.push(Span(st, st + m[1].trimEnd().length, 'ORG', name, 0.85, '邮件签名'));
+    }
+    // "X 拟在科创板上市"：上市主体
+    const ipo = /(?:^|[，。；：、\s（(“"]|显示|公告|消息|据悉|其中)([\u4e00-\u9fa5]{2,10}?)(?=(?:拟|计划|正在|已|将)(?:在|于|赴)(?:上交所|深交所|北交所|港交所|联交所|科创板|创业板|主板|纳斯达克|纽交所)(?:科创板|创业板|主板)?(?:上市|IPO|挂牌|递表))/g;
+    while ((m = ipo.exec(text)) !== null) {
+      const name = m[1];
+      if (ORG_STOP.has(name) || COMMON_2.has(name) || /^(?:公司|本公司|发行人|标的|该公司|其|这家|多家|部分|今年|去年|明年|近期|近年|近两年|近三年|目前|已有|共有|未来)/.test(name) || /多家|企业|公司|几家|一批/.test(name)) continue;
+      const st = m.index + m[0].indexOf(name);
+      out.push(Span(st, st + name.length, 'ORG', name, 0.85, '上市主体'));
+    }
+    return out;
+  }
+
   /* ---- 会议纪要、聊天记录里的发言人 ----
      "张伟：我认为……""张伟 10:32""Kevin Liu 2025-03-01 10:32:11"——
      行首的人名后面紧跟冒号或时间，是最常见、也最不该漏的格式。 */
@@ -1137,6 +1207,11 @@ function luhnOk(d) {
       if (EN_NOT_NAME.test(m[1]) || EN_COMMON.test(m[1])) continue;
       const st = m.index + m[0].length - m[1].length;
       out.push(Span(st, st + m[1].length, 'PERSON', m[1], 0.8, '英文单名'));
+    }
+    // "卖方研报认为""投资方普遍认为"：前一个字和"方"连成"买方 / 卖方 / 投资方"，不是姓方的人
+    for (let i = out.length - 1; i >= 0; i--) {
+      const sp = out[i];
+      if (sp.text[0] === '方' && /[买卖甲乙丙丁双各对资让租托包承委出受]/.test(text[sp.start - 1] || '')) out.splice(i, 1);
     }
     // 三字名的第三个字和后面连成常用动词（"张伟负责""李明表示"）：其实是两字名
     for (const sp of out) {
@@ -2551,6 +2626,7 @@ function luhnOk(d) {
     function mask(text, opts) {
       const o = Object.assign({}, DEFAULT_OPTS, sessionOpts || {}, opts || {});
       if (!o.num_factor || o.num_factor === 'auto') o.num_factor = sessionFactor();
+      if (o.num_mode === 'scale' && !o.fast) vault.usedFactor = o.num_factor;     // 还原 AI 推算的新数字时要用同一个系数
       let spans = [];
 
       spans = spans.concat(detectRegex(text), detectExtra(text));
@@ -2567,7 +2643,8 @@ function luhnOk(d) {
         spans = spans.concat(detectProjects(text));
         spans = spans.concat(dictFind(dict.PROJECT, text, 'PROJECT', '词库'));
       }
-      if (o.mask_person) spans = spans.concat(detectPersons(text, dict), detectSpeakers(text));
+      if (o.mask_person) spans = spans.concat(detectPersons(text, dict), detectSpeakers(text), detectBioPersons(text));
+      if (o.mask_org) spans = spans.concat(detectContextOrgs(text));
       if (o.mask_money) {
         spans = spans.concat(detectMoney(text));
         spans = spans.concat(detectCnMoney(text));
@@ -2752,10 +2829,12 @@ function luhnOk(d) {
 
     // opt.mark = true 时返回 HTML，还原出来的部分用 <mark> 包起来，
     // 方便用户一眼看出"哪些是我换回去的"
+    let lastRestore = { estimated: 0 };
     function restore(text, opt) {
       const mark = !!(opt && opt.mark);
       const MK_S = '\u0001', MK_E = '\u0002';
-      const wrap = v => mark ? (MK_S + v + MK_E) : v;
+      // 内部一律加标记：后面要靠它区分"已还原"和"还没还原"的数字；最后按需要转成高亮或去掉
+      const wrap = v => MK_S + v + MK_E;
       // 一个代号可能对应多种写法（全称/简称），还原时取"出现次数最多"的那个
       const best = {};
       for (const k in vault.map) {
@@ -2843,11 +2922,61 @@ function luhnOk(d) {
           return wrap((nu || cands[0]).orig);
         });
       }
+      // AI 自己算出来的新金额（合计、差额、预测值……）不在对照表里，仍是缩放后的数：
+      // 按同一个系数除回去，并单独标出来请用户核对（AI 引用的外部真实数字也会被除，所以必须提示）。
+      // 只在这段文字确实来自脱敏稿时才做（命中过代号或已知假数），避免把已经还原的文字再除一次
+      let estimated = 0;
+      const f = vault.usedFactor || vault.factor;
+      const hitAny = /\u0001/.test(out);
+      if (f && hitAny && Object.keys(vault.num || {}).length && !(sessionOpts && sessionOpts.num_mode && sessionOpts.num_mode !== 'scale')) {
+        const origSet = new Set(Object.values(vault.numRaw || {}).map(x => String(x).replace(/,/g, '')));
+        const UNIT = '万亿元|十亿元|亿元|万元|千万元|百万元|千元|元|亿美元|万美元|美元|亿港元|万港元|港元|万亿|亿|万|million|billion|mn|bn|M|B';
+        const NUM = '\\d{1,3}(?:,\\d{3})+(?:\\.\\d+)?|\\d+(?:\\.\\d+)?';
+        const RE = new RegExp('((?:人民币|RMB|¥|￥|US\\$|HK\\$|\\$|美元|港币)\\s?)?(' + NUM + ')(?:(\\s*[-–—~～至到]\\s*)(' + NUM + '))?(\\s*)(' + UNIT + ')?(?![A-Za-z])', 'g');
+        const conv = num => {
+          const raw = num.replace(/,/g, ''), v = parseFloat(raw);
+          let dec = (raw.split('.')[1] || '').length;
+          const r = v / f;
+          // 至少保留三位有效数字（"5 亿元"换回来是 8.1 而不是 8）
+          const intDigits = String(Math.floor(Math.abs(r))).length;
+          if (intDigits < 3) dec = Math.max(dec, Math.min(2, 3 - intDigits));
+          let o = r.toFixed(dec);
+          if (/,/.test(num)) o = o.replace(/^(-?\d+)/, x => x.replace(/\B(?=(\d{3})+(?!\d))/g, ','));
+          return o;
+        };
+        const parts = out.split(/(\u0001[\s\S]*?\u0002)/);
+        for (let i = 0; i < parts.length; i++) {
+          if (!parts[i] || parts[i][0] === '\u0001') continue;
+          parts[i] = parts[i].replace(RE, (m0, cur, n1, dash, n2, sp, unit, off, whole) => {
+            if (!cur && !unit) return m0;                                    // 没有币种也没有金额单位：不是金额
+            if (/[\d.,%％]/.test(whole[off + m0.length] || '') || /[\d.]/.test(whole[off - 1] || '')) return m0;
+            const nextCh = whole.slice(off + m0.length, off + m0.length + 2);
+            if (unit === '元' && /^[旦宵素器件月]/.test(nextCh)) return m0;               // 元旦、元素、元器件
+            if (/^(?:万亿|亿|万)$/.test(unit || '') && /^(?:家|人|户|个|次|台|件|名|辆|吨|用户|平|套|间|份|股|只|张|篇|条|座|所|位)/.test(nextCh)) return m0;
+            if (/^(?:M|B)$/.test(unit || '') && !cur) return m0;                         // 100M 带宽：没有币种不算
+            if (/^(?:万亿|亿|万)$/.test(unit || '') && !cur && !/(?:收入|营收|利润|金额|估值|成本|费用|资产|负债|市值|融资|投资|现金|预算|价格|销售额|合计|总计|差额|毛利|净额|余额|交易额|GMV|对价|出资|贷款|借款)/.test(whole.slice(Math.max(0, off - 14), off))) return m0;
+            if (!unit && /^(?:19|20)\d{2}$/.test(n1)) return m0;
+            if (unit === '元' && /^(?:19|20)\d{2}$/.test(n1)) return m0;                 // "2025元旦"
+            // 已经是原值（用户把还原结果又贴了回来）：不再换
+            if (origSet.has(n1.replace(/,/g, '')) && (!n2 || origSet.has(n2.replace(/,/g, '')))) return m0;
+            const v1 = parseFloat(n1.replace(/,/g, ''));
+            if (!isFinite(v1) || v1 === 0) return m0;
+            estimated++;
+            let res = (cur || '') + '\u0003' + conv(n1) + '\u0004';
+            if (n2) res += dash + '\u0003' + conv(n2) + '\u0004';
+            return res + sp + (unit || '');
+          });
+        }
+        out = parts.join('');
+      }
+      lastRestore = { estimated: estimated };
+      if (opt && opt.raw) return out;                // 保留内部标记，交给调用方（导出 Word 时标出推算值）
       if (mark) {
         out = out.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-                 .replace(/\u0001/g, '<mark class="rs">').replace(/\u0002/g, '</mark>');
+                 .replace(/\u0001/g, '<mark class="rs">').replace(/\u0002/g, '</mark>')
+                 .replace(/\u0003/g, '<mark class="rs est" title="AI 算出来的新数字，已按缩放系数换算回真实量级，请核对">').replace(/\u0004/g, '</mark>');
       } else {
-        out = out.replace(/[\u0001\u0002]/g, '');
+        out = out.replace(/[\u0001-\u0004]/g, '');
       }
       return out;
     }
@@ -3001,12 +3130,12 @@ function luhnOk(d) {
       save();
     }
     function exportVault() {
-      return JSON.stringify({ map: vault.map, num: vault.num, numRaw: vault.numRaw || {}, unit: vault.unit || {}, dict, created: vault.created, factor: vault.factor, dates: vault.dates || {}, dateShift: vault.dateShift || null }, null, 1);
+      return JSON.stringify({ map: vault.map, num: vault.num, numRaw: vault.numRaw || {}, unit: vault.unit || {}, dict, created: vault.created, factor: vault.factor, usedFactor: vault.usedFactor || null, dates: vault.dates || {}, dateShift: vault.dateShift || null }, null, 1);
     }
     function importVault(json) {
       const d = JSON.parse(json);
       if (!d || !d.map) throw new Error('格式不正确');
-      vault = { map: d.map, num: d.num || {}, numRaw: d.numRaw || {}, unit: d.unit || {}, created: d.created || '', factor: d.factor || null, dates: d.dates || {}, dateShift: d.dateShift || null };
+      vault = { map: d.map, num: d.num || {}, numRaw: d.numRaw || {}, unit: d.unit || {}, created: d.created || '', factor: d.factor || null, usedFactor: d.usedFactor || null, dates: d.dates || {}, dateShift: d.dateShift || null };
       if (d.dict) dict = Object.assign({ ORG: [], PERSON: [], PROJECT: [] }, d.dict);
       save();
     }
@@ -3017,6 +3146,7 @@ function luhnOk(d) {
 
     return {
       mask, restore, riskScan, setOpts, flushSave,
+      lastRestoreStats: () => lastRestore,
       addWord, removeWord, reset, exportVault, importVault, listVault,
       getDict: () => dict,
       getFactor: () => sessionFactor(),
