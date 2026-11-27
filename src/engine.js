@@ -1171,7 +1171,7 @@ function luhnOk(d) {
       out.push(Span(m.index, m.index + m[0].length, 'PERSON', m[0], 0.82, '姓+称谓'));
     }
     // 12) 邮件称呼和签名：Hi 思远 / Dear Mr. Tanaka / Best, Grace Lin / CFO Linda Wu
-    const r12 = /(?:\b(?:Hi|Hello|Dear|Hey)|致|亲爱的)\s*[,，]?\s*([\u4e00-\u9fa5]{2,3})(?=[，,：:！!\s]|$)/g;
+    const r12 = /(?:\b(?:Hi|Hello|Dear|Hey)|(?<![\u4e00-\u9fa5])致|亲爱的)\s*[,，]?\s*([\u4e00-\u9fa5]{2,3})(?=[，,：:！!\s]|$)/g;
     while ((m = r12.exec(text)) !== null) {
       const st = m.index + m[0].length - m[1].length;
       if (!NAME_BAD_PARTS.test(m[1])) out.push(Span(st, st + m[1].length, 'PERSON', m[1], 0.88, '称呼'));
