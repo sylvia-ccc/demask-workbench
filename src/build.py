@@ -8,7 +8,7 @@
 import os
 import time
 
-VERSION = "v2.9"
+VERSION = "v2.9.1"
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)

@@ -315,7 +315,7 @@
   function detectBioPersons(text) {
     const out = [];
     let m;
-    const bio = /(?:^|[\n\t（(）)、，。；;：:\d]\s*)([\u4e00-\u9fa5]{2,4})(?:\s*[，,]\s*|\s+)(男|女)(?:\s*[，,]\s*|\s+)(?=\d{2,4}|汉族|中国|出生|生于|博士|硕士|本科|大专|研究生|籍贯|国籍|无境外|现任|曾任)/g;
+    const bio = /(?:^|[\n\t（(）)、，。；;：:\d][ \t　]{0,6})([\u4e00-\u9fa5]{2,4})(?:\s*[，,]\s*|\s+)(男|女)(?:\s*[，,]\s*|\s+)(?=\d{2,4}|汉族|中国|出生|生于|博士|硕士|本科|大专|研究生|籍贯|国籍|无境外|现任|曾任)/g;
     while ((m = bio.exec(text)) !== null) {
       const name = m[1];
       if (!looksLikeName(name, true) || COMMON_2.has(name)) continue;
@@ -785,7 +785,7 @@ function luhnOk(d) {
     add(/((?:19|20)\d{2}\s*年(?:\s*\d{1,2}\s*月)?)(?=出生(?:[，,。；;）)\s]|于|$)|生人|生，)/g, 'BIRTH', 0.88, null, '某年出生');
 
     // 中文大写金额：人民币壹仟贰佰万元整
-    add(/(?:人民币|RMB)?\s*([零壹贰叁肆伍陆柒捌玖拾佰仟万亿]{2,}(?:元|圆)(?:整)?)/g, 'MONEY', 0.9,
+    add(/(?:人民币|RMB)?\s{0,3}([零壹贰叁肆伍陆柒捌玖拾佰仟万亿]{2,}(?:元|圆)(?:整)?)/g, 'MONEY', 0.9,
       s => /[拾佰仟万亿]/.test(s) || /人民币|RMB/.test(s), '大写金额');
 
     // 护照 / 港澳台通行证（必须有语境，避免误伤编号）
@@ -1285,7 +1285,7 @@ function luhnOk(d) {
       if (nm) out.push(Span(st, st + nm.length, 'PERSON', nm, 0.9, '由…担任'));
     }
     // 9) 履历开头：欧阳楚英，1971年出生，中国国籍 / 赵敏，女，汉族
-    const r9 = new RegExp('(?:^|[\\n。；;])\\s*(' + NAME_SRC + ')[，,]\\s*(?=男|女|(?:19|20)\\d{2}\\s*年|中国国籍|汉族|硕士|博士|本科|大专|研究生|高级|注册会计师|教授|经济师|会计师|工程师|律师)', 'g');
+    const r9 = new RegExp('(?:^|[\\n。；;])[ \\t　]{0,6}(' + NAME_SRC + ')[，,]\\s*(?=男|女|(?:19|20)\\d{2}\\s*年|中国国籍|汉族|硕士|博士|本科|大专|研究生|高级|注册会计师|教授|经济师|会计师|工程师|律师)', 'g');
     while ((m = r9.exec(text)) !== null) {
       const nm = m[1], st = m.index + m[0].indexOf(nm);
       if (looksLikeName(nm, true)) out.push(Span(st, st + nm.length, 'PERSON', nm, 0.92, '履历'));
