@@ -1241,7 +1241,7 @@ $('#rulePat').addEventListener('keydown', e => { if (e.key === 'Enter') $('#btnA
 /* ---------------- 内置行业词库 ---------------- */
 const LEXG = (DemaskEngine.LEX && DemaskEngine.LEX.GROUPS) || {};
 const lexKeys = Object.keys(LEXG);
-state.lexOn = new Set(lexKeys);
+state.lexOn = new Set(lexKeys.filter(k => !(DemaskEngine.LEX.GROUPS[k] && DemaskEngine.LEX.GROUPS[k].optIn)));
 
 function renderLexChips() {
   const box = $('#lexChips');

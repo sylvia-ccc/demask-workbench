@@ -335,6 +335,33 @@
     }
     return out;
   }
+  /* ---- 没有任何提示词的姓名：表格单元格、名单、句首 ----
+     用"安全姓氏 + 常见名用字"打分，并要求两边是单元格或标点边界（"张连山 至 2010 年""乔玉文、乔玉华"）。 */
+  const GIVEN = new Set(('伟芳娜敏静丽强磊军洋勇艳杰娟涛明超秀霞平刚桂英华玉萍红建文辉力林鹏宇浩凯俊健帅斌峰波宁欣婷雪琳晶颖慧丹倩莉燕梅兰凤洁琴云霖博晨阳鑫鸿坤亮飞龙海东晓雨思佳怡嘉涵轩睿泽宏志国庆立新春秋冬金成忠福永胜德安民正光荣祥振兴家锋毅群清晴蕾璐瑶薇媛婕琪琦菲露萌彤悦妍楠昊然逸航哲铭栋伦震彬炜晖骏腾翔舒雅茜楚晗曦冰岚洪江山岩松柏榕桐梓远达宾信义仁智勤良贤婉淑珍珠翠碧青彩虹琼瑞祺祯喜乐欢和康泰恒昌盛隆富豪雄威武锐坚卫守捷聪玲琳瑜璇璟瑾琨瑛玮连毓群蕴卿爽怀耀灿炎焱鹤麟凌川帆旭昕暄翰墨彦奕宸钧铮锦颢烨琛瑄璋珏蓓馨芸莹萱蓉芝蔚')
+    .split(''));
+  const NAME_EDGE_L = /[\n\t、，,；;：:（(）)\s|｜]|^$/;
+  const NAME_EDGE_R = /^(?:$|[\n\t、，,；;：:（(）)\s|｜。]|先生|女士|同志|老师|博士|教授|律师|为(?:公司|一致|实际|控股|董事|监事|法定|本)|等[人\d一二三四五六七八九十]|之[妻夫子女弟兄妹姐父母])/;
+  function detectPlainNames(text) {
+    const out = [];
+    const re = /[王李张刘陈杨黄赵吴周徐孙马朱胡郭何高林罗郑梁谢宋唐许韩冯邓曹彭曾肖田董袁潘于蒋蔡余杜叶程苏魏吕丁任沈姚卢姜崔钟谭陆汪范金石廖贾夏韦付方白邹孟熊秦邱江尹薛闫段雷侯龙史陶黎贺顾毛郝龚邵万钱严覃武戴莫孔向汤乔]/g;
+    let m;
+    while ((m = re.exec(text)) !== null) {
+      const i = m.index;
+      if (!NAME_EDGE_L.test(text[i - 1] || '')) continue;
+      for (const L of [3, 2]) {
+        const cand = text.slice(i, i + L);
+        if (cand.length < L || !/^[\u4e00-\u9fa5]+$/.test(cand)) continue;
+        if (![...cand.slice(1)].every(c => GIVEN.has(c))) continue;
+        if (!NAME_EDGE_R.test(text.slice(i + L, i + L + 2))) continue;
+        if (!looksLikeName(cand, true) || COMMON_2.has(cand) || AMBIG_WORDS.has(cand.slice(0, 2))) continue;
+        if (/^(?:高新|金融|方正|万达|华润|陆家|东方|安信|国信|中信|海通|平安|光大|招商|华泰|国泰|方圆|和平|江山|黄金|白银|石油|马上|钱江|龙华|万科|于是|余下)/.test(cand)) continue;
+        out.push(Span(i, i + L, 'PERSON', cand, 0.75, '姓名统计'));
+        break;
+      }
+    }
+    return out;
+  }
+
   /* ---- 真实文体里的机构补充 ----
      合同当事方（"乙方嘉宏电子每季度…"）、邮件签名里的公司行、"X 拟在科创板上市"。 */
   const PARTY_RE = /(?:甲方|乙方|丙方|丁方|卖方|买方|出让方|受让方|转让方|投资方|被投资方|借款人|贷款人|出租方|承租方|委托方|受托方|发包方|承包方)(为|是|：|:)?\s*([\u4e00-\u9fa5]{2,12}?)(?=每|向|应|须|需|将|于|按|已|同意|承诺|负责|保证|收到|支付|提供|供货|，|。|；|、|（|\(|\s|$)/g;
@@ -1783,6 +1810,7 @@ function luhnOk(d) {
         const name = arr[j];
         const g = LEX_GROUP_OF[name];
         if (!useAll && g && enabledGroups.indexOf(g) < 0) continue;
+        if (useAll && g && LEX.GROUPS[g] && LEX.GROUPS[g].optIn) continue;        // 需手动开启的词库
         if (!text.startsWith(name, i)) continue;
         // 英文名要检查词边界，中文名不需要
         if (/[A-Za-z]$/.test(name)) {
@@ -2643,7 +2671,7 @@ function luhnOk(d) {
         spans = spans.concat(detectProjects(text));
         spans = spans.concat(dictFind(dict.PROJECT, text, 'PROJECT', '词库'));
       }
-      if (o.mask_person) spans = spans.concat(detectPersons(text, dict), detectSpeakers(text), detectBioPersons(text));
+      if (o.mask_person) spans = spans.concat(detectPersons(text, dict), detectSpeakers(text), detectBioPersons(text), detectPlainNames(text));
       if (o.mask_org) spans = spans.concat(detectContextOrgs(text));
       if (o.mask_money) {
         spans = spans.concat(detectMoney(text));
